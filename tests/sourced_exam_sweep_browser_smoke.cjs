@@ -40,6 +40,19 @@ module.exports=async({page,context,assert,screenshot})=>{
       assert(result.scene.objects.some(n=>n.op==='intersection')&&result.scene.objects.some(n=>n.op==='reflect_axis'));
       assert.match(result.parts.find(p=>p.index===3).steps.join(' '),/与.*n.*无关|行列式|不随/);
     }
+    if(item.id==='2024-i-16'&&!process.env.DONG_EXAM_BASELINE){
+      assert.equal(result.parts.find(p=>p.index===1).status,'answered',JSON.stringify(rows.at(-1)));
+      assert.match(result.parts.find(p=>p.index===1).answer,/1\/2|\\frac\{1\}\{2\}/);
+      assert(Math.abs(result.scene.a**2-12)<1e-8&&Math.abs(result.scene.b**2-9)<1e-8,'Two-point linear model from the source, not the bank answer');
+      assert.equal(result.parts.find(p=>p.index===2).status,'answered','Area determinant and conic intersections solve both signed branches');
+      const areaAnswer=result.parts.find(p=>p.index===2).answer;
+      assert.match(areaAnswer,/1\/2|\\frac\{1\}\{2\}/);assert.match(areaAnswer,/3\/2|\\frac\{3\}\{2\}/);
+      assert.equal(result.scene.objects.filter(n=>n.id?.startsWith('area-candidate-')).length,2);
+      assert.equal(diagram.missing.length,0,'The other intersection is derived from the anchor, not an unrelated A/B secant');
+      assert.equal(diagram.invalid.length,0);
+      assert(result.scene.objects.some(n=>n.label==='B'&&n.op==='second_intersection'));
+      assert.equal(result.scene.showDynamic,false,'Never overwrite the explicitly given A with a moving intersection');
+    }
     if(item.id==='2022-beijing-12'&&!process.env.DONG_EXAM_BASELINE){
       assert.equal(result.completion.answered,1,JSON.stringify(rows.at(-1)));
       assert.match(result.parts[0].answer.replace(/[−–]/g,'-'),/m\s*=\s*-3/);

@@ -4,7 +4,7 @@
   function toPlain(value){
     let s=String(value??'').replace(/[＋－＝＊／＾０-９Ａ-Ｚａ-ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xfee0));
     if(s.length>18000)return s;
-    s=s.replace(/\\sqrt\s*([0-9])/g,'\\sqrt{$1}').replace(/\\ /g,' ');
+    s=s.replace(/\\ /g,' ');
     s=s.replace(/```(?:latex|math|tex)?\s*\n?([\s\S]*?)```/gi,'$1')
       .replace(/\\(?:left|right|displaystyle|textstyle)\b/g,'')
       .replace(/\\(?:begin|end)\{(?:aligned|align\*?|equation\*?|gathered)\}/g,'')
@@ -14,13 +14,26 @@
       .replace(/\\pi\b/g,'π').replace(/\\div\b/g,'/')
       .replace(/\\pm\b/g,'±').replace(/\\perp\b/g,'垂直').replace(/\\triangle\b/gi,'△');
     const group=(text,start)=>{if(text[start]!=='{')return null;let depth=0;for(let i=start;i<text.length;i++){if(text[i]==='{')depth++;if(text[i]==='}'&&!--depth)return{body:text.slice(start+1,i),end:i+1};}return null;};
+    // TeX also accepts a single token as an argument: \dfrac32, \frac1{2},
+    // \frac{1}2 and \sqrt2. Consume tokens, not entire digit strings.
+    const argument=(text,start,depth=0)=>{
+      if(depth>30)return null;
+      while(start<text.length&&/\s/.test(text[start]))start++;
+      const braced=group(text,start);if(braced)return braced;
+      if(/[a-z0-9]/i.test(text[start]||''))return {body:text[start],end:start+1};
+      const command=/^\\(sqrt|[dt]?frac|pi)\b|^\\(sqrt|[dt]?frac)(?=[0-9{\\])/i.exec(text.slice(start));
+      if(!command)return null;
+      const op=command[1]||command[2];let end=start+command[0].length;
+      if(op!=='pi')for(let i=0;i<(op.includes('frac')?2:1);i++){const next=argument(text,end,depth+1);if(!next)return null;end=next.end;}
+      return {body:text.slice(start,end),end};
+    };
     for(let pass=0;pass<200;pass++){
       let changed=false;
       const command=/\\(dfrac|tfrac|frac|sqrt|text|mathrm|operatorname)\s*/g;let match;
       while((match=command.exec(s))){
-        const a=group(s,match.index+match[0].length);if(!a)continue;
+        const a=/frac|sqrt/.test(match[1])?argument(s,match.index+match[0].length):group(s,match.index+match[0].length);if(!a)continue;
         let end=a.end,replacement;
-        if(/frac/.test(match[1])){let j=a.end;while(/\s/.test(s[j]||'')&&j<s.length)j++;const b=group(s,j);if(!b)continue;end=b.end;const simple=t=>/^[+-]?\d+(?:\.\d+)?$/.test(t)||/^[a-z](?:\^\{?\d+\}?)?$/i.test(t);replacement=`${simple(a.body)?a.body:'('+a.body+')'}/${simple(b.body)?b.body:'('+b.body+')'}`;}
+        if(/frac/.test(match[1])){const b=argument(s,a.end);if(!b)continue;end=b.end;const simple=t=>/^[+-]?\d+(?:\.\d+)?$/.test(t)||/^[a-z](?:\^\{?\d+\}?)?$/i.test(t);replacement=`${simple(a.body)?a.body:'('+a.body+')'}/${simple(b.body)?b.body:'('+b.body+')'}`;}
         else if(match[1]==='sqrt')replacement=/^\d+(?:\.\d+)?$/.test(a.body)?String(Math.sqrt(Number(a.body))):`sqrt(${a.body})`;
         else replacement=a.body;
         if(match[1]==='sqrt'&&/[0-9)π]$/.test(s.slice(0,match.index)))replacement='*'+replacement;

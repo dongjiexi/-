@@ -3,7 +3,7 @@
   'use strict';
   const canonical=s=>String(s||'').replace(/\\(?:prime)/g,'′').replace(/'/g,'′').replace(/[_{}\s]/g,'').replace(/[₀₁₂₃₄₅₆₇₈₉]/g,c=>'₀₁₂₃₄₅₆₇₈₉'.indexOf(c)).toUpperCase();
   const plain=s=>String(s||'').replace(/\\(?:left|right|,|;|!)/g,'').replace(/\\(?:triangle|Delta)/g,'△').replace(/\\prime/g,'′').replace(/[_{}$\s]/g,'').replace(/'/g,'′');
-  const pointOps=new Set(['point_on','inverse','midpoint','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection']);
+  const pointOps=new Set(['point_on','inverse','midpoint','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection']);
   const finite=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y);
   function declared(text){
     // A symbolic family P_n is not a distinct point named P. Numeric indices
@@ -15,6 +15,7 @@
     for(const m of s.matchAll(new RegExp('(?:连接|连结|直线|线段)'+n+n,'g'))){add(m[1]);add(m[2]);}
     for(const m of s.matchAll(new RegExp(n+'(?:为|是)(?:线段|弦)?'+n+n+'的?中点','g'))){add(m[1]);add(m[2]);add(m[3]);}
     for(const m of s.matchAll(new RegExp('(?:垂足|交点)(?:记为|为|是)(?:点)?'+n,'g')))add(m[1]);
+    for(const m of s.matchAll(new RegExp('交(?:[A-Z])?于(?:另一个|另一|另外一)?点'+n,'g')))add(m[1]);
     return [...names];
   }
   function visible(item,active){
@@ -157,6 +158,14 @@
             const incidence=Math.abs((value.x-line.o.x)*d.y-(value.y-line.o.y)*d.x)/length;
             const orthogonal=Math.abs((source.x-value.x)*d.x+(source.y-value.y)*d.y)/length;
             report.checks.push({label:node.label||node.id,kind:'foot',passed:incidence<1e-7*scale&&orthogonal<1e-7*scale,part:node.part,parts:node.parts,detail:'垂足在目标直线上，投影连线与目标直线垂直（当前位置）'});
+          }
+        }
+        if(node.op==='inverse'){
+          const center=engine.resolve(node.refs[0]),source=engine.resolve(node.refs[1]);
+          if(finite(source)&&finite(center)){
+            const ux=source.x-center.x,uy=source.y-center.y,vx=value.x-center.x,vy=value.y-center.y;
+            const product=Math.hypot(ux,uy)*Math.hypot(vx,vy),cross=ux*vy-uy*vx,dot=ux*vx+uy*vy;
+            report.checks.push({label:node.label||node.id,kind:'inverse',passed:dot>0&&Math.abs(cross)<1e-7*(1+product)&&Math.abs(product-node.power)<1e-7*(1+node.power),part:node.part,parts:node.parts,detail:'反演点位于同一射线上，两个距离的积等于指定正数（当前位置）'});
           }
         }
       }

@@ -2,7 +2,7 @@
  * No eval, invented coordinates, guessed loci or mathematical proof claims. */
 (function(root){
   'use strict';
-  const pointOps=new Set(['point_on','midpoint','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection']);
+  const pointOps=new Set(['point_on','midpoint','inverse','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection']);
   const token='([A-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?)';
   const clean=text=>(root.DongMathInput?.toPlain(text)??String(text||'')).replace(/\\(?:left|right|prime)/g,m=>m.endsWith('prime')?'′':'').replace(/[_{}$\s]/g,'').replace(/'/g,'′');
   function install(scene,parts,construct){

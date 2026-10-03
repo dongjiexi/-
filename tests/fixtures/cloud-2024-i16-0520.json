@@ -1,0 +1,214 @@
+{
+  "parts": [
+    {
+      "index": 1,
+      "answer": "$e=\\dfrac{\\sqrt{3}}{2}$",
+      "steps": [
+        "将 $A(0,3)$ 代入椭圆方程得 $\\dfrac{0}{a^2}+\\dfrac{9}{b^2}=1$，所以 $b^2=9$。",
+        "将 $P\\left(3,\\dfrac32\\right)$ 代入椭圆方程得 $\\dfrac{9}{a^2}+\\dfrac{\\frac94}{9}=1$，即 $\\dfrac{9}{a^2}+\\dfrac14=1$。",
+        "解得 $\\dfrac{9}{a^2}=\\dfrac34$，所以 $a^2=12$。",
+        "椭圆为 $\\dfrac{x^2}{12}+\\dfrac{y^2}{9}=1$，故 $c^2=a^2-b^2=12-9=3$，$c=\\sqrt3$。",
+        "离心率 $e=\\dfrac ca=\\dfrac{\\sqrt3}{2\\sqrt3}=\\dfrac{\\sqrt3}{2}$。"
+      ],
+      "candidate_solutions": [
+        {
+          "e": "\\frac{\\sqrt3}{2}"
+        }
+      ],
+      "status": "answered",
+      "equations": [
+        "\\frac{0}{a^2}+\\frac{9}{b^2}=1",
+        "\\frac{9}{a^2}+\\frac{9/4}{b^2}=1",
+        "b^2=9",
+        "a^2=12",
+        "c^2=a^2-b^2=3",
+        "e=\\frac ca=\\frac{\\sqrt3}{2}"
+      ],
+      "substitutions": [
+        "A(0,3)代入椭圆方程",
+        "P(3,3/2)代入椭圆方程"
+      ],
+      "domain": [
+        "a>b>0",
+        "b^2=9",
+        "a^2=12"
+      ],
+      "proof_obligations": [],
+      "missing_conditions": [],
+      "nonuniqueness_examples": []
+    },
+    {
+      "index": 2,
+      "answer": "$l$ 的方程为 $4x-y-\\dfrac{21}{2}=0$ 或 $y=\\dfrac32$。",
+      "steps": [
+        "由第（1）问得椭圆 $C:\\dfrac{x^2}{12}+\\dfrac{y^2}{9}=1$。",
+        "设过 $P\\left(3,\\dfrac32\\right)$ 的直线 $l$ 与椭圆交于另一点 $B$。因为 $A(0,3)$，所以 $AP=\\sqrt{(3-0)^2+\\left(\\frac32-3\\right)^2}=\\sqrt{9+\\frac94}=\\dfrac{3\\sqrt5}{2}$。",
+        "直线 $AP$ 的斜率为 $\\dfrac{\\frac32-3}{3-0}=-\\dfrac12$，方程为 $y=3-\\dfrac12x$，即 $x+2y-6=0$。",
+        "设 $B(x_B,y_B)$ 到直线 $AP$ 的距离为 $d$，则 $\\triangle ABP$ 的面积 $S=\\dfrac12 AP\\cdot d=\\dfrac12\\cdot \\dfrac{3\\sqrt5}{2}\\cdot d=9$。",
+        "解得 $d=\\dfrac{12}{\\sqrt5}$。",
+        "由点到直线距离公式，$\\dfrac{|x_B+2y_B-6|}{\\sqrt{1^2+2^2}}=\\dfrac{12}{\\sqrt5}$，所以 $|x_B+2y_B-6|=12$。",
+        "又 $B$ 在椭圆上，故 $\\dfrac{x_B^2}{12}+\\dfrac{y_B^2}{9}=1$。",
+        "情形一：$x_B+2y_B-6=12$，即 $x_B+2y_B=18$。",
+        "联立 $x_B+2y_B=18$ 与椭圆方程：由 $x_B=18-2y_B$，代入 $\\dfrac{(18-2y_B)^2}{12}+\\dfrac{y_B^2}{9}=1$。",
+        "化简得 $3(18-2y_B)^2+4y_B^2=36$，即 $16y_B^2-216y_B+972=0$，即 $2y_B^2-27y_B+\\dfrac{243}{2}=0$，解得 $y_B=\\dfrac{9}{2}$ 或 $y_B=9$。",
+        "若 $y_B=9$，则 $x_B=0$，得 $B(0,9)$。此时直线 $PB$ 的斜率为 $\\dfrac{9-\\frac32}{0-3}=-\\dfrac52$，方程为 $y-\\dfrac32=-\\dfrac52(x-3)$，即 $5x+2y-18=0$。",
+        "检验：直线 $5x+2y-18=0$ 与椭圆 $\\dfrac{x^2}{12}+\\dfrac{y^2}{9}=1$ 联立，由 $y=9-\\dfrac52x$，代入得 $\\dfrac{x^2}{12}+\\dfrac{\\left(9-\\frac52x\\right)^2}{9}=1$。化简为 $x^2-10x+96=0$，判别式 $\\Delta=(-10)^2-4\\cdot96<0$，故该直线与椭圆无公共点，不符合题意。",
+        "因此情形一需舍去 $y_B=9$，得到 $y_B=\\dfrac92$，此时 $x_B=18-2\\cdot\\dfrac92=9$，即 $B\\left(9,\\dfrac92\\right)$，但该点不在椭圆上？再代会：$\\dfrac{81}{12}+\\dfrac{81/4}{9}=\\dfrac{27}{4}+\\dfrac94=9\\ne1$，说明上述化简有误，重新联立。",
+        "重新联立 $x+2y=18$ 与椭圆：$x=18-2y$，代入 $\\dfrac{(18-2y)^2}{12}+\\dfrac{y^2}{9}=1$，两边乘 $36$ 得 $3(18-2y)^2+4y^2=36$，即 $3(324-72y+4y^2)+4y^2=36$，即 $972-216y+12y^2+4y^2=36$，即 $16y^2-216y+936=0$，即 $2y^2-27y+117=0$，判别式 $729-936<0$，无解。故情形一无符合题意的不同交点。",
+        "情形二：$x_B+2y_B-6=-12$，即 $x_B+2y_B=-6$。",
+        "由 $x_B=-6-2y_B$ 代入椭圆：$\\dfrac{(-6-2y_B)^2}{12}+\\dfrac{y_B^2}{9}=1$，两边乘 $36$ 得 $3(6+2y_B)^2+4y_B^2=36$，即 $3(36+24y_B+4y_B^2)+4y_B^2=36$，即 $108+72y_B+16y_B^2=36$，即 $4y_B^2+18y_B+18=0$，即 $2y_B^2+9y_B+9=0$。",
+        "解得 $y_B=-3$ 或 $y_B=-\\dfrac32$。",
+        "若 $y_B=-3$，则 $x_B=-6-2(-3)=0$，得 $B(0,-3)$。直线 $PB$ 的斜率为 $\\dfrac{-3-\\frac32}{0-3}=\\dfrac{-\\frac92}{-3}=\\dfrac32$，方程为 $y-\\dfrac32=\\dfrac32(x-3)$，即 $2y=3x-6$，即 $3x-2y-6=0$。",
+        "检验：直线 $3x-2y-6=0$ 与椭圆联立，由 $y=\\dfrac{3x-6}{2}=\\dfrac32x-3$，代入得 $\\dfrac{x^2}{12}+\\dfrac{\\left(\\frac32x-3\\right)^2}{9}=1$，化简为 $x^2-3x=0$，解得 $x=0$ 或 $x=3$，对应 $B(0,-3)$ 和 $P(3,\\frac32)$，符合题意。",
+        "若 $y_B=-\\dfrac32$，则 $x_B=-6-2\\left(-\\dfrac32\\right)=-3$，得 $B\\left(-3,-\\dfrac32\\right)$。直线 $PB$ 的斜率为 $\\dfrac{-\\frac32-\\frac32}{-3-3}=\\dfrac{-3}{-6}=\\dfrac12$，方程为 $y-\\dfrac32=\\dfrac12(x-3)$，即 $2y-3=x-3$，即 $y=\\dfrac12x$。",
+        "检验：直线 $y=\\dfrac12x$ 与椭圆联立，代入得 $\\dfrac{x^2}{12}+\\dfrac{x^2/4}{9}=1$，即 $\\dfrac{x^2}{12}+\\dfrac{x^2}{36}=1$，即 $\\dfrac{4x^2}{36}=1$，$x^2=9$，解得 $x=3$（点 $P$）或 $x=-3$（点 $B$），符合题意。",
+        "但此时直线 $y=\\dfrac12x$ 与 $AP$ 斜率相同？$AP$ 斜率为 $-\\frac12$，不同。面积为 $9$ 成立。",
+        "所以两个候选直线为 $3x-2y-6=0$ 与 $y=\\dfrac12x$。",
+        "然而上面情形二得到的另一交点为 $B(0,-3)$ 和 $B\\left(-3,-\\dfrac32\\right)$。检查面积：对 $3x-2y-6=0$，$B(0,-3)$，面积 $\\frac12|(P-A)\\times(B-A)|=\\frac12|(3,-\\frac32)\\times(0,-6)|=\\frac12|3\\cdot(-6)-(-\\frac32)\\cdot0|=9$，符合。",
+        "对 $y=\\dfrac12x$，$B\\left(-3,-\\dfrac32\\right)$，面积 $\\frac12|(3,-\\frac32)\\times(-3,-\\dfrac92)|=\\frac12|3\\cdot(-\\frac92)-(-\\frac32)\\cdot(-3)|=\\frac12|-\\frac{27}{2}-\\frac92|=\\frac12\\cdot18=9$，符合。",
+        "故答案为 $3x-2y-6=0$ 或 $y=\\dfrac12x$。"
+      ],
+      "candidate_solutions": [
+        {
+          "B": [
+            0,
+            -3
+          ],
+          "l": "3x-2y-6=0"
+        },
+        {
+          "B": [
+            -3,
+            -1.5
+          ],
+          "l": "y=\\frac12x"
+        }
+      ],
+      "status": "answered",
+      "equations": [
+        "\\frac{x^2}{12}+\\frac{y^2}{9}=1",
+        "AP=\\sqrt{(3-0)^2+\\left(\\frac32-3\\right)^2}=\\frac{3\\sqrt5}{2}",
+        "y=3-\\frac12x",
+        "x+2y-6=0",
+        "S=\\frac12 AP\\cdot d=9",
+        "d=\\frac{12}{\\sqrt5}",
+        "|x_B+2y_B-6|=12",
+        "x_B+2y_B=-6",
+        "4y_B^2+18y_B+18=0",
+        "y_B=-3\\text{ 或 }y_B=-\\frac32",
+        "3x-2y-6=0",
+        "y=\\frac12x"
+      ],
+      "substitutions": [
+        "A(0,3), P(3,3/2) 代入距离公式",
+        "B(x_B,y_B) 代入点到直线距离公式",
+        "x_B=-6-2y_B 代入椭圆方程",
+        "y_B=-3 得 x_B=0",
+        "y_B=-3/2 得 x_B=-3"
+      ],
+      "domain": [
+        "a^2=12, b^2=9",
+        "B\\ne P",
+        "直线 l 过 P 且与椭圆交于另一点 B"
+      ],
+      "proof_obligations": [],
+      "missing_conditions": [],
+      "nonuniqueness_examples": []
+    }
+  ],
+  "title": "椭圆过定点求离心率与面积定值直线方程",
+  "knowns": [
+    "A(0,3) 与 P(3,3/2) 在椭圆 C: x^2/a^2+y^2/b^2=1 上",
+    "a>b>0"
+  ],
+  "strategy": "先由两点坐标确定椭圆方程，再求离心率；第（2）问用底 AP 与高 d 表示面积，转化为 B 到 AP 的距离，联立椭圆求 B，再写直线 l。",
+  "assumptions": [
+    "椭圆焦点在 x 轴上",
+    "直线 l 与椭圆有两个不同交点 P 和 B"
+  ],
+  "scene": {
+    "type": "ellipse",
+    "h": 0,
+    "k": 0,
+    "orientation": "horizontal",
+    "a": 3.4641016151377544,
+    "b": 3,
+    "points": {
+      "A": [
+        0,
+        3
+      ],
+      "P": [
+        3,
+        1.5
+      ],
+      "B1": [
+        0,
+        -3
+      ],
+      "B2": [
+        -3,
+        -1.5
+      ]
+    },
+    "lines": [
+      {
+        "kind": "through_points",
+        "a": "A",
+        "b": "P",
+        "infinite": true,
+        "label": "AP",
+        "part": 2
+      },
+      {
+        "kind": "through_points",
+        "a": "P",
+        "b": "B1",
+        "infinite": true,
+        "label": "l1",
+        "part": 2
+      },
+      {
+        "kind": "through_points",
+        "a": "P",
+        "b": "B2",
+        "infinite": true,
+        "label": "l2",
+        "part": 2
+      }
+    ],
+    "constructions": [
+      {
+        "id": "seg_AP",
+        "op": "segment",
+        "refs": [
+          "feature:A",
+          "feature:P"
+        ],
+        "label": "AP",
+        "part": 2
+      },
+      {
+        "id": "seg_PB1",
+        "op": "segment",
+        "refs": [
+          "feature:P",
+          "feature:B1"
+        ],
+        "label": "PB1",
+        "part": 2
+      },
+      {
+        "id": "seg_PB2",
+        "op": "segment",
+        "refs": [
+          "feature:P",
+          "feature:B2"
+        ],
+        "label": "PB2",
+        "part": 2
+      }
+    ],
+    "dynamicLine": false
+  }
+}

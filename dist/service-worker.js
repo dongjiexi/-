@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '0.51.3';
+const VERSION = '0.52.0';
 const CACHE = `dongjiexi-app-${VERSION}`;
 const CORE = [
   './question-parts.js', './parabola-focal-data.js', './goal-coverage.js',
@@ -9,9 +9,9 @@ const CORE = [
   './circle-dot.js',
   './parabola-locus.js',
   './label-layout.js', './step-highlight.js',
-  './scene-merge.js', './answer-geometry.js',
+  './scene-merge.js', './answer-geometry.js', './solution-review.js',
   './conic-parameter.js',
-  './math-input.js', './number-display.js', './tangent-solver.js', './ellipse-distance.js', './orthogonal-chord.js', './ellipse-focal-chord.js', './axis-intercept-chord.js',
+  './math-input.js', './number-display.js', './tangent-solver.js', './ellipse-distance.js', './orthogonal-chord.js', './ellipse-focal-chord.js', './axis-intercept-chord.js', './conic-area.js',
   './', './index.html', './offline.html', './manifest.webmanifest', './app-version.json',
   './runtime-config.js', './runtime.js', './recognition-contract.mjs', './scene-contract.mjs', './scene-audit.js', './cloud-contract.mjs', './external-contract.mjs', './external-ai.js', './pwa.js', './theme.css', './learning-ui.css', './learning-ui.js', './classroom.css',
   './classroom.js', './construction-board.js', './drag-board.js', './equation-builder.js', './math-keyboard.js', './mathlive-adapter.js', './geogebra-bridge.js',

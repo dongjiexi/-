@@ -57,7 +57,8 @@ for(const file of ['construction-board.js','tangent-solver.js'])vm.runInNewConte
   check(()=>assert.equal(invalid({constructions:[{id:'same',op:'point_on',refs:['$conic'],t:1},{id:'same',op:'point_on',refs:['$conic'],t:2}]}).graphValid,false));
   check(()=>assert.equal(invalid({objects:[{kind:'code',script:'alert(1)'}]}).graphValid,false));
   check(()=>assert.equal(invalid({constructions:[{id:'bad',op:'point_on',refs:['$conic'],t:'sqrt(2)'}]}).graphValid,false));
-  check(()=>assert.equal(invalid({lines:[{kind:'through_points',a:'A',b:'B'}]}).graphValid,false));
+  check(()=>assert.equal(invalid({lines:[{kind:'through_points',a:'A',b:'B'}]}).graphValid,true,'A and B are declared contact constructions, not missing fixed points'));
+  check(()=>assert.equal(invalid({lines:[{kind:'through_points',a:'Unknown',b:'B'}]}).graphValid,false));
   const repair=core.makeRepairRequest(request,'已有回复',['缺少点 N']);
   check(()=>assert(repair.includes(request.requestId)&&repair.includes('缺少点 N')));
   const plain=core.parseReply('<img src=x onerror=alert(1)>普通解答 $\\sqrt{2}$',request);

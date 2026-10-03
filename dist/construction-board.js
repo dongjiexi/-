@@ -124,6 +124,10 @@
             if(obj.op==='ellipse_tangent_point'&&a?.type==='point')result=pointValue(window.DongTangentSolver?.contactsFromQuadratic(curveCoefficients(b),a)?.points[obj.branch||0]);
             if(obj.op==='orthogonal_chord_circle')result=window.DongOrthogonalChord?.circle(curveCoefficients(a))||null;
             if(obj.op==='intersection')result=pointValue(intersect(a,b)[obj.branch||0]);
+            if(obj.op==='second_intersection'&&a?.type==='point'&&validLine(b)){
+              const hits=intersect(b,refs[2]),tolerance=1e-7*(1+Math.hypot(a.x,a.y));
+              if(hits.some(p=>distance(p,a)<=tolerance))result=pointValue(hits.find(p=>distance(p,a)>tolerance));
+            }
             if(obj.op==='distance'&&a?.type==='point'&&b?.type==='point')result={type:'measure',...mul(add(a,b),.5),value:distance(a,b)};
             if(obj.op==='point_on'&&a){
               const spec=driver(obj);

@@ -1,7 +1,7 @@
 /* Merge independently derived nodes with their complete dependency closure. */
 (()=>{
   'use strict';
-  const pointOps=new Set(['point_on','midpoint','reflect_center','reflect_axis','foot','ellipse_tangent_point','intersection']);
+  const pointOps=new Set(['point_on','midpoint','inverse','reflect_center','reflect_axis','foot','ellipse_tangent_point','intersection','second_intersection']);
   function category(node){
     if(node.kind==='point'||pointOps.has(node.op))return 'point';
     if(node.kind==='circle'||node.op==='circle')return 'circle';

@@ -1,6 +1,7 @@
 /* Offline, data-only import of replies from a user's own AI. No inference or fetch. */
 import {SOLVE_SYSTEM, assemble, splitParts} from './cloud-contract.mjs';
 import {safeConstructionScene} from './scene-contract.mjs';
+import './scene-audit.js';
 
 export const SCHEMA = 'dongjiexi-external-v1';
 export const MAX_REPLY = 150000;
@@ -88,19 +89,9 @@ export function makeRepairRequest(request,reply,warnings) {
 /* Existence checks at the preview position, not a proof of a theorem or locus. */
 export function inspectGeometry(scene, construct) {
   if(!scene||!construct)return [];
-  const issues=[],h=scene.h||0,k=scene.k||0;
-  const curve=scene.type==='circle'?{q:{A:1,B:0,C:1,D:-2*h,E:-2*k,F:h*h+k*k-scene.r*scene.r},pointAt:t=>({x:h+scene.r*Math.cos(t),y:k+scene.r*Math.sin(t)})}:construct.conicShape({...scene,conicType:scene.type});
-  const features=Object.entries(scene.points).map(([name,p])=>({name,x:p[0],y:p[1]}));
-  let origin={x:h,y:k};
-  if(scene.lineThrough.startsWith('point:')){const p=scene.points[scene.lineThrough.slice(6)];if(!p)issues.push('动直线经过的定点未定义。');else origin={x:p[0],y:p[1]};}
-  else if(['focus1','focus2','vertex'].includes(scene.lineThrough)){
-    let d=scene.type==='ellipse'?Math.sqrt(scene.a**2-scene.b**2):scene.type==='hyperbola'?Math.hypot(scene.a,scene.b):scene.type==='parabola'?scene.p*scene.direction:0;
-    if(scene.lineThrough==='focus1')d=-d;if(scene.lineThrough==='vertex')d=0;
-    origin=scene.orientation==='vertical'?{x:h,y:k+d}:{x:h+d,y:k};
-  }
-  const angle=scene.theta*Math.PI/180,dynamic={type:'line',o:origin,d:{x:Math.cos(angle),y:Math.sin(angle)}};
-  if(scene.dynamicLine)construct.intersect(dynamic,{type:'conic',q:curve.q}).slice(0,2).forEach((p,i)=>features.push({...p,name:(scene.dynamicIntersectionLabels||['A','B'])[i]}));
-  const engine=construct.createEngine({model:()=>scene,features:()=>features,coeffs:()=>curve.q,origin:()=>origin,angle:()=>scene.theta,conicPoint:curve.pointAt,conicProject:curve.project});
+  const issues=[],frame=globalThis.DongSceneAudit.frame(scene,construct);
+  if(!frame)return ['主曲线无法建立可靠的数值模型。'];
+  const engine=frame.engine;
   for(const node of [...scene.lines,...scene.objects]){
     try{
       const value=engine.resolve(node.id);

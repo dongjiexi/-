@@ -99,6 +99,7 @@ def install_archive(archive, root=ROOT):
             (0, 51, 1): ("dist/question-bank.js", "dist/question-bank.json", "dist/question-bank.css"),
             (0, 51, 2): ("dist/motion-protection.js",),
             (0, 51, 3): ("dist/motion-domain.js",),
+            (0, 52, 0): ("dist/solution-review.js", "dist/conic-area.js"),
         }
         for minimum, modules in added_modules.items():
             if version_tuple(config.get("version")) >= minimum and not all((source / name).is_file() for name in modules):

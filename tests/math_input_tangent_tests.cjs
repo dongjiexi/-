@@ -6,6 +6,13 @@ assert.equal(toPlain(String.raw`椭圆 $\frac{x^{2}}{9}+\frac{y^2}{4}=1$`),'椭�
 assert.equal(toPlain(String.raw`\frac{(x-1)^2}{9}+\frac{(y+2)^2}{4}=1`),'(x-1)^2/9+(y+2)^2/4=1');
 assert.equal(toPlain(String.raw`P\left(\frac{3}{2},\sqrt{4}\right)`),'P(3/2,2)');
 assert.equal(toPlain(String.raw`\frac{1}{\frac{2}{3}}`),'1/(2/3)');
+for(const source of [String.raw`\dfrac32`,String.raw`\frac3{2}`,String.raw`\tfrac{3}2`])assert.equal(toPlain(source),'3/2');
+assert.equal(toPlain(String.raw`P(3,\dfrac32)`),'P(3,3/2)');
+assert.equal(toPlain(String.raw`\sqrt5`),String(Math.sqrt(5)));
+assert.equal(toPlain(String.raw`\frac\sqrt22`),'('+Math.sqrt(2)+')/2');
+assert.equal(toPlain(String.raw`\frac12+\frac34`),'1/2+3/4');
+assert.equal(toPlain(String.raw`\frac{x}2`),'x/2');
+assert.equal(toPlain(String.raw`\frac{1}{}`),'1/()','Malformed input is not silently repaired into a valid value');
 assert(Math.abs(sandbox.window.DongEquationBuilder.scalar(toPlain(String.raw`2\sqrt3`))-2*Math.sqrt(3))<1e-12);
 assert.match(prepare(String.raw`已知\frac{x^2}{9}=1。`),/\$.*\$/);
 assert.equal(prepare('$x^2=1$'),'$x^2=1$');

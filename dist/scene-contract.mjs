@@ -5,7 +5,7 @@ const forbidden = new Set(['__proto__', 'prototype', 'constructor']);
 const name = s => typeof s === 'string' && !forbidden.has(s) && /^[A-Za-z][A-Za-z0-9_₀₁₂₃′']{0,12}$/.test(s);
 const id = s => typeof s === 'string' && !forbidden.has(s) && /^[A-Za-z][A-Za-z0-9_-]{0,47}$/.test(s);
 const text = (s, max=6000) => typeof s === 'string' ? s.slice(0,max) : '';
-const arity = {line:2, segment:2, ray:2, midpoint:2, reflect_center:2, parallel:2, perpendicular:2, foot:2, tangent:2, normal:2, ellipse_tangent_point:2, intersection:2, circle:2, point_on:1, line_angle:1, reflect_axis:1, distance:2};
+const arity = {line:2, segment:2, ray:2, midpoint:2, inverse:2, reflect_center:2, parallel:2, perpendicular:2, foot:2, tangent:2, normal:2, ellipse_tangent_point:2, intersection:2, second_intersection:3, circle:2, point_on:1, line_angle:1, reflect_axis:1, distance:2};
 
 
 const trim=text;
@@ -73,7 +73,7 @@ export function safeConstructionScene(raw, {partIndexes}={}) {
     return sceneScope(item);
   };
   const labels=new Set(scene.dynamicLine?scene.dynamicIntersectionLabels:[]), ids=new Set(), nodes=[];
-  const pointOps=new Set(['point_on','midpoint','reflect_center','reflect_axis','foot','ellipse_tangent_point','intersection']);
+  const pointOps=new Set(['point_on','midpoint','inverse','reflect_center','reflect_axis','foot','ellipse_tangent_point','intersection','second_intersection']);
   const reserve=(node)=>{
     if(!id(node.id)||ids.has(node.id)){warn('对象标识无效或重复：'+text(node.id,48));return false;}
     ids.add(node.id);return true;
@@ -96,7 +96,30 @@ export function safeConstructionScene(raw, {partIndexes}={}) {
     reserve(node);nodes.push(node);
   }
   const moving = new Map(nodes.map(n=>[n.label,n.id]));
-  const known = key => Object.hasOwn(scene.points,key)||moving.has(key)||(scene.dynamicLine&&scene.dynamicIntersectionLabels.includes(key));
+  // Reply authors often reference a constructed point by its displayed name,
+  // including before its definition. Bind names to IDs, never fixed coordinates.
+  const named = new Map();
+  for(const c of Array.isArray(raw.constructions)?raw.constructions:[]){
+    if(c&&pointOps.has(c.op)&&id(c.id)&&name(c.label)){
+      if(named.has(c.label))named.set(c.label,null);else named.set(c.label,c.id);
+    }
+  }
+  const implicit = new Set(scene.type==='parabola'?['O','F','V']:scene.type==='circle'?['O']:['O','F₁','F₂','A₁','A₂']);
+  const featureName = key => {
+    if(typeof key!=='string')return null;
+    if(Object.hasOwn(scene.points,key)||(scene.dynamicLine&&scene.dynamicIntersectionLabels.includes(key)))return key;
+    const alias=key.replace(/^([FA])_?([12])$/,(_,letter,digit)=>letter+(digit==='1'?'₁':'₂'));
+    return implicit.has(alias)?alias:null;
+  };
+  const canonicalPoint=key=>String(key).replace(/_/g,'').replace(/[₀₁₂₃]/g,c=>'₀₁₂₃'.indexOf(c));
+  const pointAliases=new Map();
+  for(const key of [...Object.keys(scene.points),...(scene.dynamicLine?scene.dynamicIntersectionLabels:[]),...moving.keys(),...named.keys()]){
+    const alias=canonicalPoint(key),reference=moving.get(key)||named.get(key)||'feature:'+key;
+    if(pointAliases.has(alias)&&pointAliases.get(alias)!==reference)pointAliases.set(alias,null);else if(!pointAliases.has(alias))pointAliases.set(alias,reference);
+  }
+  const pointRef = key => moving.get(key)||named.get(key)||(featureName(key)?'feature:'+featureName(key):pointAliases.get(canonicalPoint(key))||null);
+  const known = key => !!pointRef(key);
+  if(scene.dynamicLine&&scene.lineThrough==='point:O'&&!Object.hasOwn(scene.points,'O'))scene.points.O=[0,0];
   if(scene.dynamicLine&&scene.lineThrough.startsWith('point:')&&!Object.hasOwn(scene.points,scene.lineThrough.slice(6)))warn('动直线经过的定点未提供固定坐标。');
   if(raw.lines!=null&&!Array.isArray(raw.lines))warn('lines 必须为数组。');
   if(Array.isArray(raw.lines)&&raw.lines.length>50)warn('直线超过 50 条。');
@@ -106,7 +129,7 @@ export function safeConstructionScene(raw, {partIndexes}={}) {
     if(line.kind==='slope'&&finite(line.m)&&finite(line.b))Object.assign(clean,{kind:'slope',m:line.m,b:line.b});
     else if(line.kind==='vertical'&&finite(line.x))Object.assign(clean,{kind:'vertical',x:line.x});
     else if(line.kind==='through_points'&&known(line.a)&&known(line.b)&&line.a!==line.b){
-      Object.assign(clean,{kind:'construction',op:line.infinite===false?'segment':'line',refs:[moving.get(line.a)||'feature:'+line.a,moving.get(line.b)||'feature:'+line.b]});
+      Object.assign(clean,{kind:'construction',op:line.infinite===false?'segment':'line',refs:[pointRef(line.a),pointRef(line.b)]});
     }else{warn('直线 '+clean.label+' 缺少有效参数或引用点。');continue;}
     if(reserve(clean)){if(clean.kind==='construction')nodes.push(clean);else scene.lines.push(clean);}
   }
@@ -123,19 +146,33 @@ export function safeConstructionScene(raw, {partIndexes}={}) {
       try{if(c.motionDomain!=null)node.motionDomain=globalThis.DongMotionDomain.validate(c.motionDomain);if(c.motionByPart!=null)node.motionByPart=globalThis.DongMotionDomain.validateProfiles(c.motionByPart,partIndexes);}catch(error){warn(error.message);continue;}
     }
     if(c.op==='line_angle'){if(!finite(c.angle)){warn('过点直线缺少角度。');continue;}node.angle=c.angle;}
+    if(c.op==='inverse'){if(!finite(c.power)||c.power<=0){warn('反演必须给出有限正数 power。');continue;}node.power=c.power;}
     if(c.op==='reflect_axis'){if(!['x','y'].includes(c.axis)||!finite(c.axisValue??0)){warn('对称轴参数无效。');continue;}node.axis=c.axis;node.axisValue=c.axisValue??0;}
     if(['intersection','ellipse_tangent_point'].includes(c.op)){if(![0,1].includes(c.branch??0)){warn('交点分支必须为 0 或 1。');continue;}node.branch=c.branch??0;}
     if(pointOps.has(c.op)&&labels.has(node.label)){warn('点名重复：'+node.label+'，请为不同点使用不同名称。');continue;}
     if(reserve(node)){nodes.push(node);if(pointOps.has(c.op))labels.add(node.label);}
   }
   if(raw.objects!=null)warn('objects 不是外部回复允许的字段，请用 constructions 描述关联构造。');
+  const lineAliases=new Map();
+  for(const node of [...scene.lines,...nodes])if(!pointOps.has(node.op)&&node.op!=='circle'&&node.op!=='distance'&&name(node.label)){
+    if(lineAliases.has(node.label))lineAliases.set(node.label,null);else lineAliases.set(node.label,node.id);
+  }
+  for(const node of nodes)node.refs=node.refs.map(ref=>{
+    if(ref.startsWith('feature:'))return pointRef(ref.slice(8))||ref;
+    if(ref.startsWith('line:'))return lineAliases.get(ref.slice(5))||ref;
+    // Exact IDs win; name aliases are allowed only when unambiguous and known.
+    return ids.has(ref)?ref:pointRef(ref)||ref;
+  });
+  // O denotes the coordinate origin unless the reply explicitly defines it.
+  // A translated curve's centre must not silently stand in for the origin.
+  if((scene.h!==0||scene.k!==0)&&nodes.some(n=>n.refs.includes('feature:O'))&&!Object.hasOwn(scene.points,'O'))scene.points.O=[0,0];
   const refKnown=ref=>ids.has(ref)||ref==='$conic'||ref==='$dynamic'&&scene.dynamicLine||ref.startsWith('feature:')&&known(ref.slice(8));
   for(const node of nodes)for(const ref of node.refs)if(!refKnown(ref))warn(node.label+' 引用了不存在的对象：'+ref);
   // Checking existence alone permits e.g. midpoint([$conic,$conic]) and a
   // tangent to a point. Such data cannot be interpreted as a valid graph.
   const allById=new Map([...scene.lines,...nodes].map(n=>[n.id,n]));
   const refType=ref=>ref==='$conic'?'curve':ref==='$dynamic'?'line':ref.startsWith('feature:')&&known(ref.slice(8))?'point':pointOps.has(allById.get(ref)?.op)?'point':allById.get(ref)?.op==='circle'?'curve':allById.get(ref)?.op==='distance'?'measure':allById.has(ref)?'line':null;
-  const signatures={line:['point','point'],segment:['point','point'],ray:['point','point'],midpoint:['point','point'],reflect_center:['point','point'],circle:['point','point'],distance:['point','point'],reflect_axis:['point'],line_angle:['point'],parallel:['point','line'],perpendicular:['point','line'],foot:['point','line'],tangent:['point','curve'],normal:['point','curve'],ellipse_tangent_point:['point','curve'],intersection:['shape','shape'],point_on:['shape']};
+  const signatures={line:['point','point'],segment:['point','point'],ray:['point','point'],midpoint:['point','point'],inverse:['point','point'],reflect_center:['point','point'],circle:['point','point'],distance:['point','point'],reflect_axis:['point'],line_angle:['point'],parallel:['point','line'],perpendicular:['point','line'],foot:['point','line'],tangent:['point','curve'],normal:['point','curve'],ellipse_tangent_point:['point','curve'],intersection:['shape','shape'],second_intersection:['point','line','curve'],point_on:['shape']};
   for(const node of nodes)node.refs.forEach((ref,index)=>{
     const actual=refType(ref),expected=signatures[node.op]?.[index];
     if(actual&&expected&&(expected==='shape'?!['curve','line'].includes(actual):expected!==actual))warn(node.label+' 的引用对象类型不符合 '+node.op+' 构造。');
