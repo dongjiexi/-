@@ -17,6 +17,7 @@ const workflow = read('.github/workflows/deploy-dongjiexi.yml');
 assert.ok(worker.includes("'./solution-review.js'")&&html.includes(`solution-review.js?v=${app.version}`),'Continuation UI must update and stay usable offline; inference still requires cloud connectivity');
 assert.ok(worker.includes("'./conic-area.js'")&&html.includes(`conic-area.js?v=${app.version}`),'The independent area model must be updated and cached with the rest of the app');
 assert.ok(worker.includes("'./vertex-secant.js'")&&html.includes(`vertex-secant.js?v=${app.version}`),'The dependent vertex-secant graph is versioned and cached');
+assert.ok(worker.includes("'./inverse-locus.js'")&&html.includes(`inverse-locus.js?v=${app.version}`),'Independent inversion and per-part locus drivers are updated and cached together');
 
 assert.match(app.version, /^\d+\.\d+\.\d+$/);
 assert.equal(web.version, app.version);

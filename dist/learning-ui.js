@@ -632,11 +632,13 @@
             result.quality_notice='已覆盖的小问由内置数学引擎独立复算，最终结论以该小问的核验结果为准。';
           }
         }
-        if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(exactScene.conicArea||exactScene.vertexSecant||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
-          if((exactScene.conicArea||exactScene.vertexSecant)&&result.scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
+        if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
+          if((exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus)&&result.scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
           result.scene=exactScene;
-          result.scene_notice='AI 已先完成解答；画板由原题的独立符号模型对齐题目与答案。';
-          if(exactScene.vertexSecant||exactScene.conicArea){result.model_scene_warnings=result.scene_warnings;result.scene_warnings=[];}
+          result.scene_notice='已核对题目与答案；已覆盖部分由独立符号模型对齐答案与画板。';
+          if(exactScene.inverseLocus){result.model_answer=result.model_answer||result.answer;result.answer=exactSolution.answer;}
+          if(exactScene.vertexSecant||exactScene.conicArea||exactScene.inverseLocus){result.model_scene_warnings=result.scene_warnings;result.scene_warnings=[];}
+          if(exactScene.inverseLocus){result.model_assumptions=result.assumptions;result.assumptions=[];result.model_strategy=result.strategy;result.strategy=exactSolution.strategy;}
           if(exactScene.vertexSecant){
             result.model_assumptions=result.assumptions;result.model_strategy=result.strategy;
             result.assumptions=['两个交点均在双曲线左支，且 M 在第二象限；竖直弦允许，渐近方向排除。'];

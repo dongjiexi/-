@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.53.0">
+  <meta name="dongjiexi-version" content="0.54.0">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.53.0">
-  <link rel="stylesheet" href="classroom.css?v=0.53.0">
-  <link rel="stylesheet" href="question-bank.css?v=0.53.0">
+  <link rel="stylesheet" href="learning-ui.css?v=0.54.0">
+  <link rel="stylesheet" href="classroom.css?v=0.54.0">
+  <link rel="stylesheet" href="question-bank.css?v=0.54.0">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -384,12 +384,14 @@
     @keyframes solve-spin { to { transform:rotate(360deg); } }
     @media (prefers-reduced-motion:reduce) { .solve-progress[data-state="solving"]::before { animation:none; } }
     .mobile-panel-nav { display:none; }
+    #inverseDistancePanel { display:none; }
     @media (max-width:760px), (max-width:1024px) and (max-height:500px) and (pointer:coarse) {
       .workflow-strip { display:none; }
       .topbar { position:relative; }
       .workspace { display:flex;flex-direction:column; }
       .workspace>.panel { width:100%; }
       .mobile-panel-nav { display:flex;position:sticky;top:0;z-index:40;gap:.4rem;padding:.5rem;background:#f5f9fc;border-bottom:1px solid #d5dfeb; }
+      #inverseDistancePanel:not([hidden]) { display:block;margin:.6rem;padding:.5rem;background:#f6fafb;border:1px solid #c6d4e3;border-radius:8px; }
       .mobile-panel-nav button { flex:1;min-width:0;min-height:44px;border:1px solid #c6d4e3;border-radius:9px;background:white;color:#36516c;font:inherit; }
       .mobile-panel-nav button[aria-pressed="true"] { background:#086d72;color:white;border-color:#086d72; }
       .workspace[data-mobile-view]>.panel { display:none!important; }
@@ -416,12 +418,12 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.53.0">
+  <link rel="stylesheet" href="theme.css?v=0.54.0">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.53.0 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.54.0 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -536,6 +538,7 @@
         </div>
         <p id="undefinedObjects" class="native-warning" role="status"></p>
         <div class="legend"><span style="--c:#0f9f99">圆锥曲线</span><span style="--c:#f2a33c">动直线</span><span style="--c:#e58c21">题设图形</span><span style="--c:#7c5ac9">题设点线</span><span style="--c:#df5b62">交点</span><span style="--c:#3f78d8">焦点 / 圆心</span></div>
+        <details id="inverseDistancePanel" hidden><summary>距离最值与定位</summary><div id="inverseDistanceReadout"></div></details>
       </section>
 
       <aside class="panel inspect">
@@ -616,45 +619,46 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.53.0"></script>
+  <script src="runtime.js?v=0.54.0"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.53.0"></script>
-  <script src="number-display.js?v=0.53.0"></script>
-  <script src="label-layout.js?v=0.53.0"></script>
-  <script src="step-highlight.js?v=0.53.0"></script>
-  <script src="scene-audit.js?v=0.53.0"></script>
-  <script src="answer-geometry.js?v=0.53.0"></script>
-  <script src="scene-merge.js?v=0.53.0"></script>
-  <script src="tangent-solver.js?v=0.53.0"></script>
-  <script src="ellipse-distance.js?v=0.53.0"></script>
-  <script src="circle-dot.js?v=0.53.0"></script>
-  <script src="orthogonal-chord.js?v=0.53.0"></script>
-  <script src="axis-intercept-chord.js?v=0.53.0"></script>
-  <script src="conic-area.js?v=0.53.0"></script>
-  <script src="vertex-secant.js?v=0.53.0"></script>
-  <script src="parabola-locus.js?v=0.53.0"></script>
-  <script src="question-parts.js?v=0.53.0"></script>
-  <script src="goal-coverage.js?v=0.53.0"></script>
-  <script src="solution-review.js?v=0.53.0"></script>
-  <script src="parabola-focal-data.js?v=0.53.0"></script>
-  <script src="circle-fold.js?v=0.53.0"></script>
-  <script src="circle-fold-view.js?v=0.53.0"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.53.0">
-  <script src="hyperbola-iteration.js?v=0.53.0"></script>
-  <script src="conic-parameter.js?v=0.53.0"></script>
-  <script src="ellipse-focal-chord.js?v=0.53.0"></script>
-  <script src="external-ai.js?v=0.53.0"></script>
-  <script src="learning-ui.js?v=0.53.0"></script>
-  <script src="classroom.js?v=0.53.0"></script>
-  <script src="question-bank.js?v=0.53.0"></script>
-  <script src="construction-board.js?v=0.53.0"></script>
-  <script src="motion-domain.js?v=0.53.0"></script>
-  <script src="motion-protection.js?v=0.53.0"></script>
-  <script src="drag-board.js?v=0.53.0"></script>
-  <script src="equation-builder.js?v=0.53.0"></script>
-  <script src="math-keyboard.js?v=0.53.0"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.53.0"></script>
+  <script src="math-input.js?v=0.54.0"></script>
+  <script src="number-display.js?v=0.54.0"></script>
+  <script src="label-layout.js?v=0.54.0"></script>
+  <script src="step-highlight.js?v=0.54.0"></script>
+  <script src="scene-audit.js?v=0.54.0"></script>
+  <script src="answer-geometry.js?v=0.54.0"></script>
+  <script src="scene-merge.js?v=0.54.0"></script>
+  <script src="tangent-solver.js?v=0.54.0"></script>
+  <script src="ellipse-distance.js?v=0.54.0"></script>
+  <script src="circle-dot.js?v=0.54.0"></script>
+  <script src="orthogonal-chord.js?v=0.54.0"></script>
+  <script src="axis-intercept-chord.js?v=0.54.0"></script>
+  <script src="conic-area.js?v=0.54.0"></script>
+  <script src="vertex-secant.js?v=0.54.0"></script>
+  <script src="inverse-locus.js?v=0.54.0"></script>
+  <script src="parabola-locus.js?v=0.54.0"></script>
+  <script src="question-parts.js?v=0.54.0"></script>
+  <script src="goal-coverage.js?v=0.54.0"></script>
+  <script src="solution-review.js?v=0.54.0"></script>
+  <script src="parabola-focal-data.js?v=0.54.0"></script>
+  <script src="circle-fold.js?v=0.54.0"></script>
+  <script src="circle-fold-view.js?v=0.54.0"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.54.0">
+  <script src="hyperbola-iteration.js?v=0.54.0"></script>
+  <script src="conic-parameter.js?v=0.54.0"></script>
+  <script src="ellipse-focal-chord.js?v=0.54.0"></script>
+  <script src="external-ai.js?v=0.54.0"></script>
+  <script src="learning-ui.js?v=0.54.0"></script>
+  <script src="classroom.js?v=0.54.0"></script>
+  <script src="question-bank.js?v=0.54.0"></script>
+  <script src="construction-board.js?v=0.54.0"></script>
+  <script src="motion-domain.js?v=0.54.0"></script>
+  <script src="motion-protection.js?v=0.54.0"></script>
+  <script src="drag-board.js?v=0.54.0"></script>
+  <script src="equation-builder.js?v=0.54.0"></script>
+  <script src="math-keyboard.js?v=0.54.0"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.54.0"></script>
   <script src="geogebra-bridge.js?v=0.7.0"></script>
   <script>
   (() => {
@@ -1008,7 +1012,7 @@
     function parseQuestion(raw) {
       const s = normalize(raw);
       if (!s) throw new Error('请先输入题干或标准方程。');
-      const standard=window.DongParabolaFocalData?.infer(raw)||window.DongHyperbolaIteration?.infer(raw)||window.DongConicParameter?.infer(s)||browserStandardConic(s)||ellipseFromConditionsBrowser(s)||hyperbolaFromConditionsBrowser(s)||circleFromConditionsBrowser(s)||parabolaFromConditionsBrowser(s)||window.DongParabolaLocus?.infer(raw);let type=standard?.type||'',a=standard?.a,b=standard?.b,r=standard?.r,p=standard?.p,orientation=standard?.orientation||'horizontal',h=standard?.h||0,k=standard?.k||0,direction=standard?.direction||1;
+      const standard=window.DongInverseLocus?.infer(raw)||window.DongParabolaFocalData?.infer(raw)||window.DongHyperbolaIteration?.infer(raw)||window.DongConicParameter?.infer(s)||browserStandardConic(s)||ellipseFromConditionsBrowser(s)||hyperbolaFromConditionsBrowser(s)||circleFromConditionsBrowser(s)||parabolaFromConditionsBrowser(s)||window.DongParabolaLocus?.infer(raw);let type=standard?.type||'',a=standard?.a,b=standard?.b,r=standard?.r,p=standard?.p,orientation=standard?.orientation||'horizontal',h=standard?.h||0,k=standard?.k||0,direction=standard?.direction||1;
       if (!type) {const named=s.match(/椭圆|双曲线|抛物线|圆/);throw new Error(named?`已识别为${named[0]}题，但当前浏览器内置规则尚未覆盖这组条件；这不等于题目条件不足。请选择云端解题继续推导。`:'暂未识别出可唯一建图的圆锥曲线。请核对识别文字，或选择云端解题继续分析。');}
       if (type==='parabola' && (!Number.isFinite(p) || p===0)) throw new Error('抛物线系数无效。请检查方程。');
       let lineThrough='center';
@@ -1062,6 +1066,7 @@
       const number=(key,fallback,positive=false)=>{if(!Object.hasOwn(data,key))return fallback;const raw=data[key],value=Number(raw);if(!['number','string'].includes(typeof raw)||typeof raw==='string'&&!raw.trim()||!Number.isFinite(value)||Math.abs(value)>100000||positive&&value<=0)throw new Error(`${key} 必须是${positive?'大于 0 的':''}有限数值，绝对值不得超过 100000；不能用无效数值替代默认参数。`);return value;};
       model.problemMotion=data.problemMotion===true;
       model.vertexSecant=data.vertexSecant||null;
+      model.inverseLocus=data.inverseLocus||null;
       if(data.motionBaseline&&typeof data.motionBaseline==='object')model.motionBaseline=data.motionBaseline;
       if(data.referenceScene&&typeof data.referenceScene.id==='string'&&Number.isInteger(data.referenceScene.revision))model.referenceScene={id:data.referenceScene.id,revision:data.referenceScene.revision};
       for(const object of model.objects){if(object.motionDomain!=null)object.motionDomain=window.DongMotionDomain.validate(object.motionDomain);if(object.motionByPart!=null)object.motionByPart=window.DongMotionDomain.validateProfiles(object.motionByPart);}
@@ -1342,7 +1347,7 @@
       if(showDynamic&&state.model.showConic!==false&&state.model.pairedChord)secondIntersections().forEach((p,i)=>point(p,'#4d86d1',state.model.pairedChord.labels[i]));
       if(Number.isFinite(state.model.fixedPoint?.x))point(state.model.fixedPoint,'#d0741b',state.model.fixedPoint.name||'T');
       const extra=extraIntersections();extra.forEach(g=>g.points.filter(p=>!p.named).forEach(p=>point(p,'#bd4166',p.name)));
-      drawMetrics(ins,extra);drawRectangleMetrics();drawIterationMetrics();drawFocalDataMetrics();nativeController?.draw();dragController?.draw();drawExtremeHit(ins,showDynamic);drawDistanceExtrema();drawCircleDot();drawOrthogonalChord(ins);stepHighlighter?.draw();boardLabels.flush();
+      drawMetrics(ins,extra);drawRectangleMetrics();drawIterationMetrics();drawFocalDataMetrics();nativeController?.draw();dragController?.draw();drawExtremeHit(ins,showDynamic);drawDistanceExtrema();drawInverseMetrics();drawCircleDot();drawOrthogonalChord(ins);stepHighlighter?.draw();boardLabels.flush();
     }
     const iterationViews=new WeakMap();
     function refreshIteration(){
@@ -1489,6 +1494,37 @@
       const data=window.DongEllipseDistance?.compute(state.model,state.p,[source.x,source.y]),target=data?.[kind]?.points[Number(branch)],moving=state.model.objects.find(o=>o.id===spec.movingId);
       if(!target||!moving)return;stopMotion(false);Object.assign(moving,conicProject(target));state.exploring=true;$('#exploreNotice').hidden=false;updateSceneJson();render();remember();
     });
+    function drawInverseMetrics(){
+      const panel=$('#inverseDistancePanel'),readout=$('#inverseDistanceReadout');panel.hidden=true;readout.innerHTML='';
+      const spec=state.model?.inverseLocus;if(!spec||spec.maximumPart==null||!visibleForPart({part:spec.maximumPart}))return;
+      const data=window.DongInverseLocus.extrema(spec),moving=nativeController?.engine.resolve('inverse-locus-P'),M=nativeController?.engine.resolve('inverse-locus-M');
+      if(!data||!moving||!M)return;
+      const unchanged=Math.abs(P('h'))<1e-12&&Math.abs(P('k'))<1e-12&&Math.abs(P('a')-spec.a)<1e-9&&Math.abs(P('b')-spec.b)<1e-9;
+      const circle=nativeController.engine.getObject('inverse-locus-circle'),anchor=namedObject(spec.A);
+      const applicable=unchanged&&circle&&Math.abs(circle.h)<1e-9&&Math.abs(circle.k-data.center)<1e-9&&Math.abs(circle.r**2-data.radius2)<1e-8&&anchor&&Math.abs(anchor.x)<1e-9&&Math.abs(anchor.y-spec.d)<1e-9&&!window.DongMotion.unrestricted(state.model);
+      const current=Math.hypot(moving.x-M.x,moving.y-M.y),maxTex=window.DongEllipseDistance.rootTex(data.radius2)+'+'+window.DongEllipseDistance.rootTex(data.distance2);
+      let html=metric('当前 |'+escapeHtml(spec.P+spec.M)+'|',exactNumber(current,6));
+      if(!applicable){html+=metric('原题最值','当前为自由探索，已改动原题条件');metricsEl.insertAdjacentHTML('beforeend',html);panel.hidden=false;readout.innerHTML=html;return;}
+      const hit=data.attained&&data.pairs.some(pair=>Math.hypot(moving.x-pair.P.x,moving.y-pair.P.y)<1e-5&&Math.hypot(M.x-pair.M.x,M.y-pair.M.y)<1e-5);
+      if(hit)html=metric('当前 |'+escapeHtml(spec.P+spec.M)+'|',window.katex.renderToString(maxTex,{throwOnError:false}));
+      for(const sign of [1,-1]){const screen=xy(0,data.center+sign*Math.sqrt(data.radius2));ctx.save();ctx.beginPath();ctx.arc(screen.x,screen.y,4,0,2*Math.PI);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#df5b62';ctx.lineWidth=2;ctx.stroke();ctx.restore();}
+      html+=metric(data.attained?'最大距离':'距离上确界',window.katex.renderToString(maxTex,{throwOnError:false}),true);
+      if(data.attained)html+=metric('取等位置',data.pairs.map((_,i)=>`<button class="button secondary" data-inverse-jump="${i}">定位最大距离${i+1}</button>`).join(' '));
+      html+=metric('轨迹边界','空心标记处为轴交点，不取');
+      if(hit){strokePath([moving,M],'#df8300',4);annotation('|'+spec.P+spec.M+'| 达到最大值',{x:(moving.x+M.x)/2,y:(moving.y+M.y)/2},'#b96b00');html+=metric('当前状态','已到达最大值',true);}
+      metricsEl.insertAdjacentHTML('beforeend',html);
+      panel.hidden=false;readout.innerHTML=html.replaceAll('data-inverse-jump','data-inverse-board-jump');
+    }
+    function jumpInverse(event){
+      const button=event.target.closest('[data-inverse-jump],[data-inverse-board-jump]');if(!button)return;
+      const spec=state.model?.inverseLocus,data=spec&&window.DongInverseLocus.extrema(spec),pair=data?.pairs[Number(button.dataset.inverseJump??button.dataset.inverseBoardJump)],engine=nativeController?.engine;
+      if(!pair||!engine||window.DongMotion.unrestricted(state.model))return;
+      stopMotion(false);
+      const pParameter=engine.project('inverse-locus-circle',pair.P),mParameter=conicProject(pair.M);
+      if(!pParameter||!mParameter)return;
+      engine.moveDriver('inverse-locus-P',pParameter);engine.moveDriver('inverse-locus-M',mParameter);updateSceneJson();render();remember();
+    }
+    metricsEl.addEventListener('click',jumpInverse);$('#inverseDistanceReadout').addEventListener('click',jumpInverse);
     let extremeScan=null;
     function drawCircleDot(){
       const spec=state.model?.dotExtrema,moving=spec&&(state.model.objects||[]).find(o=>o.id===spec.movingId);
@@ -1664,6 +1700,7 @@
       return{answer,steps};
     }
     function browserDeterministicSolution(raw){
+      const inverse=window.DongInverseLocus?.solve(raw);if(inverse)return inverse;
       const circleDot=window.DongCircleDot?.solve(raw);if(circleDot)return circleDot;
       const folded=window.DongCircleFold?.solve(raw);if(folded)return folded;
       let scene;
@@ -1834,6 +1871,6 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.53.0"></script>
+  <script src="pwa.js?v=0.54.0"></script>
 </body>
 </html>
