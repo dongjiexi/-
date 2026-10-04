@@ -100,6 +100,7 @@ def install_archive(archive, root=ROOT):
             (0, 51, 2): ("dist/motion-protection.js",),
             (0, 51, 3): ("dist/motion-domain.js",),
             (0, 52, 0): ("dist/solution-review.js", "dist/conic-area.js"),
+            (0, 53, 0): ("dist/vertex-secant.js",),
         }
         for minimum, modules in added_modules.items():
             if version_tuple(config.get("version")) >= minimum and not all((source / name).is_file() for name in modules):

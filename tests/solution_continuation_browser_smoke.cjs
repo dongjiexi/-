@@ -2,6 +2,13 @@
 module.exports=async({page,context,assert,screenshot})=>{
   const fs=require('node:fs'),path=require('node:path');
   const exam=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8')).items.find(q=>q.id==='2023-ii-21');
+  // Isolate continuation/backup protocol states on the original sourced text.
+  // Production native recovery is exercised, without this fixture-only stub,
+  // in vertex_secant_browser_smoke (including the captured real bad reply).
+  await context.route('**/vertex-secant.js*',r=>r.fulfill({contentType:'application/javascript',body:'/* continuation state isolation only */'}));
+  // Service-worker reloads may serve the production precache rather than a
+  // route. Keep the isolation explicit and persistent ONLY in this test.
+  await context.addInitScript(()=>Object.defineProperty(window,'DongVertexSecant',{get:()=>undefined,set:()=>{},configurable:false}));
   await context.route('**/runtime-config.js',r=>r.fulfill({contentType:'application/javascript',body:'window.DONGJIEXI_CONFIG={deployment:"web",apiEnabled:true,requiresAuth:false};'}));
   await context.route('**/api/health',r=>r.fulfill({json:{app:'董解析',capabilities:{transport:'sse'},engine:{available:true,installed:true,remote:true,models:['test-cloud']},default_model:'test-cloud'}}));
   const first={index:1,status:'answered',answer:'$C:\\frac{x^2}{4}-\\frac{y^2}{16}=1$',steps:['$c=2\\sqrt5,e=\\sqrt5$，所以 $a=2,b=4$。']};
@@ -20,6 +27,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.equal(requests.length,1,'No automatic paid retry');
   assert.match(await page.locator('.solve-review').textContent(),/文字作答 1\/2/);
   assert.match(await page.locator('.solve-review').textContent(),/仍有缺失/);
+  const previousAnswer=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution.parts[0].answer);
   await page.locator('[data-study-part="2"]').click();
   assert(await page.locator('[data-solution-continue="2"]').isVisible());
   assert.match(await page.locator('#solution').textContent(),/不代表原题缺少条件/);
@@ -46,12 +54,12 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.equal(requests[1].focus_part,2);
   const data=JSON.parse(requests[1].repair_context);assert(data.diagram_issues.includes('P'));
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')));
-  assert.equal(saved.solution.parts[0].answer,first.answer,'A failed repeated part does not erase the previous answer');
+  assert.equal(saved.solution.parts[0].answer,previousAnswer,'A failed repeated part does not erase the previous accepted answer, including independent correction');
   assert.equal(saved.solution.study.notes,'保留老师讲题笔记');
   assert.equal(saved.solution.conversation[0].content,'保留学生追问');
   assert.equal(saved.solution.sceneAudit.invalid.length,0,JSON.stringify(saved.solution.sceneAudit));
   assert.equal(saved.solution.sceneAudit.missing.length,0,JSON.stringify(saved.solution.sceneAudit));
-  assert(saved.scene.objects.some(n=>n.id==='P'&&n.op==='intersection'));
+  assert(saved.scene.objects.some(n=>n.id==='P'&&n.op==='intersection'),JSON.stringify({scene:saved.scene,warnings:saved.solution.scene_warnings}));
   const backup=await page.evaluate(()=>JSON.parse(localStorage.getItem('dongjiexi:lesson-backups:v1'))[0]);
   assert(backup.continuationBackup);assert(backup.scene.objects.some(n=>n.id==='manual-note-point'));
   assert(backup.solution.parts[1].status==='partial');

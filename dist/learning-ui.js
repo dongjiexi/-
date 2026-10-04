@@ -632,10 +632,16 @@
             result.quality_notice='已覆盖的小问由内置数学引擎独立复算，最终结论以该小问的核验结果为准。';
           }
         }
-        if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(exactScene.conicArea||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
-          if(exactScene.conicArea&&result.scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
+        if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(exactScene.conicArea||exactScene.vertexSecant||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
+          if((exactScene.conicArea||exactScene.vertexSecant)&&result.scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
           result.scene=exactScene;
           result.scene_notice='AI 已先完成解答；画板由原题的独立符号模型对齐题目与答案。';
+          if(exactScene.vertexSecant||exactScene.conicArea){result.model_scene_warnings=result.scene_warnings;result.scene_warnings=[];}
+          if(exactScene.vertexSecant){
+            result.model_assumptions=result.assumptions;result.model_strategy=result.strategy;
+            result.assumptions=['两个交点均在双曲线左支，且 M 在第二象限；竖直弦允许，渐近方向排除。'];
+            result.strategy='由焦点与离心率建立双曲线；用 x=my+u 统一包含竖直弦，通过韦达与两点式消元证明定直线。';
+          }
         }else if(result.scene&&(exactComplete||exactScene?.inferredFromConditions||exactScene?.inferred_from_conditions)&&exactScene?.type===result.scene.type){
           // Keep the validated reply's dependency graph while correcting primary parameters.
           for(const key of ['a','b','r','p','h','k','direction','orientation'])if(exactScene[key]!=null)result.scene[key]=exactScene[key];

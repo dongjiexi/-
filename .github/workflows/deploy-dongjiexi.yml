@@ -75,6 +75,7 @@ jobs:
           node tests/solution_review_tests.cjs
           node tests/goal_coverage_tests.cjs
           node tests/answer_geometry_tests.cjs
+          node tests/vertex_secant_tests.cjs
           node tests/circle_fold_tests.cjs
       - name: Test actual browser workflows
         working-directory: ${{ steps.app.outputs.root }}

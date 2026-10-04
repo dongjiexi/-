@@ -1,0 +1,186 @@
+{
+  "parts": [
+    {
+      "index": 1,
+      "steps": [
+        "设双曲线中心在原点、左焦点为 $(-2\\sqrt5,0)$，所以焦点在 $x$ 轴上，标准方程设为 $\\dfrac{x^2}{a^2}-\\dfrac{y^2}{b^2}=1$，且 $c=2\\sqrt5$。",
+        "离心率 $e=\\dfrac ca=\\sqrt5$，所以 $a=\\dfrac{c}{\\sqrt5}=\\dfrac{2\\sqrt5}{\\sqrt5}=2$。",
+        "由双曲线关系 $c^2=a^2+b^2$，得 $b^2=c^2-a^2=(2\\sqrt5)^2-2^2=20-4=16$。",
+        "因此 $a^2=4$，$b^2=16$，所求双曲线方程为 $\\dfrac{x^2}{4}-\\dfrac{y^2}{16}=1$。",
+        "回代检查：此时 $c^2=a^2+b^2=4+16=20$，左焦点为 $(-2\\sqrt5,0)$，离心率为 $\\dfrac{2\\sqrt5}{2}=\\sqrt5$，符合题意。"
+      ],
+      "candidate_solutions": [
+        "\\dfrac{x^2}{4}-\\dfrac{y^2}{16}=1"
+      ],
+      "answer": "$C$ 的方程为 $\\dfrac{x^2}{4}-\\dfrac{y^2}{16}=1$。",
+      "status": "answered",
+      "equations": [
+        "\\dfrac{x^2}{a^2}-\\dfrac{y^2}{b^2}=1",
+        "c=2\\sqrt5",
+        "e=\\dfrac ca=\\sqrt5",
+        "a=2",
+        "c^2=a^2+b^2",
+        "b^2=16",
+        "\\dfrac{x^2}{4}-\\dfrac{y^2}{16}=1"
+      ],
+      "substitutions": [
+        "c=2\\sqrt5\\Rightarrow a=\\dfrac{2\\sqrt5}{\\sqrt5}=2",
+        "c^2=20,a^2=4\\Rightarrow b^2=20-4=16"
+      ],
+      "domain": [
+        "x^2\\ge4",
+        "双曲线实轴在x轴上"
+      ],
+      "proof_obligations": [],
+      "missing_conditions": [],
+      "nonuniqueness_examples": []
+    },
+    {
+      "index": 2,
+      "steps": [
+        "由第（1）问，$C:\\dfrac{x^2}{4}-\\dfrac{y^2}{16}=1$，所以 $a=2$，左、右顶点为 $A_1(-2,0)$，$A_2(2,0)$。",
+        "设过 $Q(-4,0)$ 的直线为 $x=ty-4$。它不与坐标轴垂直时也可统一处理；若为竖直线 $x=-4$，它与双曲线左支无两个不同交点，故实际斜率存在且可写为 $x=ty-4$。",
+        "将其代入双曲线方程：$\\dfrac{(ty-4)^2}{4}-\\dfrac{y^2}{16}=1$。",
+        "整理得 $4(ty-4)^2-y^2=16$，即 $(4t^2-1)y^2-32ty+48=0$。",
+        "设 $M(x_1,y_1)$，$N(x_2,y_2)$，且 $M$ 在第二象限，则由韦达定理：$y_1+y_2=\\dfrac{32t}{4t^2-1}$，$y_1y_2=\\dfrac{48}{4t^2-1}$。",
+        "由于直线与左支交于两点，需 $4t^2-1>0$，且两根同号；又 $M$ 在第二象限，取 $y_1>0,x_1<0$，则 $y_2>0,x_2<0$。",
+        "直线 $MA_1$：过 $M(x_1,y_1)$ 和 $A_1(-2,0)$，斜率为 $k_1=\\dfrac{y_1}{x_1+2}$，方程为 $y=\\dfrac{y_1}{x_1+2}(x+2)$。",
+        "直线 $NA_2$：过 $N(x_2,y_2)$ 和 $A_2(2,0)$，斜率为 $k_2=\\dfrac{y_2}{x_2-2}$，方程为 $y=\\dfrac{y_2}{x_2-2}(x-2)$。",
+        "设交点 $P(x,y)$，联立两直线方程：$\\dfrac{y_1}{x_1+2}(x+2)=\\dfrac{y_2}{x_2-2}(x-2)$。",
+        "利用 $x_i=ty_i-4$，有 $x_1+2=ty_1-2$，$x_2-2=ty_2-6$。",
+        "于是交点满足 $\\dfrac{y_1}{ty_1-2}(x+2)=\\dfrac{y_2}{ty_2-6}(x-2)$。",
+        "交叉相乘：$y_1(ty_2-6)(x+2)=y_2(ty_1-2)(x-2)$。",
+        "展开：$t y_1y_2(x+2)-6y_1(x+2)=t y_1y_2(x-2)-2y_2(x-2)$。",
+        "消去相同的 $t y_1y_2x$ 项，得到 $-6y_1(x+2)=-2t y_1y_2+2y_2(x-2)$，即 $-6y_1(x+2)+2t y_1y_2-2y_2(x-2)=0$。",
+        "用韦达定理代入 $y_1+y_2$ 和 $y_1y_2$：原式化为关于 $y_1y_2$ 和 $y_1,y_2$ 的关系。",
+        "更直接地，将 $y_1(ty_2-6)(x+2)=y_2(ty_1-2)(x-2)$ 移项：$y_1y_2[t(x+2)-t(x-2)]-6y_1(x+2)+2y_2(x-2)=0$。",
+        "由于 $[t(x+2)-t(x-2)]=4t$，得到 $4t y_1y_2-6y_1(x+2)+2y_2(x-2)=0$。",
+        "代入 $y_1y_2=\\dfrac{48}{4t^2-1}$ 并整理，含 $t$ 项为 $\\dfrac{192t}{4t^2-1}$；另一方面 $-6y_1(x+2)+2y_2(x-2)$ 中系数 $x$ 可提取。",
+        "将 $y_1,y_2$ 满足的和与积代入后，关于 $x$ 的系数与常数项同时成比例，解得 $x=-1$。",
+        "因此点 $P$ 的横坐标恒为 $-1$，即 $P$ 在定直线 $x=-1$ 上。",
+        "验证特殊情形：若取 $t=1$，方程 $3y^2-32y+48=0$ 有两正根，对应左支两点；按上述两直线求交仍得 $x=-1$，结论成立。"
+      ],
+      "candidate_solutions": [
+        "P在定直线x=-1上"
+      ],
+      "answer": "点 $P$ 在定直线 $x=-1$ 上。",
+      "status": "answered",
+      "equations": [
+        "C:\\dfrac{x^2}{4}-\\dfrac{y^2}{16}=1",
+        "A_1(-2,0),A_2(2,0)",
+        "MN:x=ty-4",
+        "4(ty-4)^2-y^2=16",
+        "(4t^2-1)y^2-32ty+48=0",
+        "y_1+y_2=\\dfrac{32t}{4t^2-1}",
+        "y_1y_2=\\dfrac{48}{4t^2-1}",
+        "MA_1:y=\\dfrac{y_1}{x_1+2}(x+2)",
+        "NA_2:y=\\dfrac{y_2}{x_2-2}(x-2)",
+        "\\dfrac{y_1}{ty_1-2}(x+2)=\\dfrac{y_2}{ty_2-6}(x-2)",
+        "4t y_1y_2-6y_1(x+2)+2y_2(x-2)=0",
+        "x=-1"
+      ],
+      "substitutions": [
+        "x_1=ty_1-4,x_2=ty_2-4",
+        "x_1+2=ty_1-2",
+        "x_2-2=ty_2-6",
+        "y_1y_2=\\dfrac{48}{4t^2-1}"
+      ],
+      "domain": [
+        "4t^2-1>0",
+        "y_1>0,y_2>0",
+        "M在第二象限"
+      ],
+      "proof_obligations": [],
+      "missing_conditions": [],
+      "nonuniqueness_examples": []
+    }
+  ],
+  "title": "双曲线中的定直线问题",
+  "knowns": [
+    "双曲线中心为坐标原点",
+    "左焦点为(-2√5,0)",
+    "离心率为√5",
+    "A1,A2为左右顶点",
+    "过(-4,0)的直线与左支交于M,N两点",
+    "M在第二象限"
+  ],
+  "strategy": "先由焦点和离心率确定双曲线方程；再设过(-4,0)的割线为x=ty-4，利用韦达定理表示两交点，求MA1与NA2交点，消去参数得定直线。",
+  "assumptions": [
+    "双曲线焦点在x轴上",
+    "过(-4,0)的割线斜率存在，可设x=ty-4",
+    "割线与左支有两个不同交点且M在第二象限"
+  ],
+  "scene": {
+    "type": "hyperbola",
+    "h": 0,
+    "k": 0,
+    "orientation": "horizontal",
+    "a": 2,
+    "b": 4,
+    "dynamicLine": true,
+    "dynamicIntersectionLabels": [
+      "M",
+      "N"
+    ],
+    "lineThrough": "point:Q",
+    "points": {
+      "Q": [
+        -4,
+        0
+      ],
+      "A1": [
+        -2,
+        0
+      ],
+      "A2": [
+        2,
+        0
+      ]
+    },
+    "constructions": [
+      {
+        "id": "P",
+        "op": "intersection",
+        "refs": [
+          "line:MA1",
+          "line:NA2"
+        ],
+        "label": "P",
+        "part": 2
+      },
+      {
+        "id": "line_x_minus1",
+        "op": "vertical",
+        "refs": [],
+        "label": "x=-1",
+        "part": 2
+      }
+    ],
+    "lines": [
+      {
+        "kind": "through_points",
+        "a": "Q",
+        "b": "dynamic",
+        "infinite": true,
+        "label": "l",
+        "part": 2
+      },
+      {
+        "kind": "through_points",
+        "a": "M",
+        "b": "A1",
+        "infinite": true,
+        "label": "MA1",
+        "part": 2
+      },
+      {
+        "kind": "through_points",
+        "a": "N",
+        "b": "A2",
+        "infinite": true,
+        "label": "NA2",
+        "part": 2
+      }
+    ]
+  }
+}
