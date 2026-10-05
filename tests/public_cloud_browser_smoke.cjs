@@ -11,8 +11,13 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.equal(sessions,2);assert.equal(streams,2,'Only a pre-admission guest rejection is retried');assert(!await page.locator('#cloudAuthDialog').evaluate(el=>el.open));
   await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled);const old=healthCalls;networkFail=true;await page.locator('#openCloudAuth').click();await page.waitForFunction(()=>document.querySelector('#cloudConnection').dataset.state==='connected');assert(healthCalls>=old+2,'A failed read-only check gets one retry');
   status='degraded';await page.locator('#retryCloudConnection').evaluate(el=>el.click());await page.waitForFunction(()=>document.querySelector('#cloudConnection').dataset.state==='degraded');assert(!(await page.locator('#engineStatus').evaluate(el=>el.classList.contains('ready'))));assert.match(await page.locator('#cloudConnectionText').textContent(),/检测波动/);
+  // Recovery timestamps may legitimately contain "40" (20:40), which is not
+  // a leaked quota count. Exercise that minute explicitly; timers still run.
+  await page.clock.setFixedTime(new Date('2026-10-05T12:35:00Z'));
   rate=true;await page.locator('#solveButton').click();await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled&&document.querySelector('#cloudConnection').dataset.state==='busy');
-  assert.match(await page.locator('#cloudOutage').textContent(),/不是服务掉线/);assert(!/40|200/.test(await page.locator('#cloudOutage').textContent()));assert.match(await page.locator('#cloudOutageMessage').textContent(),/预计额度恢复/);
+  const outage=await page.locator('#cloudOutage').textContent();
+  assert.match(outage,/不是服务掉线/);assert(!/(?:40|200)\s*次/.test(outage),'Do not expose request-count limits');
+  assert.match(await page.locator('#cloudOutageMessage').textContent(),/预计额度恢复.*20:40/,'Keep the legitimate recovery time visible');
   const calls=streams;await page.locator('#retryCloudConnection').click();assert.equal(await page.locator('#cloudConnection').getAttribute('data-state'),'busy');await page.locator('#solveButton').click();assert.equal(streams,calls,'Cooldown does not spend another model request');
   await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot('public-cloud-quota-mobile.png',null);
 };
