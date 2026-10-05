@@ -3,7 +3,7 @@
   'use strict';
   const TAU=2*Math.PI,EPS=1e-8,finite=n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=100000;
   const plain=o=>o&&typeof o==='object'&&!Array.isArray(o);
-  const allowed=new Set(['parameter','arc','quadrant','branch','x','y','excludeAxes']);
+  const allowed=new Set(['parameter','arc','quadrant','branch','x','y','excludeAxes','excludePoints']);
   function interval(raw,required=false){
     if(!plain(raw)||Object.keys(raw).some(k=>!['min','max','minClosed','maxClosed'].includes(k)))throw new Error('范围只允许数字上下界与开闭端点。');
     if((raw.min==null&&raw.max==null)||(required&&(raw.min==null||raw.max==null)))throw new Error('范围缺少上下界。');
@@ -25,6 +25,7 @@
     if(raw.quadrant!=null){if(![1,2,3,4].includes(raw.quadrant))throw new Error('象限必须为1、2、3或4。');d.quadrant=raw.quadrant;}
     if(raw.branch!=null){if(![1,-1].includes(raw.branch))throw new Error('双曲线分支必须为1或-1。');d.branch=raw.branch;}
     if(raw.excludeAxes!=null){if(!Array.isArray(raw.excludeAxes)||raw.excludeAxes.length>2||raw.excludeAxes.some(k=>!['x','y'].includes(k)))throw new Error('排除轴只能为x或y。');d.excludeAxes=[...new Set(raw.excludeAxes)];}
+    if(raw.excludePoints!=null){if(!Array.isArray(raw.excludePoints)||raw.excludePoints.length>12||raw.excludePoints.some(p=>!Array.isArray(p)||p.length!==2||!p.every(finite)))throw new Error('排除点最多12项，每项须为两个有限数字坐标。');d.excludePoints=raw.excludePoints.map(p=>p.slice());}
     return d;
   }
   function validateProfiles(raw,partIndexes){
@@ -54,6 +55,7 @@
     if(!contains(point.x,d.x)||!contains(point.y,d.y))return false;
     if(d.quadrant){const [sx,sy]=[[1,1],[-1,1],[-1,-1],[1,-1]][d.quadrant-1];if(point.x*sx<=EPS||point.y*sy<=EPS)return false;}
     if((d.excludeAxes||[]).includes('x')&&Math.abs(point.y)<EPS||(d.excludeAxes||[]).includes('y')&&Math.abs(point.x)<EPS)return false;
+    if((d.excludePoints||[]).some(p=>Math.hypot(point.x-p[0],point.y-p[1])<=EPS*Math.max(1,Math.abs(p[0]),Math.abs(p[1]))))return false;
     if(object.excludeAxis==='x'&&Math.abs(point.y)<1e-7||object.excludeAxis==='y'&&Math.abs(point.x)<1e-7)return false;
     if(d.parameter&&(!parameter||!contains(parameter.t,d.parameter)))return false;
     if(d.arc&&(!parameter||!finite(parameter.t)||!contains(lift(parameter.t,d.arc),d.arc)))return false;
@@ -85,6 +87,7 @@
     if(d.branch!=null)bits.push('固定'+(d.branch===1?'正':'负')+'分支');
     for(const k of ['x','y'])if(d[k])bits.push(k+'∈'+range(d[k]));
     const axes=new Set([...(d.excludeAxes||[]),...(object.excludeAxis?[object.excludeAxis]:[])]);for(const axis of axes)bits.push('排除'+axis+'轴');
+    if(d.excludePoints?.length)bits.push('不取点 '+d.excludePoints.map(p=>'('+p.map(fmt).join(', ')+')').join('、'));
     return bits.join('；');
   }
   const exported={TAU,validate,validateProfiles,storage,driver,contains,accepts,fit,describe};

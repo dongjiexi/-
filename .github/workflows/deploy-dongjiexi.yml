@@ -77,6 +77,7 @@ jobs:
           node tests/answer_geometry_tests.cjs
           node tests/vertex_secant_tests.cjs
           node tests/inverse_locus_tests.cjs
+          node tests/symmetric_chord_tests.cjs
           node tests/circle_fold_tests.cjs
       - name: Test actual browser workflows
         working-directory: ${{ steps.app.outputs.root }}

@@ -51,4 +51,6 @@ test('cloud/external scene schema validates only data constraints and valid part
   const good=safeConstructionScene(raw,{partIndexes:new Set([201,202])});assert(good.scene);const p=good.scene.objects.find(o=>o.label==='P');assert.equal(p.motionDomain.quadrant,1);assert.equal(p.motionByPart['201'].mode,'plane');
   const bad=safeConstructionScene(raw,{partIndexes:new Set([1])});assert(bad.warnings.length);assert(!bad.scene.objects.some(o=>o.label==='P'));
   raw.curvePoints[0].motionDomain={eval:'danger'};assert(safeConstructionScene(raw).warnings.length);
+  raw.curvePoints[0].motionDomain={excludePoints:[[3,0]]};const excluded=safeConstructionScene(raw,{partIndexes:new Set([201,202])});assert(excluded.scene);assert.deepEqual(excluded.scene.objects.find(o=>o.label==='P').motionDomain.excludePoints,[[3,0]]);
+  raw.curvePoints[0].motionDomain={excludePoints:[[3,'function()']]};const invalid=safeConstructionScene(raw);assert(invalid.warnings.length);assert(!invalid.scene.objects.some(o=>o.label==='P'));
 });
