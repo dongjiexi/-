@@ -1,6 +1,7 @@
 'use strict';
 
 const VERSION = '0.55.0';
+// Final release review refreshes connectivity-status fixes without losing drafts.
 const CACHE = `dongjiexi-app-${VERSION}`;
 const CORE = [
   './question-parts.js', './parabola-focal-data.js', './goal-coverage.js',

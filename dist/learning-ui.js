@@ -92,11 +92,12 @@
         const detail=error.code==='rate_limited'?'云端暂时无法受理更多请求，请稍后重试。':offline?'当前设备已离线，恢复网络后重试。':error.code==='timeout'?'云端连接超时，请稍后重试。':error.code==='invalid_response'?'云端返回信息异常，请重试或联系管理员。':error.code==='service_unavailable'?'云端服务暂不可用，请稍后重试。':'当前网络无法连接云端。Wi-Fi 下持续失败时，可切换移动数据对比；这不表示口令错误。';
         const recovery=error.code==='rate_limited'&&error.retryAfter?`预计额度恢复：${new Date(cloudRetryAt).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Shanghai'})}（北京时间）。`:'';
         const message=detail+recovery+(cloudOnly?'题目、草稿和画板仍保留。':'题目、草稿和画板仍保留，推荐改用本机解题。');
-        const firstFailure=!cloudUnavailable;
         engineReady=false;showCloudFallback(true,message);
         find('#engineStatus').classList.remove('ready');find('#engineStatus').textContent=cloudOnly?'云端暂不可用 · 画板和草稿仍可使用':'云端增强暂不可用 · 可改用本机内置解题';
         find('#cloudVisionChoice').hidden=true;renderEngineRoute();
-        if(firstFailure)api.setStatus(message,true);
+        // Background connectivity has its own persistent warning and badge.
+        // Do not overwrite a newer local drawing/save/confirmation status;
+        // explicitly initiated solve/auth failures are reported by their caller.
         setCloudConnection(error.code==='rate_limited'?'busy':'failed',error.code==='rate_limited'?'云端：额度限制 · 服务未掉线':offline?'云端：设备已离线':error.code==='timeout'?'云端：连接超时':error.code==='invalid_response'?'云端：返回信息异常':error.code==='service_unavailable'?'云端：服务暂不可用':!runtime.config.requiresAuth?'云端：当前网络连接失败':runtime.hasSession()?'云端：已授权，但服务连接失败':'云端：服务连接失败，口令尚未验证');
       }
     }
@@ -434,7 +435,6 @@
         const selectedReady=data.engine.available&&names.includes(select.value);
         engineReady=selectedReady;
         if(remote&&solveMode==='cloud'){
-          if(cloudUnavailable&&selectedReady)api.setStatus('云端连接已恢复，模型已就绪。点击“解题”开始，当前题稿保持不变。');
           showCloudFallback(!selectedReady,selectedReady?'':cloudOnly?'云端服务已连接，但当前模型暂不可用。题目、草稿和画板仍保留，请稍后重试。':'云端服务已连接，但当前模型暂不可用。推荐改用本机解题，或稍后重试。');
         }
         if(remote&&solveMode==='cloud')setCloudConnection(uncertainHealth?'degraded':'connected',selectedReady?(uncertainHealth?'云端接口可达 · 模型检测波动，可尝试解题':'云端：连接成功 · 模型已就绪'):'云端：已连接 · 模型暂不可用');

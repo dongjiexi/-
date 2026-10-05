@@ -21,11 +21,14 @@ module.exports=async({page,context,assert,screenshot})=>{
   hold=true;release=null;await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
   await page.waitForFunction(()=>document.querySelector('#cloudConnection').dataset.state!=='failed');
   for(let i=0;i<50&&!release;i++)await page.waitForTimeout(20);assert(release,'The read-only health probe is held');
+  await page.locator('#saveLocal').evaluate(n=>n.click());
+  const drawingStatus=await page.locator('#status').textContent();assert.match(drawingStatus,/已保存/);
   await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
   release();await page.waitForTimeout(200);
   assert.equal(await page.locator('#cloudConnection').getAttribute('data-state'),'failed','Late health success cannot paint offline state green');
   assert.match(await page.locator('#cloudConnectionText').textContent(),/设备已离线/);
   assert(!await page.locator('#engineStatus').evaluate(n=>n.classList.contains('ready')));
+  assert.equal(await page.locator('#status').textContent(),drawingStatus,'Background connectivity does not replace the latest local action');
   // A forced online recheck is queued while an obsolete probe is in flight.
   hold=true;release=null;await page.evaluate(()=>window.dispatchEvent(new Event('online')));
   for(let i=0;i<50&&!release;i++)await page.waitForTimeout(20);assert(release);
@@ -33,6 +36,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   const beforeRelease=healthCalls;release();
   await page.waitForFunction(()=>document.querySelector('#cloudConnection').dataset.state==='connected');
   assert(healthCalls>beforeRelease,'Network recovery issues a fresh queued check');
+  assert.equal(await page.locator('#status').textContent(),drawingStatus,'Recovery stays in the cloud badge, not the drawing status');
   transport='limited';await page.locator('#retryCloudConnection').evaluate(n=>n.click());
   await page.waitForFunction(()=>document.querySelector('#cloudConnection').dataset.state==='busy');
   assert.match(await page.locator('#cloudOutageMessage').textContent(),/稍后重试/);
