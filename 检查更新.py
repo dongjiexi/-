@@ -103,6 +103,7 @@ def install_archive(archive, root=ROOT):
             (0, 53, 0): ("dist/vertex-secant.js",),
             (0, 54, 0): ("dist/inverse-locus.js",),
             (0, 55, 0): ("dist/symmetric-chord.js",),
+            (0, 56, 0): ("dist/basic-conditions.js", "dist/ellipse-area-chord.js"),
         }
         for minimum, modules in added_modules.items():
             if version_tuple(config.get("version")) >= minimum and not all((source / name).is_file() for name in modules):

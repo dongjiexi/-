@@ -39,9 +39,17 @@ module.exports=async({page,context,assert,screenshot})=>{
   raw={title:'未覆盖求解测试',parts:[{index:0,status:'needs_information',answer:'动直线斜率未知，图形不唯一，因此条件不足',steps:['无法确定唯一图形']}],scene:null};
   await page.locator('#question').fill(bank.items.find(q=>q.id==='2022-beijing-3').question);await page.locator('#solveButton').click();
   await page.waitForFunction(()=>document.querySelector('#solution').textContent.includes('未覆盖求解测试'));
+  await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled);
+  const nowCovered=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution);
+  assert.equal(nowCovered.parts[0].status,'answered');assert.match(nowCovered.parts[0].answer,/a=\\frac\{1\}\{2\}/);assert.match(nowCovered.parts[0].model_answer,/条件不足/);
+  // Keep the original unknown-engine honesty regression. Isolate only this
+  // test call; production has no flag/URL to disable its independent solver.
+  await page.evaluate(()=>{window.__basicSolve=window.DongBasicConditions.solve;window.DongBasicConditions.solve=()=>null;});
+  await page.locator('#solveButton').click();await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled&&document.querySelector('#solveProgress').dataset.state==='partial');
   assert.match(await page.locator('#solution').textContent(),/不代表原题缺少条件/);
   assert.equal(await page.locator('.answer-status').textContent(),'尚未完整解答');
   assert.match(await page.locator('.trust-summary').textContent(),/未决 1/);
+  await page.evaluate(()=>{window.DongBasicConditions.solve=window.__basicSolve;delete window.__basicSolve;});
   assert.equal(await page.evaluate(()=>window.DongSceneAudit.visible({parts:[2,3]},2)),true);
   assert.equal(await page.evaluate(()=>window.DongSceneAudit.visible({parts:[2,3]},1)),false);
   await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled);

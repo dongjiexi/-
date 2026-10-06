@@ -2,7 +2,7 @@ import {SOLVE_SYSTEM, splitParts} from '../../dist/cloud-contract.mjs';
 import {VISION_MODEL, VISION_SYSTEM, validateImage} from '../../dist/recognition-contract.mjs';
 import {createHealthProbe} from './health-probe.mjs';
 const encoder=new TextEncoder(), decoder=new TextDecoder();
-const VERSION='0.55.0';
+const VERSION='0.56.0';
 class PublicError extends Error {constructor(status,message,retry=0){super(message);this.status=status;this.retry=retry;}}
 const bytes=value=>encoder.encode(value);
 const b64=data=>btoa(String.fromCharCode(...data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');

@@ -20,8 +20,9 @@ module.exports=async({page,context,assert})=>{
   await page.locator('[data-quick-conic="ellipse"]').click();
   const before=await page.locator('#sceneJson').inputValue();
   const bank=JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname,'../dist/question-bank.json'),'utf8'));
-  // This sourced circle-symmetry problem remains uncovered. Covered conic
-  // engines bypass the request, which would make the late-reply race vacuous.
+  // Keep the sourced question and isolate the newly covered condition model
+  // ONLY for this late-reply race. Production has no such switch.
+  await page.evaluate(()=>{window.__switchBasicSolve=window.DongBasicConditions.solve;window.DongBasicConditions.solve=()=>null;});
   await page.locator('#question').fill(bank.items.find(item=>item.id==='2022-beijing-3').question);
   await page.locator('#solveButton').click();
   for(let i=0;!started&&i<50;i++)await new Promise(resolve=>setTimeout(resolve,20));
@@ -38,6 +39,7 @@ module.exports=async({page,context,assert})=>{
   assert.equal(await page.locator('#sceneJson').inputValue(),before,'Late results cannot overwrite the current board');
   assert.equal((await page.locator('#solution').textContent()).includes('旧题答案'),false);
   assert.equal(await page.locator('#question').inputValue(),'椭圆x²/9+y²/4=1，求焦点。');
+  await page.evaluate(()=>{window.DongBasicConditions.solve=window.__switchBasicSolve;delete window.__switchBasicSolve;});
   await context.unroute('**/runtime-config.js');
   await context.route('**/runtime-config.js',route=>route.fulfill({contentType:'application/javascript',body:'window.DONGJIEXI_CONFIG={version:"0.23.1",deployment:"web",apiEnabled:false,apiBase:"",requiresAuth:false};'}));
   await page.reload({waitUntil:'domcontentloaded'});
