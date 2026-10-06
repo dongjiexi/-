@@ -1,5 +1,7 @@
 (function () {
   'use strict';
+  // Do not advertise a usable/offline-ready page when its core did not boot.
+  if (document.getElementById('startupError')) return;
   const banner = document.getElementById('pwaBanner');
   const message = document.getElementById('pwaMessage');
   const updateButton = document.getElementById('pwaUpdate');

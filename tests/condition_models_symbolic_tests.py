@@ -34,6 +34,29 @@ class ConditionModelsExactTests(unittest.TestCase):
         self.assertEqual(4*s.Integer(3)/2, 6)
         self.assertEqual(s.Integer(2)**2*(1-(s.sqrt(2)/2)**2), 2)
 
+    def test_named_quadrant_requires_endpoint_reassignment(self):
+        x = s.symbols('x', real=True)
+        k = s.sqrt(6)/2
+        xs = s.solve(s.Eq(x*x/4+(k*x-2)**2/2, 1), x)
+        points = [(v, s.simplify(k*v-2)) for v in xs]
+        self.assertTrue(all(px > 0 for px, _ in points))
+        self.assertLess(points[0][1], 0)
+        self.assertGreater(points[1][1], 0)
+        ax, ay = points[1]  # A in quadrant I, not the default left endpoint.
+        bx, by = points[0]
+        self.assertEqual(s.simplify((ax-bx)**2+(ay-by)**2), 5)
+        self.assertEqual(s.simplify(abs(ax*by-ay*bx)/2), s.sqrt(2))
+
+    def test_swapped_axis_uses_reciprocal_physical_slope(self):
+        y = s.symbols('y', real=True)
+        k = s.sqrt(2)  # Internal x=k*y-2, NOT the slope in xOy.
+        ys = s.solve(s.Eq((k*y-2)**2/4+y*y/2, 1), y)
+        points = [(s.simplify(k*v-2), v) for v in ys]
+        ax, ay = points[0]
+        bx, by = points[1]
+        self.assertEqual(s.simplify((by-ay)/(bx-ax)), s.sqrt(2)/2)
+        self.assertEqual(s.simplify(abs(ax*by-ay*bx)/2), s.sqrt(2))
+
 
 if __name__ == '__main__':
     unittest.main()

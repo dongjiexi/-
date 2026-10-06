@@ -1,0 +1,11 @@
+/* A missing core download is a recoverable UI state, not a silent blank page. */
+module.exports=async({page,context,assert,screenshot})=>{
+ const bank=await page.evaluate(async()=>await(await fetch('question-bank.json')).json()),question=bank.items.find(q=>q.id==='2025-ii-16').question;
+ const draft=await page.evaluate(question=>{const solution=window.DongEllipseAreaChord.solve(question);solution.study={notes:'保留的笔记',review:'review'};return{question,scene:solution.scene,solution};},question);
+ await context.addInitScript(draft=>{if(!localStorage.getItem('zhigeometry:last'))localStorage.setItem('zhigeometry:last',JSON.stringify(draft));},draft);
+ const broken=r=>r.abort('failed');await context.route('**/label-layout.js*',broken);
+ await page.reload({waitUntil:'domcontentloaded'});assert(await page.locator('#startupError').isVisible());assert.match(await page.locator('#status').textContent(),/点名排版.*题稿未改动/);assert.match(await page.locator('#engineStatus').textContent(),/暂不能解题/);assert.equal(await page.locator('#solveProgress').getAttribute('data-state'),'error');assert(!await page.locator('#pwaBanner').isVisible());assert(await page.locator('#solveButton').isDisabled());assert.equal(await page.locator('#question').inputValue(),question);
+ const saved=await page.evaluate(()=>localStorage.getItem('zhigeometry:last'));assert.equal(JSON.parse(saved).solution.study.notes,'保留的笔记');assert.equal(JSON.parse(saved).solution.answer,draft.solution.answer);
+ await page.setViewportSize({width:320,height:740});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot('startup-recovery-320.png',null);
+ await context.unroute('**/label-layout.js*',broken);await page.locator('#retryStartup').click();await page.waitForLoadState('domcontentloaded');await page.waitForFunction(()=>!!window.DongBoardLabels);assert.equal(await page.locator('#startupError').count(),0);assert.equal(await page.locator('#question').inputValue(),question);assert.equal(await page.locator('#question').evaluate(e=>e.readOnly),false);const restored=JSON.parse(await page.evaluate(()=>localStorage.getItem('zhigeometry:last')));assert.equal(restored.solution.study.notes,'保留的笔记');assert.equal(restored.solution.answer,draft.solution.answer);assert.deepEqual(restored.scene.areaChord.constraints,[]);
+};

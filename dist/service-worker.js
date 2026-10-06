@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '0.56.0';
+const VERSION = '0.57.0';
 // Final release review refreshes connectivity-status fixes without losing drafts.
 const CACHE = `dongjiexi-app-${VERSION}`;
 const CORE = [

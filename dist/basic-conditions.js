@@ -4,10 +4,28 @@
  const plain=s=>root.DongMathInput.toPlain(String(s)).replace(/[$\s_{}]/g,'').replace(/[（），：；]/g,c=>({'（':'(', '）':')','，':',','：':':','；':';'}[c]));
  const scalar=s=>{try{const n=root.DongEquationBuilder.scalar(s);return Number.isFinite(n)&&Math.abs(n)<=10000?n:null;}catch{return null;}};
  const tex=n=>root.DongNumber.tex(n);
+ // Split only top-level prose; keep coordinates, radicals and named point pairs.
+ // Every resulting clause must be consumed by a bounded model, never discarded.
+ function clauses(raw){
+  const s=plain(raw),out=[];let depth=0,start=0;
+  for(let i=0;i<s.length;i++){
+   if(s[i]==='(')depth++;if(s[i]===')'&&--depth<0)return null;
+   if(depth)continue;
+   const conjunction=s.startsWith('并且',i)?2:s[i]==='且'?1:0;
+   const pair=s[i]===','&&/[A-Z]/.test(s[i-1]||'')&&/^[A-Z](?:两点|[,。;]|$)/.test(s.slice(i+1));
+   if(conjunction||!pair&&/[,。;]/.test(s[i])){const part=s.slice(start,i);if(part)out.push(part);i+=conjunction?conjunction-1:0;start=i+1;}
+  }
+  if(depth)return null;if(start<s.length)out.push(s.slice(start));return out;
+ }
+ function equationGoal(raw,curve){
+  const m=/^(?:求|求出|写出)(?:椭圆([A-Z])?|([A-Z]))(?:的)?(?:标准)?方程[。;]?$/.exec(plain(raw));
+  return!!m&&(!(m[1]||m[2])||(m[1]||m[2])===curve);
+ }
  function ellipse(raw){
   const s=plain(raw),m=/^(?:已知|设)?椭圆([A-Z]):([xy])\^2\/a\^2\+([xy])\^2\/b\^2=1\(a>b>0\)的?(.*?)[。;]?$/.exec(s);
   if(!m||m[2]===m[3])return null;
-  const facts=m[4].split(','),eMatch=facts.map(f=>/^(?:的)?离心率(?:为|是|=)(.+)$/.exec(f)).filter(Boolean),lengthMatch=facts.map(f=>/^(?:长轴长|椭圆上(?:的点|任意一点)到两焦点的距离之和)(?:为|是|=)(.+)$/.exec(f)).filter(Boolean);
+  const facts=clauses(m[4])?.map(f=>f.replace(/^(?:的|其|并且|且)/,''));if(!facts)return null;
+  const eMatch=facts.map(f=>/^离心率(?:为|是|=)(.+)$/.exec(f)).filter(Boolean),lengthMatch=facts.map(f=>/^(?:长轴(?:的)?长(?:度)?|椭圆上(?:的点|任意一点)到(?:两|两个)焦点的距离之和)(?:为|是|=)(.+)$/.exec(f)).filter(Boolean);
   if(facts.length!==2||eMatch.length!==1||lengthMatch.length!==1)return null;
   const e=scalar(eMatch[0][1]),L=scalar(lengthMatch[0][1]);if(!(e>0&&e<1&&L>0))return null;
   const major2=L*L/4,minor2=major2*(1-e*e);if(!(minor2>0))return null;
@@ -20,7 +38,7 @@
  }
  function linear(s){
   if(!s.endsWith('=0'))return null;const body=s.slice(0,-2),n='(?:\\d+(?:\\.\\d+)?(?:/\\d+(?:\\.\\d+)?)?)',re=new RegExp('[+-]?(?:'+n+')?[xy]|[+-]?'+n,'g'),tokens=body.match(re);
-  if(!tokens||tokens.join('')!==body)return null;const out={x:0,y:0,c:0};
+  if(!tokens||tokens.join('')!==body||tokens.slice(1).some(t=>!/^[-+]/.test(t)))return null;const out={x:0,y:0,c:0};
   for(const t of tokens){const axis=/[xy]$/.exec(t)?.[0],raw=axis?t.slice(0,-1):t,coefficient=scalar(raw===''||raw==='+'?'1':raw==='-'?'-1':raw);if(coefficient==null)return null;out[axis||'c']+=coefficient;}
   return out.x||out.y?out:null;
  }
@@ -57,10 +75,10 @@
  function solve(raw){
   const parts=root.DongQuestionParts.splitParts(raw);if(parts.length!==1)return null;
   let spec=circle(raw)||parabola(raw);
-  if(!spec){const s=plain(raw).replace(/\(选取原题第\(1\)问。\)$/,''),m=/^(.*[。;])(?:求|写出)(?:椭圆([A-Z])?|([A-Z]))(?:的)?(?:标准)?方程[。;]?$/.exec(s);if(m){spec=ellipse(m[1]);if(spec&&(m[2]||m[3])&&(m[2]||m[3])!==spec.curve)spec=null;}}
+  if(!spec){const s=plain(raw).replace(/\(选取原题第\(1\)问。\)$/,''),chunks=clauses(s);if(chunks?.length>=2){const base=ellipse(chunks.slice(0,-1).join(','));if(base&&equationGoal(chunks.at(-1),base.curve))spec=base;}}
   if(!spec)return null;
   const scene={schemaVersion:2,...spec,showDynamic:false,showFeatures:true,points:spec.points||{},lines:spec.lines||[],objects:[],basicConditions:{kind:spec.type},title:'基础条件与标准方程'},answer=spec.parameter?`$${spec.parameter}=${tex(spec.value)}$；曲线方程为 $${equation(spec)}$。`:`曲线方程为 $${equation(spec)}$。`;
   return{engineExtensions:['basic-conditions'],mode:'symbolic-fallback',title:'基础条件独立推导',restatement:raw,answer,strategy:'将几何定义转成参数方程，检查合法域，再以同一参数生成解析与图形。',parts:[{...parts[0],status:'answered',answer,steps:spec.derivation}],completion:{answered:1,total:1},scene,verification:{status:'locally-verified',counts:{verified:1,contradicted:0,unresolved:0},checks:[{id:'basic-condition',category:'curve',status:'verified',label:'定义与原条件回代',detail:'对称轴经过圆心；抛物线焦距与系数关系；椭圆定义、离心率和正半轴域分别按本题模型检查。'}]}};
  }
- root.DongBasicConditions={plain,scalar,ellipse,linear,circle,parabola,equation,infer,solve};
+ root.DongBasicConditions={plain,scalar,clauses,equationGoal,ellipse,linear,circle,parabola,equation,infer,solve};
 })(typeof window==='object'?window:globalThis);
