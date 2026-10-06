@@ -31,4 +31,5 @@ const quadrant=chord.recognise(wrap(bodyClauses.join(',')+',A在第一象限'));
 assert(!chord.matches({...quadrant,constraints:[{kind:'quadrant',label:quadrant.A,value:1}]},{points:[{x:1,y:1e-16},{x:2,y:2}]}),'Round-off on an axis must not certify a quadrant');count++;
 for(const invalid of ['xy-1=0','2xy-1=0','x2y-1=0','x1-1=0','x+1/0y-1=0']){assert.equal(basic.linear(invalid),null);assert.equal(basic.solve(q('2022-beijing-3').replace('2x+y-1=0',invalid)),null);count++;}
 for(const clause of ['A在第一象限','l斜率大于0']){assert.equal(chord.solve(wrap(bodyClauses.join(',')+','+clause+','+clause)),null);count++;}
+const radicalBound=chord.solve(wrap(bodyClauses.join(',')+',l斜率不大于sqrt(2)'));assert(radicalBound);const display=chord.conditionDisplay(radicalBound.scene.areaChord.constraints[0]);assert.match(display.valueTex,/\\sqrt\{2\}/);assert.doesNotMatch(radicalBound.parts[1].steps.join(' '),/1\.414213/);count++;
 console.log('PASS condition expressions: '+count+' equivalent wording, entity binding, physical slope, named-quadrant and complete-clause checks');

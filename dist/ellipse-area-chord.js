@@ -53,6 +53,11 @@
   return{...spec,solutions};
  }
  const world=(spec,p)=>spec.swapped?{x:p.y,y:p.x}:p;
+ function conditionDisplay(c){
+  if(c.kind==='quadrant')return{label:c.label+'在第'+'一二三四'[c.value-1]+'象限'};
+  const operator={'>':'大于','<':'小于','>=':'不小于','<=':'不大于','≥':'不小于','≤':'不大于','=':'等于'}[c.op]||c.op;
+  return{label:'直线'+c.label+'的斜率'+operator,valueTex:tex(c.value)};
+ }
  function physicalSlope(spec,solution){return spec.swapped?(solution.k===0?null:1/solution.k):solution.k;}
  function matches(spec,solution){
   return(spec.constraints||[]).every(c=>{
@@ -95,12 +100,12 @@
    `判别式 $\\Delta=4(${tex(a2)})(${tex(b2)})[${tex(a2)}k^2+${tex(b2)}-${tex(spec.d**2)}]>0$ 保证两个不同实交点。面积公式给出 $S=\\frac{|${tex(spec.d)}|}{2}|${X}_1-${X}_2|=${area}$。`,
    `由韦达得 $(${X}_1-${X}_2)^2=\\Delta/(${tex(b2)}+${tex(a2)}k^2)^2$。令 $w=${tex(a2)}k^2+${tex(b2)}$，得到 $S^2w^2-${tex(a2*b2*spec.d**2)}w+${tex(a2*b2*spec.d**4)}=0$。`,
    `求全部根，保留 $w\\ge ${tex(b2)}$ 且 $w>${tex(spec.d**2)}$，再取 $k=\\pm\\sqrt{(w-${tex(b2)})/${tex(a2)}}$（零斜率只计一次）。合法 $k^2$ 为 $${[...new Set(spec.solutions.map(s=>tex(s.k2)))].join('\\quad\\text{或}\\quad')}$。`,
-   ...(spec.constraints.length?[`附加条件逐个回代：${spec.constraints.map(c=>c.text).join('；')}。斜率按原坐标系计算${spec.swapped?'（此处原直线斜率为1/k；k=0时竖直，斜率不存在）':''}；象限严格排除坐标轴，端点名称按条件分配，不默认A在左、B在右。保留 ${spec.solutions.length} 个合法命名构型。`]:[]),
+   ...(spec.constraints.length?[`附加条件逐个回代：${spec.constraints.map(c=>{const d=conditionDisplay(c);return d.label+(d.valueTex?' $'+d.valueTex+'$':'');}).join('；')}。斜率按原坐标系计算${spec.swapped?'（此处原直线斜率为 $1/k$；$k=0$ 时竖直，斜率不存在）':''}；象限严格排除坐标轴，端点名称按条件分配，不默认A在左、B在右。保留 ${spec.solutions.length} 个合法命名构型。`]:[]),
    `最后 $|${spec.A+spec.B}|=\\sqrt{1+k^2}\\,|${X}_1-${X}_2|=\\frac{2S}{|${tex(spec.d)}|}\\sqrt{1+k^2}$，得 ${answer}`,
    '逐个候选回代曲线、固定点直线、正面积和判别式；没有把不同斜率的弦长默认合并，也不使用采样猜测。图像可切换全部合法构型，默认保持面积条件。'
   ];
   const parts=[{...first,status:'answered',answer:`$${root.DongBasicConditions.equation(spec)}$。`,steps:spec.derivation},{...second,status:'answered',answer,steps}];
   return{engineExtensions:['ellipse-area-chord'],mode:'symbolic-fallback',title:'椭圆面积条件与弦长独立推导',restatement:raw,answer:parts.map(p=>p.label+'：'+p.answer).join('\n'),strategy:'由长轴与离心率确定曲线；面积转成坐标差，用韦达解含参二次方程，并核对所有构型。',parts,completion:{answered:2,total:2},scene:sceneFor(spec),verification:{status:'locally-verified',counts:{verified:2,contradicted:0,unresolved:0},checks:[{id:'area-chord-parameters',category:'curve',status:'verified',label:'半轴与离心率回代',detail:'长轴长、离心率与正半轴条件一致。'},{id:'area-chord-candidates',category:'answer',part:spec.areaPart,status:'verified',label:'全体面积约束候选',detail:'二次方程候选逐一回代曲线、面积与正判别式，排除退化方向。'}]}};
  }
- root.DongEllipseAreaChord={candidates,recognise,world,physicalSlope,matches,poseMatches,lengthTex,parameter,sceneFor,solve};
+ root.DongEllipseAreaChord={candidates,recognise,world,conditionDisplay,physicalSlope,matches,poseMatches,lengthTex,parameter,sceneFor,solve};
 })(typeof window==='object'?window:globalThis);
