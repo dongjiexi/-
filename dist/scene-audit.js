@@ -15,6 +15,8 @@
     for(const m of s.matchAll(new RegExp('(?:连接|连结|直线|线段)'+n+n,'g'))){add(m[1]);add(m[2]);}
     for(const m of s.matchAll(new RegExp(n+'(?:为|是)(?:线段|弦)?'+n+n+'的?中点','g'))){add(m[1]);add(m[2]);add(m[3]);}
     for(const m of s.matchAll(new RegExp('(?:垂足|交点)(?:记为|为|是)(?:点)?'+n,'g')))add(m[1]);
+    for(const m of s.matchAll(new RegExp('(?:点)?'+n+'(?:为|是)(?:点)?'+n+'关于(?:[xy]轴|(?:点)?'+n+')的?对称点','g'))){add(m[1]);add(m[2]);add(m[3]);}
+    for(const m of s.matchAll(new RegExp('(?:点)?'+n+'关于(?:[xy]轴|(?:点)?'+n+')的?对称点(?:为|是|记为)(?:点)?'+n,'g'))){add(m[1]);add(m[2]);add(m[3]);}
     for(const m of s.matchAll(new RegExp('交(?:[A-Z])?于(?:另一个|另一|另外一)?点'+n,'g')))add(m[1]);
     return [...names];
   }
@@ -114,7 +116,7 @@
     report.answerMissing=declared(answerText).filter(n=>!labels.has(n)&&!expected.includes(n));
     const all=[...(scene.objects||[]),...(scene.lines||[])],qs=plain(question);
     const endpoint='[A-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?',lineNames=[...qs.matchAll(new RegExp('直线('+endpoint+endpoint+'|[a-zA-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?)(?![a-zA-Z0-9₀₁₂₃₄₅₆₇₈₉])','g'))].map(m=>canonical(m[1]));
-    const present=new Set(all.filter(n=>['line','slope','vertical','through_points'].includes(n.kind)||['line','segment','ray','tangent','normal','parallel','perpendicular','line_angle'].includes(n.op)).map(n=>canonical(n.label).replace(/^(直线|线段|连接)/,'')));
+    const present=new Set(all.filter(n=>['line','slope','vertical','through_points'].includes(n.kind)||['line','segment','ray','tangent','normal','parallel','perpendicular','line_angle'].includes(n.op)).flatMap(n=>[n.label,...(Array.isArray(n.aliases)?n.aliases.slice(0,12):[])].map(label=>canonical(label).replace(/^(直线|线段|连接)/,''))));
     if(scene.showDynamic===true){present.add(canonical(scene.dynamicLineLabel||'l'));const pair=scene.dynamicIntersectionLabels||['A','B'];present.add(canonical(pair.join('')));present.add(canonical([...pair].reverse().join('')));}
     for(const n of all)if(n.kind==='through_points'){present.add(canonical(n.a+n.b));present.add(canonical(n.b+n.a));}
     report.missingLines=[...new Set(lineNames)].filter(n=>!present.has(n));
@@ -123,7 +125,7 @@
     const tangentPoints=new Set(tangents.map(n=>n.point||((n.refs?.[0]||'').startsWith('feature:')?n.refs[0].slice(8):all.find(p=>p.id===n.refs?.[0])?.label)).filter(Boolean).map(canonical));
     const answerPlain=plain(answerText),pointToken='([A-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?)',answerTargets=new Set();
     for(const m of answerPlain.matchAll(new RegExp('(?:在)?(?:点)?'+pointToken+'(?:点)?处(?:的)?切线','g')))answerTargets.add(canonical(m[1]));
-    for(const m of answerPlain.matchAll(new RegExp('(?:在)?(?:点)?'+pointToken+'[、,，和与]'+pointToken+'(?:两点|点)?(?:处)?(?:的)?切线','g'))){answerTargets.add(canonical(m[1]));answerTargets.add(canonical(m[2]));}
+    for(const m of answerPlain.matchAll(new RegExp('(?:在)?(?:点)?'+pointToken+'(?:点)?[、,，和与](?:点)?'+pointToken+'(?:两点|点)?(?:处)?(?:的)?切线','g'))){answerTargets.add(canonical(m[1]));answerTargets.add(canonical(m[2]));}
     report.answerMissingLines=[...answerTargets].filter(n=>!tangentPoints.has(n)).map(n=>n+' 点切线');
     if(/(?:两条|两点|两切线|[A-Z][、,，和与][A-Z][^。；]{0,15})(?:[^。；]{0,20})切线|相切的两条直线/.test(qs)&&tangents.length<2)report.missingLines.push('两条切线（当前仅找到 '+tangents.length+' 条）');
     if(!construct)return report;
@@ -150,6 +152,20 @@
         if(node.op==='midpoint'){
           const a=engine.resolve(node.refs[0]),b=engine.resolve(node.refs[1]);
           if(finite(a)&&finite(b))report.checks.push({label:node.label||node.id,kind:'midpoint',passed:Math.hypot(value.x-(a.x+b.x)/2,value.y-(a.y+b.y)/2)<1e-7*(1+Math.hypot(a.x,a.y,b.x,b.y)),part:node.part,parts:node.parts,detail:'与两端点坐标平均值一致（当前位置）'});
+        }
+        if(node.op==='reflect_axis'||node.op==='reflect_center'){
+          const source=engine.resolve(node.refs[0]),center=node.op==='reflect_center'?engine.resolve(node.refs[1]):null,axisValue=Number(node.axisValue)||0;
+          if(finite(source)&&(node.op!=='reflect_center'||finite(center))){
+            const expected=node.op==='reflect_center'?{x:2*center.x-source.x,y:2*center.y-source.y}:node.axis==='y'?{x:2*axisValue-source.x,y:source.y}:{x:source.x,y:2*axisValue-source.y};
+            report.checks.push({label:node.label||node.id,kind:node.op,passed:Math.hypot(value.x-expected.x,value.y-expected.y)<1e-7*(1+Math.hypot(expected.x,expected.y)),part:node.part,parts:node.parts,detail:'对称点与指定轴或中心的坐标关系一致（当前位置）'});
+          }
+        }
+        if(node.op==='intersection'&&node.refs?.length===2){
+          const inputs=node.refs.map(ref=>engine.resolve(ref));
+          if(value.type==='point'&&inputs.every(line=>line?.type==='line'&&finite(line.o)&&finite(line.d))){
+            const passed=inputs.every(line=>Math.abs((value.x-line.o.x)*line.d.y-(value.y-line.o.y)*line.d.x)/Math.hypot(line.d.x,line.d.y)<1e-7*(1+Math.hypot(value.x,value.y,line.o.x,line.o.y)));
+            report.checks.push({label:node.label||node.id,kind:'intersection',passed,part:node.part,parts:node.parts,detail:'交点同时位于所指定的两条直线上（当前位置）'});
+          }
         }
         if(node.op==='foot'){
           const source=engine.resolve(node.refs[0]),line=engine.resolve(node.refs[1]),d=line?.d;

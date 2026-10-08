@@ -76,6 +76,8 @@ jobs:
           node tests/solution_review_tests.cjs
           node tests/goal_coverage_tests.cjs
           node tests/answer_geometry_tests.cjs
+          node tests/answer_dependency_tests.cjs
+          node tests/midpoint_scope_tests.cjs
           node tests/vertex_secant_tests.cjs
           node tests/inverse_locus_tests.cjs
           node tests/symmetric_chord_tests.cjs

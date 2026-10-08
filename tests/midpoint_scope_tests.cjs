@@ -1,0 +1,20 @@
+/* Scope properties for the retained algebra verifier; not new exam items. */
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const sandbox={window:{},normalize:value=>String(value).toLowerCase(),num:value=>String(value),derivedConstructionSchema:'dongjiexi-construction/v1'};
+for(const file of ['goal-coverage.js','motion-domain.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist',file),'utf8'),sandbox);
+const html=fs.readFileSync(path.join(__dirname,'../dist/index.html'),'utf8');
+vm.runInNewContext(html.slice(html.indexOf('    function browserFraction('),html.indexOf('    function browserFocusChordContext(')),sandbox);
+const copy=value=>JSON.parse(JSON.stringify(value)),base={model:{type:'ellipse',points:{Q:[1,0]},objects:[{id:'moving',kind:'construction',op:'point_on',refs:['$conic'],label:'P',t:1},{id:'middle',kind:'construction',op:'midpoint',refs:['moving','feature:Q'],label:'M'}]},values:{h:0,k:0,a:3,b:2}};
+const run=(scene,body='求点M的轨迹方程并画出轨迹。',raw=body)=>sandbox.browserMidpointLocus(scene,body,{index:1},raw);
+let count=0;const test=fn=>{fn();count++;};
+test(()=>{const scene=copy(base),result=run(scene);assert.equal(result.status,'answered');assert.equal(scene.model.objects.find(n=>n.role==='derived_locus').equation,'(x-1/2)²/(9/4)+y²=1');assert(result.steps.some(step=>step.includes('双射')));});
+test(()=>{const scene=copy(base),result=run(scene,'求点M的轨迹方程并求面积。');assert.equal(result.status,'partial');assert(scene.model.objects.some(n=>n.role==='derived_locus'),'Retain the correctly covered unrestricted locus');assert.match(result.answer,/其它未完成/);});
+for(const domain of [{quadrant:1},{x:{min:0}},{arc:{min:0,max:1}},{excludeAxes:['x']},{excludePoints:[[3,0]]},{parameter:{min:0,max:1}}])test(()=>{const scene=copy(base);scene.model.objects[0].motionDomain=domain;const result=run(scene);assert.equal(result.status,'partial');assert(!scene.model.objects.some(n=>n.role==='derived_locus'));assert.equal(scene.model.objects.length,2);assert(!result.steps.some(step=>step.includes('双射')));});
+for(const text of ['动点仅在第一象限。','动点横坐标大于0。','动点不在x轴上。','动点满足额外条件。','动点在指定弧上。'])test(()=>{const scene=copy(base),result=run(scene,undefined,text+'求点M的轨迹方程。');assert.equal(result.status,'partial');assert(!scene.model.objects.some(n=>n.role==='derived_locus'));});
+test(()=>{const scene=copy(base);scene.model.objects[0].motionByPart={'1':{mode:'curve',t:1,motionDomain:{quadrant:1}}};assert.equal(run(scene).status,'partial');});
+test(()=>{const scene=copy(base);scene.model.objects[0].motionByPart={'2':{mode:'curve',t:1,motionDomain:{quadrant:1}}};assert.equal(run(scene).status,'answered','Another part restriction must not replace this part profile');});
+test(()=>{const scene=copy(base);scene.model.type='hyperbola';assert.equal(run(scene).status,'partial','One branch driver does not prove both hyperbola branches are attained');});
+for(const condition of ['直线PQ的斜率为2。','PA=3。','PQ与x轴平行。'])test(()=>{const scene=copy(base),result=run(scene,undefined,condition+'求点M的轨迹方程。');assert.equal(result.status,'partial');assert(!scene.model.objects.some(n=>n.role==='derived_locus'),'Additional motion relation must not be silently discarded');});
+for(const type of ['circle','parabola'])test(()=>{const scene=copy(base);scene.model.type=type;scene.values.r=3;scene.values.p=2;const result=run(scene);assert.equal(result.status,'answered');assert(scene.model.objects.some(n=>n.role==='derived_locus'));});
+test(()=>{const scene=copy(base);scene.model.objects[0].motionByPart={'1':{mode:'plane',x:1,y:1,motionDomain:{}}};assert.equal(run(scene).status,'partial','A free-plane profile is not a point on the full conic');});
+console.log('PASS midpoint scope: '+count+' complete-goal, restricted-domain, branch and part-profile properties');
