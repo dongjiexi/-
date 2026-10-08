@@ -14,9 +14,11 @@
     const canonical=root.DongSceneAudit.canonical,all=()=>[...scene.lines,...scene.objects];
     const used=new Set(all().map(n=>n.id).filter(Boolean));
     const blockedAliases=new Set(),aliasKey=(part,name)=>String(part.index??'all')+'\0'+canonical(name);
+    const blockedPoints=new Set();let activePart=null;
     const unique=stem=>{let id=stem,i=1;while(used.has(id))id=stem+'-'+i++;used.add(id);return id;};
     const current=()=>root.DongSceneAudit.frame(scene,construct);
     const point=name=>{
+      if(blockedPoints.has(aliasKey(activePart||{},name)))return null;
       const matches=all().filter(n=>canonical(n.label)===canonical(name)&&(n.kind==='point'||pointOps.has(n.op)));
       if(matches.length>1)return null;
       if(matches.length){if(!matches[0].id)matches[0].id=unique('answer-ref-point');return matches[0].id;}
@@ -26,14 +28,17 @@
     const scope=part=>Number.isInteger(part?.index)?{part:part.index}:{};
     const owned=node=>node&&String(node.id).startsWith('answer-')&&node.source==='derived';
     const share=(part,node)=>{if(owned(node)&&node.part==null&&Number.isInteger(part.index)){node.parts=[...new Set([...(node.parts||[]),part.index])];}return node;};
-    const existingPoint=(part,name)=>{const ref=point(name);if(ref)share(part,all().find(n=>n.id===ref));return !!ref;};
+    const existingPoint=(part,name)=>!!point(name);
     const pending=(part,label,reason,persistent=false)=>{const value={...scope(part),label,reason,...(persistent?{dependencyUnconfirmed:true}:{})};if(report.unresolved.length<60&&!report.unresolved.some(n=>n.label===label&&n.part===value.part&&n.reason===reason))report.unresolved.push(value);};
     const checkExisting=(part,name,op,refs,parameters={})=>{
       if(!existingPoint(part,name))return false;
       if(refs.every(Boolean)){
         const ref=point(name),stored=all().find(n=>n.id===ref),sameRefs=(stored?.refs||[]).join('\0')===refs.join('\0')||op==='midpoint'&&(stored?.refs||[]).join('\0')===refs.slice().reverse().join('\0');
         const linked=stored?.op===op&&sameRefs&&Object.entries(parameters).every(([key,value])=>stored[key]===value);
-        if(linked)return true;
+        if(linked){share(part,stored);return true;}
+        // A conflicting definition must not feed downstream constructions or
+        // broaden the original point's scope, even at coincident coordinates.
+        blockedPoints.add(aliasKey(part,name));
         const item={id:unique('answer-check'),kind:'construction',op,refs,branch:0,...parameters};
         scene.objects.push(item);const engine=current()?.engine,expected=engine?.resolve(item.id),actual=engine?.resolve(ref);scene.objects.pop();
         if(expected?.type!=='point'||actual?.type!=='point'){pending(part,name,'当前关系无法核对；已有对象保持不变，不据此猜测坐标或称为关系冲突',true);return true;}
@@ -91,12 +96,14 @@
       node.aliases||=[];if(node.aliases.length<12&&!node.aliases.some(value=>canonical(value)===key))node.aliases.push(name);
     };
     for(const part of (parts||[]).slice(0,12)){
+      activePart=part;
       const clauses=[part.answer,...(part.steps||[]).slice(0,40)].filter(s=>typeof s==='string').map(clean).flatMap(s=>s.split(/[。；;\n]/)).filter(s=>s&&s.length<1200&&!/不(?:在|是|作|存在|相交|应|要|必|得)|无需|并非|误以为|错误|勿|无法|不能|假设|反例|如果|若/.test(s)).slice(0,120);
       // Midpoints/feet may feed later constructions; re-read only this bounded
       // vocabulary until the graph stops growing. Never parse arbitrary code.
       for(let pass=0;pass<4;pass++){
         const before=report.added.length;
         for(const s of clauses){
+          if(root.DongSceneAudit.declared(s).some(name=>blockedPoints.has(aliasKey(part,name))))continue;
           for(const re of [new RegExp('(?:设|取|记)?(?:点)?'+token+'(?:为|是)(?:线段|弦)?'+token+token+'的?中点','g'),new RegExp('(?:线段|弦)'+token+token+'的?中点(?:为|是|记为)(?:点)?'+token,'g')])for(const m of s.matchAll(re)){
             const order=m[0].startsWith('线段')||m[0].startsWith('弦')?[m[3],m[1],m[2]]:[m[1],m[2],m[3]],refs=[point(order[1]),point(order[2])];
             if(checkExisting(part,order[0],'midpoint',refs))continue;

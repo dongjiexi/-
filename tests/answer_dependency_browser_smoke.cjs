@@ -63,4 +63,23 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="board"]').click();
   assert((await visibleLabels()).includes('T'),'Cross-part intersection survives reload and mobile layout');
   await screenshot('answer-dependency-cross-part.png',null);
+  await page.evaluate(()=>{
+    const api=window.__answerDependencyApi;
+    const result={title:'同名构造冲突校核',parts:[
+      {index:1,label:'第一问',status:'answered',answer:'N为AB的中点。',steps:[]},
+      {index:2,label:'第二问',status:'answered',answer:'N为AC的中点，连接PN。M为PN的中点。',steps:[]}
+    ],scene:{type:'circle',h:2,k:1,r:3,dynamicLine:false,points:{A:[5,1],B:[2,4],C:[-1,1],P:[8,6]},objects:[],lines:[]}};
+    api.enrichSolvedScene(result,'已知点A、B、C、P。');
+    api.installScene(api.modelFromJson(JSON.stringify(result.scene)),'冲突测试');
+    api.showSolution(result);api.render();api.remember();
+  });
+  await page.setViewportSize({width:1600,height:1050});
+  await page.locator('[data-inspector-view="lesson"]').click();
+  await page.locator('[data-study-part="2"]').click();
+  data=await read();assert(data.solution.sceneAudit.answerConflicts.some(n=>n.label==='N'));
+  assert(!data.scene.objects.some(n=>n.label==='PN'||n.label==='M'),'Conflicting point is not used for downstream constructions');
+  assert(!(await visibleLabels()).includes('N'),'Wrong earlier point is not silently drawn for the later question');
+  assert.match(await page.locator('.geometry-notice').textContent(),/N（关系冲突）/);
+  await page.locator('[data-study-part="1"]').click();
+  assert((await visibleLabels()).includes('N'),'Original point remains available in its original part');
 };

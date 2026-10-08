@@ -51,6 +51,7 @@ APP_FILES = {
     'deploy/0.59.0-验证记录.md',
     'deploy/0.59.1-验证记录.md',
     'deploy/0.59.2-验证记录.md',
+    'deploy/0.59.3-验证记录.md',
     'deploy/runtime-config.web.example.js', '.github/workflows/deploy-dongjiexi.yml',
     'deploy/phone/README.md', 'deploy/phone/start.sh', 'deploy/phone/configure.sh',
     'deploy/phone/download-model.sh', 'deploy/phone/download-deepseek.sh', 'deploy/phone/serve-only.sh',
