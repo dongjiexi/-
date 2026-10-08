@@ -22,6 +22,10 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert(!await page.locator('.geometry-notice').isVisible());
   const check=d=>{const {P,R,S,T}=d.points;assert(Math.abs(R.x-P.x)<1e-8&&Math.abs(R.y+P.y)<1e-8);assert(Math.abs(S.x+P.x)<1e-8&&Math.abs(S.y+P.y)<1e-8);assert(Math.abs(P.x*T.x+P.y*T.y-1)<1e-7);assert(Math.abs(R.x*T.x+R.y*T.y-1)<1e-7);};
   check(data);
+  const linkage=await page.evaluate(()=>{const api=window.__answerDependencyApi,before=JSON.stringify(api.sceneData()),result=api.highlightStep({text:'切线tP与tR交于点T。',part:api.state.activePart,index:0});return{result,snapshot:window.DongBoardStep.snapshot(),unchanged:before===JSON.stringify(api.sceneData())};});
+  assert(linkage.result.matched.includes('P 点切线')&&linkage.result.matched.includes('R 点切线'),'Answer aliases highlight their actual tangent objects');
+  assert(linkage.snapshot.ids.includes(target.refs[0])&&linkage.snapshot.ids.includes(target.refs[1]));
+  assert(linkage.unchanged,'Step highlighting does not mutate the graph');
   // Real pointer drag; test hook only reads the existing viewport and scene.
   await page.locator('#homeButton').click();data=await read();const box=await page.locator('#canvas').boundingBox(),v=data.view,xy=p=>({x:box.x+(p.x-v.xmin)/(v.xmax-v.xmin)*box.width,y:box.y+(v.ymax-p.y)/(v.ymax-v.ymin)*box.height});
   const from=xy(data.points.P),to=xy({x:Math.cos(1.2),y:Math.sin(1.2)}),before=data.points.P;

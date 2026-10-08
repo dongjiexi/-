@@ -18,11 +18,21 @@
     return false;
   }
   function select(text, entries) {
-    const matched=entries.filter(entry=>mentioned(text,entry.label));
-    const known=new Set(matched.map(entry=>name(entry.label)));
+    const aliases=entry=>(Array.isArray(entry.aliases)?entry.aliases.slice(0,12):[]).filter(value=>typeof value==='string'&&value.length<=40&&/^[A-Za-z][0-9′]*(?:[A-Z][0-9′]*)*$/.test(name(value)));
+    const owners=new Map(),aliasNames=new Set(),ambiguous=new Set();
+    for(const entry of entries){for(const label of [entry.label,...aliases(entry)]){const key=name(label);if(!key)continue;if(!owners.has(key))owners.set(key,new Set());owners.get(key).add(entry.id);}for(const label of aliases(entry))aliasNames.add(name(label));}
+    const matched=entries.filter(entry=>{
+      let selected=false;
+      for(const label of [entry.label,...aliases(entry)])if(mentioned(text,label)){
+        const key=name(label);
+        if(aliasNames.has(key)&&owners.get(key)?.size>1)ambiguous.add(key);else selected=true;
+      }
+      return selected;
+    });
+    const known=new Set(matched.flatMap(entry=>[entry.label,...aliases(entry)].map(name)));
     const declared=window.DongSceneAudit?.declared(text)||[];
     const missing=declared.filter(label=>!known.has(name(label)));
-    return {matched:[...new Set(matched.map(entry=>entry.label))],missing:[...new Set(missing)],ids:[...new Set(matched.map(entry=>entry.id))]};
+    return {matched:[...new Set(matched.map(entry=>entry.label))],missing:[...new Set([...missing,...[...ambiguous].map(label=>label+'（名称不唯一）')])],ids:[...new Set(matched.map(entry=>entry.id))]};
   }
   function attach(api) {
     let selection=null;

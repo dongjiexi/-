@@ -23,4 +23,13 @@ assert.equal(rendered,1);assert.deepEqual(Array.from(highlighter.snapshot().ids)
 part=2;highlighter.draw();assert.equal(highlighter.snapshot(),null,'Part switch removes stale highlight');
 highlighter.highlight({text:'点 A',part:2,index:1});model={};highlighter.draw();assert.equal(highlighter.snapshot(),null,'Graph replacement removes stale highlight');
 highlighter.clear();highlighter.clear();assert.equal(highlighter.snapshot(),null);
+const named=[{id:'tp',label:'P 点切线',aliases:['tP','l₁']},{id:'tr',label:'R 点切线',aliases:['tR','l₂']},{id:'T',label:'T'}];
+assert.deepEqual(Array.from(link.select('切线tP与tR交于点T。',named).ids),['tp','tr','T']);
+assert.deepEqual(Array.from(link.select('直线 $l_{1}$ 与 $l_2$。',named).ids),['tp','tr']);
+assert.deepEqual(Array.from(link.select('直线tP',named.slice(1)).ids),[],'Hidden or other-part aliases never select absent entries');
+const conflict=link.select('直线tP',[...named,{id:'other',label:'tP'}]);
+assert.deepEqual(Array.from(conflict.ids),[],'Alias collision must not select unrelated lines');
+assert.deepEqual(Array.from(conflict.missing),['tP（名称不唯一）']);
+assert.deepEqual(Array.from(link.select('直线tP',[named[0],{...named[0]}]).ids),['tp'],'Repeated entry for the same object is not a collision');
+assert.deepEqual(Array.from(link.select('ellipse and application',[{id:'bad',label:'辅助线',aliases:['ellipse','application','<img src=x>']}]).ids),[]);
 console.log('PASS: step links use existing object names, preserve primes/subscripts, report missing names, ignore English words and clear stale scenes.');
