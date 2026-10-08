@@ -39,4 +39,28 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('.diagram-audit summary').click();await page.locator('[data-diagram-recheck]').click();assert.match(await page.locator('.geometry-notice').textContent(),/N（依赖待确认）/,'Recheck retains dependency warnings from original model steps');
   assert.equal(await page.locator('#solution .katex-error').count(),0);
   await screenshot('answer-dependency-warning.png',null);
+  // Explicit scope integration fixture, not an additional exam or AI answer.
+  await page.evaluate(()=>{
+    const api=window.__answerDependencyApi;
+    const result={title:'跨小问构造作用域校核',parts:[
+      {index:1,label:'第一问',status:'answered',answer:'在P点和R点处的切线分别为tP、tR。',steps:[]},
+      {index:2,label:'第二问',status:'answered',answer:'两条切线交于点T。',steps:[]}
+    ],scene:{type:'circle',h:0,k:0,r:1,dynamicLine:false,points:{P:[.6,.8],R:[.6,-.8]},objects:[],lines:[]}};
+    api.enrichSolvedScene(result,'已知圆上的点P、R。');
+    api.installScene(api.modelFromJson(JSON.stringify(result.scene)),'作用域测试');
+    api.showSolution(result);api.render();api.remember();
+  });
+  const visibleLabels=()=>page.evaluate(()=>window.DongBoardLabels.snapshot().placements.flatMap(n=>n.names||[]));
+  assert(!(await visibleLabels()).includes('T'),'Part 1 does not display the intersection introduced in part 2');
+  await page.locator('[data-inspector-view="lesson"]').click();
+  await page.locator('[data-study-part="2"]').click();
+  data=await read();assert(data.points.T,'Later part resolves the earlier tangent pair');
+  assert((await visibleLabels()).includes('T'),'Part 2 draws the intersection label');
+  const scoped=await page.evaluate(()=>{const api=window.__answerDependencyApi;return api.highlightStep({text:'切线tP与tR交于点T。',part:2,index:0});});
+  assert(scoped.matched.includes('P 点切线')&&scoped.matched.includes('R 点切线'),'Both inherited tangents are available to actual step highlighting');
+  await page.reload({waitUntil:'domcontentloaded'});
+  data=await read();assert.equal(data.scene.activePart,2);assert(data.points.T);
+  await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="board"]').click();
+  assert((await visibleLabels()).includes('T'),'Cross-part intersection survives reload and mobile layout');
+  await screenshot('answer-dependency-cross-part.png',null);
 };

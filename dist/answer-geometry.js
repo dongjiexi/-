@@ -24,7 +24,8 @@
       return features.length===1?'feature:'+features[0].name:null;
     };
     const scope=part=>Number.isInteger(part?.index)?{part:part.index}:{};
-    const share=(part,node)=>{if(node&&String(node.id).startsWith('answer-')&&node.source==='derived'&&Number.isInteger(part.index)){node.parts=[...new Set([...(node.parts||[]),...(node.part!=null?[node.part]:[]),part.index])];delete node.part;}return node;};
+    const owned=node=>node&&String(node.id).startsWith('answer-')&&node.source==='derived';
+    const share=(part,node)=>{if(owned(node)&&node.part==null&&Number.isInteger(part.index)){node.parts=[...new Set([...(node.parts||[]),part.index])];}return node;};
     const existingPoint=(part,name)=>{const ref=point(name);if(ref)share(part,all().find(n=>n.id===ref));return !!ref;};
     const pending=(part,label,reason,persistent=false)=>{const value={...scope(part),label,reason,...(persistent?{dependencyUnconfirmed:true}:{})};if(report.unresolved.length<60&&!report.unresolved.some(n=>n.label===label&&n.part===value.part&&n.reason===reason))report.unresolved.push(value);};
     const checkExisting=(part,name,op,refs,parameters={})=>{
@@ -129,10 +130,21 @@
             if(refs.every(Boolean))add(part,{op:'intersection',refs,branch:0,label:name});else pending(part,name,'交点所需的两条直线尚未定位');
           }
           for(const m of s.matchAll(new RegExp('(?:两条|两)切线交于(?:点)?'+token,'g'))){
-            const tangents=gradientTargets.size===2?[...gradientTargets].map(tangent).filter(Boolean):gradientTargets.size?[]:all().filter(n=>(n.op==='tangent'||n.role==='tangent')&&n.refs?.[1]==='$conic'&&root.DongSceneAudit.visible(n,part.index));
-            if(tangents.length===2){const refs=tangents.map(n=>n.id);if(!checkExisting(part,m[1],'intersection',refs))add(part,{op:'intersection',refs,branch:0,label:m[1]});}else pending(part,m[1],'未能唯一确定本问所指的两条切线');
+            let tangents=gradientTargets.size===2?[...gradientTargets].map(tangent).filter(Boolean):gradientTargets.size?[]:all().filter(n=>(n.op==='tangent'||n.role==='tangent')&&n.refs?.[1]==='$conic'&&root.DongSceneAudit.visible(n,part.index));
+            if(!gradientTargets.size&&tangents.length<2){
+              const earlier=all().filter(n=>owned(n)&&n.part==null&&n.visible!==false&&(n.op==='tangent'||n.role==='tangent')&&n.refs?.[1]==='$conic'&&n.parts?.some(index=>Number(index)<Number(part.index)));
+              tangents=[...new Map([...tangents,...earlier].map(n=>[n.id,n])).values()];
+            }
+            if(tangents.length===2){for(const node of tangents)share(part,node);const refs=tangents.map(n=>n.id);if(!checkExisting(part,m[1],'intersection',refs))add(part,{op:'intersection',refs,branch:0,label:m[1]});}else pending(part,m[1],'未能唯一确定本问所指的两条切线');
           }
           for(const m of s.matchAll(new RegExp('(?:连接|连结)'+token+token,'g'))){const refs=[point(m[1]),point(m[2])];if(refs.every(Boolean))add(part,{op:'segment',refs,label:m[1]+m[2]});}
+          // A later part can reference an established object without restating
+          // its definition. Share only our automatic scopes, never user ones.
+          for(const name of root.DongSceneAudit.declared(s)){const ref=point(name);if(ref)share(part,all().find(n=>n.id===ref));}
+          for(const m of s.matchAll(new RegExp('(?:直线|切线)('+alias+')(?![A-Za-z0-9])','g'))){
+            const matches=all().filter(n=>lineNode(n)&&[n.label,...(Array.isArray(n.aliases)?n.aliases.slice(0,12):[])].some(label=>canonical(label)===canonical(m[1])));
+            if(matches.length===1&&!blockedAliases.has(aliasKey(part,m[1])))share(part,matches[0]);
+          }
         }
         if(report.added.length===before)break;
       }
