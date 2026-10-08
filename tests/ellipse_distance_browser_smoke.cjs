@@ -50,5 +50,6 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('[data-study-part="2"]').click();
   assert.equal(await page.locator('[data-distance-jump]').count(),2);
   await solve('椭圆 C：x²/4+y²=1 上有一动点P，定点A(0,2)，P在第一象限。(1)求PA的最大值。');
-  assert.doesNotMatch(await page.locator('#solution').innerText(),/已生成完整作答/,'受限弧不能套用整个椭圆的最值');
+  assert.match(await page.locator('#solution').innerText(),/不存在最大值/,'象限开弧不能套用整个椭圆的最值');
+  assert.equal(await page.locator('[data-distance-jump]').count(),0,'不可取得的上界不能定位到非法端点');
 };

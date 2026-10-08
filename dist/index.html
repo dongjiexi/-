@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.57.1">
+  <meta name="dongjiexi-version" content="0.58.0">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.57.1">
-  <link rel="stylesheet" href="classroom.css?v=0.57.1">
-  <link rel="stylesheet" href="question-bank.css?v=0.57.1">
+  <link rel="stylesheet" href="learning-ui.css?v=0.58.0">
+  <link rel="stylesheet" href="classroom.css?v=0.58.0">
+  <link rel="stylesheet" href="question-bank.css?v=0.58.0">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -384,14 +384,14 @@
     @keyframes solve-spin { to { transform:rotate(360deg); } }
     @media (prefers-reduced-motion:reduce) { .solve-progress[data-state="solving"]::before { animation:none; } }
     .mobile-panel-nav { display:none; }
-    #inverseDistancePanel { display:none; }
+    #inverseDistancePanel, #distanceExtremaPanel { display:none; }
     @media (max-width:760px), (max-width:1024px) and (max-height:500px) and (pointer:coarse) {
       .workflow-strip { display:none; }
       .topbar { position:relative; }
       .workspace { display:flex;flex-direction:column; }
       .workspace>.panel { width:100%; }
       .mobile-panel-nav { display:flex;position:sticky;top:0;z-index:40;gap:.4rem;padding:.5rem;background:#f5f9fc;border-bottom:1px solid #d5dfeb; }
-      #inverseDistancePanel:not([hidden]) { display:block;margin:.6rem;padding:.5rem;background:#f6fafb;border:1px solid #c6d4e3;border-radius:8px; }
+      #inverseDistancePanel:not([hidden]), #distanceExtremaPanel:not([hidden]) { display:block;margin:.6rem;padding:.5rem;background:#f6fafb;border:1px solid #c6d4e3;border-radius:8px; }
       .mobile-panel-nav button { flex:1;min-width:0;min-height:44px;border:1px solid #c6d4e3;border-radius:9px;background:white;color:#36516c;font:inherit; }
       .mobile-panel-nav button[aria-pressed="true"] { background:#086d72;color:white;border-color:#086d72; }
       .workspace[data-mobile-view]>.panel { display:none!important; }
@@ -418,12 +418,12 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.57.1">
+  <link rel="stylesheet" href="theme.css?v=0.58.0">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.57.1 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.58.0 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -541,6 +541,7 @@
         <p id="undefinedObjects" class="native-warning" role="status"></p>
         <div class="legend"><span style="--c:#0f9f99">圆锥曲线</span><span style="--c:#f2a33c">动直线</span><span style="--c:#e58c21">题设图形</span><span style="--c:#7c5ac9">题设点线</span><span style="--c:#df5b62">交点</span><span style="--c:#3f78d8">焦点 / 圆心</span></div>
         <details id="inverseDistancePanel" hidden><summary>距离最值与定位</summary><div id="inverseDistanceReadout"></div></details>
+        <details id="distanceExtremaPanel" hidden><summary>距离范围与取等点</summary><div id="distanceExtremaReadout"></div></details>
       </section>
 
       <aside class="panel inspect">
@@ -621,49 +622,49 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.57.1"></script>
+  <script src="runtime.js?v=0.58.0"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.57.1"></script>
-  <script src="number-display.js?v=0.57.1"></script>
-  <script src="label-layout.js?v=0.57.1"></script>
-  <script src="step-highlight.js?v=0.57.1"></script>
-  <script src="scene-audit.js?v=0.57.1"></script>
-  <script src="answer-geometry.js?v=0.57.1"></script>
-  <script src="scene-merge.js?v=0.57.1"></script>
-  <script src="tangent-solver.js?v=0.57.1"></script>
-  <script src="ellipse-distance.js?v=0.57.1"></script>
-  <script src="circle-dot.js?v=0.57.1"></script>
-  <script src="orthogonal-chord.js?v=0.57.1"></script>
-  <script src="axis-intercept-chord.js?v=0.57.1"></script>
-  <script src="conic-area.js?v=0.57.1"></script>
-  <script src="basic-conditions.js?v=0.57.1"></script>
-  <script src="ellipse-area-chord.js?v=0.57.1"></script>
-  <script src="vertex-secant.js?v=0.57.1"></script>
-  <script src="inverse-locus.js?v=0.57.1"></script>
-  <script src="symmetric-chord.js?v=0.57.1"></script>
-  <script src="parabola-locus.js?v=0.57.1"></script>
-  <script src="question-parts.js?v=0.57.1"></script>
-  <script src="goal-coverage.js?v=0.57.1"></script>
-  <script src="solution-review.js?v=0.57.1"></script>
-  <script src="parabola-focal-data.js?v=0.57.1"></script>
-  <script src="circle-fold.js?v=0.57.1"></script>
-  <script src="circle-fold-view.js?v=0.57.1"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.57.1">
-  <script src="hyperbola-iteration.js?v=0.57.1"></script>
-  <script src="conic-parameter.js?v=0.57.1"></script>
-  <script src="ellipse-focal-chord.js?v=0.57.1"></script>
-  <script src="external-ai.js?v=0.57.1"></script>
-  <script src="learning-ui.js?v=0.57.1"></script>
-  <script src="classroom.js?v=0.57.1"></script>
-  <script src="question-bank.js?v=0.57.1"></script>
-  <script src="construction-board.js?v=0.57.1"></script>
-  <script src="motion-domain.js?v=0.57.1"></script>
-  <script src="motion-protection.js?v=0.57.1"></script>
-  <script src="drag-board.js?v=0.57.1"></script>
-  <script src="equation-builder.js?v=0.57.1"></script>
-  <script src="math-keyboard.js?v=0.57.1"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.57.1"></script>
+  <script src="math-input.js?v=0.58.0"></script>
+  <script src="number-display.js?v=0.58.0"></script>
+  <script src="label-layout.js?v=0.58.0"></script>
+  <script src="step-highlight.js?v=0.58.0"></script>
+  <script src="scene-audit.js?v=0.58.0"></script>
+  <script src="answer-geometry.js?v=0.58.0"></script>
+  <script src="scene-merge.js?v=0.58.0"></script>
+  <script src="tangent-solver.js?v=0.58.0"></script>
+  <script src="ellipse-distance.js?v=0.58.0"></script>
+  <script src="circle-dot.js?v=0.58.0"></script>
+  <script src="orthogonal-chord.js?v=0.58.0"></script>
+  <script src="axis-intercept-chord.js?v=0.58.0"></script>
+  <script src="conic-area.js?v=0.58.0"></script>
+  <script src="basic-conditions.js?v=0.58.0"></script>
+  <script src="ellipse-area-chord.js?v=0.58.0"></script>
+  <script src="vertex-secant.js?v=0.58.0"></script>
+  <script src="inverse-locus.js?v=0.58.0"></script>
+  <script src="symmetric-chord.js?v=0.58.0"></script>
+  <script src="parabola-locus.js?v=0.58.0"></script>
+  <script src="question-parts.js?v=0.58.0"></script>
+  <script src="goal-coverage.js?v=0.58.0"></script>
+  <script src="solution-review.js?v=0.58.0"></script>
+  <script src="parabola-focal-data.js?v=0.58.0"></script>
+  <script src="circle-fold.js?v=0.58.0"></script>
+  <script src="circle-fold-view.js?v=0.58.0"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.58.0">
+  <script src="hyperbola-iteration.js?v=0.58.0"></script>
+  <script src="conic-parameter.js?v=0.58.0"></script>
+  <script src="ellipse-focal-chord.js?v=0.58.0"></script>
+  <script src="external-ai.js?v=0.58.0"></script>
+  <script src="learning-ui.js?v=0.58.0"></script>
+  <script src="classroom.js?v=0.58.0"></script>
+  <script src="question-bank.js?v=0.58.0"></script>
+  <script src="construction-board.js?v=0.58.0"></script>
+  <script src="motion-domain.js?v=0.58.0"></script>
+  <script src="motion-protection.js?v=0.58.0"></script>
+  <script src="drag-board.js?v=0.58.0"></script>
+  <script src="equation-builder.js?v=0.58.0"></script>
+  <script src="math-keyboard.js?v=0.58.0"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.58.0"></script>
   <script src="geogebra-bridge.js?v=0.7.0"></script>
   <script>
   (() => {
@@ -1486,6 +1487,7 @@
     }
     metricsEl.addEventListener('click',event=>{if(!event.target.closest('#locateOrthogonalMinimum')||!state.model?.orthogonalChord)return;stopMotion(false);state.p.theta=0;state.exploring=true;buildParams();updateSceneJson();render();});
     function drawDistanceExtrema(){
+      const panel=$('#distanceExtremaPanel'),readout=$('#distanceExtremaReadout');panel.hidden=true;readout.innerHTML='';
       const specs=state.model?.distanceExtrema||[];if(!specs.length)return;
       let html='';
       for(const [index,spec] of specs.entries()){
@@ -1494,31 +1496,40 @@
         if(!moving||!visibleForPart(moving))continue;
         const source=namedObject(spec.source),p=namedObject(spec.moving);
         if(!source)continue;
-        const data=window.DongEllipseDistance?.compute(state.model,state.p,[source.x,source.y]),pair=escapeHtml(spec.moving+spec.source);
-        if(!data){html+=metric(`|${pair}| 最值`,'定点已离开对称轴，当前推导不适用');continue;}
+        const data=window.DongEllipseDistance?.compute(state.model,state.p,[source.x,source.y],spec.motionDomain),pair=escapeHtml(spec.moving+spec.source);
+        if(!data){html+=metric(`|${pair}| 最值`,'当前范围为空或超出已覆盖模型，不能沿用原最值');continue;}
         if(p)html+=metric(`当前 |${pair}|`,exactNumber(Math.hypot(p.x-source.x,p.y-source.y),6));
+        if(data.restricted)html+=metric('距离计算范围',window.katex.renderToString(window.DongEllipseDistance.domainTex(spec.motionDomain,spec.moving),{throwOnError:false})+(window.DongMotion.unrestricted(state.model)?'<br>自由探索：上面的范围仍为原题条件':'<br>拖动保持本问范围'));
         for(const kind of spec.edges){
           const edge=data[kind],label=kind==='max'?'最大':'最小',color=kind==='max'?'#df8300':'#198469';
-          html+=metric(`|${pair}| ${label}值`,exactNumber(edge.distance,6),true);
-          if(data.constantDistance){html+=metric('取值位置','曲线上任意点');continue;}
+          html+=metric(`|${pair}| ${edge.attained?label+'值':kind==='max'?'上确界':'下确界'}`,exactNumber(edge.distance,6),edge.attained);
+          if(!edge.attained){html+=metric('边界说明',`不存在${label}值；只能接近此界，不能取得`);continue;}
+          if(data.constantDistance){html+=metric('取值位置','允许范围内任意点');continue;}
           edge.points.forEach((target,branch)=>{
             const title=`${spec.moving}${branch+1}（${label}）`;
             ctx.save();ctx.setLineDash([5,5]);strokePath([source,target],color,2);ctx.restore();point(target,color,title);
             const hit=p&&Math.hypot(target.x-p.x,target.y-p.y)<1e-5;
-            html+=metric(escapeHtml(title),`(${exactNumber(target.x,6)}, ${exactNumber(target.y,6)}) <button class="button secondary" data-distance-jump="${index}:${kind}:${branch}">${hit?'已到达':'定位'}</button>`);
+            html+=metric(escapeHtml(title),`(${exactNumber(target.x,6)}, ${exactNumber(target.y,6)}) ${window.DongMotion.unrestricted(state.model)?'关闭无限制移动后可定位':`<button class="button secondary" data-distance-jump="${index}:${kind}:${branch}">${hit?'已到达':'定位'}</button>`}`);
             if(hit){strokePath([source,target],color,4);annotation(`|${spec.moving+spec.source}| 达到${label}值 ${exactNumber(edge.distance,5)}`,{x:(source.x+target.x)/2,y:(source.y+target.y)/2},color);}
           });
         }
       }
-      if(html){if(metricsEl.textContent.includes('显示直线以查看交点与弦长。'))metricsEl.innerHTML='';metricsEl.insertAdjacentHTML('beforeend',html);}
+      if(html){
+        const mobile=matchMedia('(max-width:760px), (max-width:1024px) and (max-height:500px) and (pointer:coarse)').matches;
+        if(mobile){panel.hidden=false;readout.innerHTML=html;}
+        if(metricsEl.textContent.includes('显示直线以查看交点与弦长。'))metricsEl.innerHTML='';
+        metricsEl.insertAdjacentHTML('beforeend',mobile?html.replace(/<button[^>]+data-distance-jump="[^"]+"[^>]*>[^<]*<\/button>/g,'在画板“距离范围与取等点”中定位'):html);
+      }
     }
-    metricsEl.addEventListener('click',event=>{
+    function locateDistanceExtreme(event){
       const button=event.target.closest('[data-distance-jump]');if(!button)return;
       const [index,kind,branch]=button.dataset.distanceJump.split(':'),spec=state.model?.distanceExtrema?.[Number(index)],source=spec&&namedObject(spec.source);
-      if(!source||!['min','max'].includes(kind))return;
-      const data=window.DongEllipseDistance?.compute(state.model,state.p,[source.x,source.y]),target=data?.[kind]?.points[Number(branch)],moving=state.model.objects.find(o=>o.id===spec.movingId);
-      if(!target||!moving)return;stopMotion(false);Object.assign(moving,conicProject(target));state.exploring=true;$('#exploreNotice').hidden=false;updateSceneJson();render();remember();
-    });
+      if(!source||!visibleForPart(spec)||window.DongMotion.unrestricted(state.model)||!['min','max'].includes(kind))return;
+      const data=window.DongEllipseDistance?.compute(state.model,state.p,[source.x,source.y],spec.motionDomain),target=data?.[kind]?.points[Number(branch)],moving=state.model.objects.find(o=>o.id===spec.movingId);
+      if(!target||!moving)return;stopMotion(false);if(!nativeController.engine.moveDriver(moving.id,conicProject(target)))return;updateSceneJson();render();remember();
+    }
+    metricsEl.addEventListener('click',locateDistanceExtreme);
+    $('#distanceExtremaReadout').addEventListener('click',locateDistanceExtreme);
     function drawInverseMetrics(){
       const panel=$('#inverseDistancePanel'),readout=$('#inverseDistanceReadout');panel.hidden=true;readout.innerHTML='';
       const spec=state.model?.inverseLocus;if(!spec||spec.maximumPart==null||!visibleForPart({part:spec.maximumPart}))return;
@@ -1935,6 +1946,6 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.57.1"></script>
+  <script src="pwa.js?v=0.58.0"></script>
 </body>
 </html>

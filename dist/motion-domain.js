@@ -44,7 +44,13 @@
   }
   function storage(object,part){return part!=null&&Object.hasOwn(object.motionByPart||{},String(part))?object.motionByPart[String(part)]:object;}
   function driver(object,part){const row=storage(object,part);return row===object?{...object,mode:'curve'}:{...object,...row};}
-  function contains(v,b){return !b||(b.min==null||(b.minClosed?v>=b.min:v>b.min))&&(b.max==null||(b.maxClosed?v<=b.max:v<b.max));}
+  function contains(v,b){
+    if(!b)return true;
+    // A curve projection can round a lawful closed endpoint by one ulp.
+    // Only absorb floating-point roundoff, never open up a strict boundary.
+    const tolerance=16*Number.EPSILON*Math.max(1,Math.abs(v),Math.abs(b.min??0),Math.abs(b.max??0));
+    return (b.min==null||(b.minClosed?v>=b.min-tolerance:v>b.min))&&(b.max==null||(b.maxClosed?v<=b.max+tolerance:v<b.max));
+  }
   function lift(t,b){
     const center=(b.min+b.max)/2,value=t+TAU*Math.round((center-t)/TAU);
     return [value,value-TAU,value+TAU].find(n=>contains(n,b))??value;

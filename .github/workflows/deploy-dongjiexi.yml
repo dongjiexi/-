@@ -49,6 +49,7 @@ jobs:
           node tests/motion_domain_tests.cjs
           node tests/reference_upgrade_tests.cjs
           node tests/ellipse_distance_tests.cjs
+          node tests/ellipse_distance_domain_tests.cjs
           node tests/circle_dot_tests.cjs
           node tests/orthogonal_chord_tests.cjs
           node tests/number_display_tests.cjs

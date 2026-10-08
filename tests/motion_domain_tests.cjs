@@ -28,6 +28,11 @@ test('coordinate limits, quadrants and exclusions reject illegal points without 
   const spec={motionDomain:{quadrant:1,x:{min:1,max:2,maxClosed:false},excludeAxes:['x']}};
   assert(domain.accepts(spec,{x:1.5,y:2}));for(const p of [{x:2,y:1},{x:1.5,y:0},{x:-1,y:2},{x:1,y:NaN}])assert(!domain.accepts(spec,p));
 });
+test('closed coordinate endpoints tolerate only roundoff; open endpoints stay excluded',()=>{
+  assert(domain.accepts({motionDomain:{y:{min:.5}}},{x:Math.sqrt(3),y:Math.sin(Math.asin(.5))}));
+  assert(!domain.accepts({motionDomain:{y:{min:.5,minClosed:false}}},{x:Math.sqrt(3),y:.5}));
+  assert(!domain.accepts({motionDomain:{y:{min:.5}}},{x:1,y:.5-1e-8}));
+});
 test('real 2025 I question has independent plane and circle drivers per subquestion',()=>{
   const m=fixture(),e=engine(m),o=m.objects.find(p=>p.label==='P');m.activePart=201;
   const base=o.t;assert(e.dragDriver(o.id,{x:3,y:2}));const P=e.resolve(o.id),R=e.resolve('inverse-derived-R');near(P.x,3);near(P.y,2);near(R.x,.5);near(R.y,-.5);near(Math.hypot(R.x,R.y+1)*Math.hypot(P.x,P.y+1),3);
