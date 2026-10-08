@@ -14,7 +14,12 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#recognizeButton').click();await page.locator('#recognitionDialog[open]').waitFor();
   assert.equal(sent.kind,'recognize');assert.equal(sent.model,'deepseek-flash','Vision stays Flash even when solve uses Pro');assert.match(sent.image,/^data:image\/png;base64,/);
   assert.equal(await page.locator('#question').inputValue(),'保留当前题稿','Recognition never overwrites the question before confirmation');
-  assert.equal(await page.locator('#recognizedText').inputValue(),text);assert(await page.locator('#recognitionOriginal').isVisible());
+  assert.equal(await page.locator('#recognizedText').inputValue(),text);
+  // Opening the dialog does not mean the browser has decoded the local image.
+  // Wait for actual image data, then assert layout; a broken image still fails.
+  await page.waitForFunction(()=>{const image=document.querySelector('#recognitionOriginal');return image?.complete&&image.naturalWidth>0&&image.naturalHeight>0;});
+  await page.locator('#recognitionOriginal').waitFor({state:'visible'});
+  assert(await page.locator('#recognitionOriginal').isVisible());
   assert(await page.locator('#recognitionFormulaPreview .katex').count()>0);
   await screenshot('deepseek-vision-pc.png','#recognitionDialog');
   await page.setViewportSize({width:390,height:844});
