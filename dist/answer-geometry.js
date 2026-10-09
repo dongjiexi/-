@@ -97,6 +97,7 @@
     };
     for(const part of (parts||[]).slice(0,12)){
       activePart=part;
+      const originalScopes=new Map(all().map(node=>[node.id,{parts:node.parts?.slice()}]));
       const clauses=[part.answer,...(part.steps||[]).slice(0,40)].filter(s=>typeof s==='string').map(clean).flatMap(s=>s.split(/[。；;\n]/)).filter(s=>s&&s.length<1200&&!/不(?:在|是|作|存在|相交|应|要|必|得)|无需|并非|误以为|错误|勿|无法|不能|假设|反例|如果|若/.test(s)).slice(0,120);
       // Midpoints/feet may feed later constructions; re-read only this bounded
       // vocabulary until the graph stops growing. Never parse arbitrary code.
@@ -155,6 +156,28 @@
         }
         if(report.added.length===before)break;
       }
+      // Definitions can follow their uses. Undo only this part's automatic
+      // additions/shares that depend on a subsequently rejected point.
+      const affected=new Set(all().filter(node=>blockedPoints.has(aliasKey(part,node.label))).map(node=>node.id));
+      for(const feature of current()?.features||[])if(blockedPoints.has(aliasKey(part,feature.name)))affected.add('feature:'+feature.name);
+      for(let pass=0;pass<all().length;pass++){
+        let changed=false;
+        for(const node of all())if(!affected.has(node.id)&&node.refs?.some(ref=>affected.has(ref))){affected.add(node.id);changed=true;}
+        if(!changed)break;
+      }
+      const discarded=new Set();
+      for(const node of all()){
+        if(!affected.has(node.id)||!owned(node))continue;
+        if(originalScopes.has(node.id)){
+          const original=originalScopes.get(node.id);
+          if(original.parts===undefined)delete node.parts;else node.parts=original.parts;
+        }else{
+          discarded.add(node.id);
+          pending(part,node.label,'所依赖的同名点定义未确认，已撤回本问自动构造',true);
+        }
+      }
+      scene.objects=scene.objects.filter(node=>!discarded.has(node.id));
+      report.added=report.added.filter(node=>!discarded.has(node.id));
     }
     // Successful later passes settle earlier missing prerequisites.
     report.unresolved=report.unresolved.filter(n=>n.dependencyUnconfirmed||!all().some(o=>canonical(o.label)===canonical(n.label)&&current()?.engine.resolve(o.id))&&!current()?.features.some(p=>canonical(p.name)===canonical(n.label)&&Number.isFinite(p.x)&&Number.isFinite(p.y)));

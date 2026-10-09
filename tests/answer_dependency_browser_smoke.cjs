@@ -67,7 +67,7 @@ module.exports=async({page,context,assert,screenshot})=>{
     const api=window.__answerDependencyApi;
     const result={title:'同名构造冲突校核',parts:[
       {index:1,label:'第一问',status:'answered',answer:'N为AB的中点。',steps:[]},
-      {index:2,label:'第二问',status:'answered',answer:'N为AC的中点，连接PN。M为PN的中点。',steps:[]}
+      {index:2,label:'第二问',status:'answered',answer:'连接PN。M为PN的中点。N为AC的中点。',steps:[]}
     ],scene:{type:'circle',h:2,k:1,r:3,dynamicLine:false,points:{A:[5,1],B:[2,4],C:[-1,1],P:[8,6]},objects:[],lines:[]}};
     api.enrichSolvedScene(result,'已知点A、B、C、P。');
     api.installScene(api.modelFromJson(JSON.stringify(result.scene)),'冲突测试');
