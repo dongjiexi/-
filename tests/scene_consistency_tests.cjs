@@ -1,12 +1,14 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const sandbox={window:{}};
-for(const file of ['construction-board.js','tangent-solver.js','scene-audit.js','scene-merge.js','math-input.js','number-display.js','equation-builder.js','conic-parameter.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/'+file),'utf8'),sandbox);
+for(const file of ['question-parts.js','construction-board.js','tangent-solver.js','scene-audit.js','scene-merge.js','math-input.js','number-display.js','equation-builder.js','conic-parameter.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/'+file),'utf8'),sandbox);
 const audit=sandbox.window.DongSceneAudit,construct=sandbox.window.DongConstruct;
 (async()=>{
   const {assemble}=await import('../dist/cloud-contract.mjs');
   const {safeConstructionScene}=await import('../dist/scene-contract.mjs');
   const {safeExternalScene}=await import('../dist/external-contract.mjs');
   let count=0;const check=f=>{f();count++;},copy=x=>JSON.parse(JSON.stringify(x));
+  check(()=>{const scene={type:'circle',r:3,objects:[{id:'p',kind:'point',label:'P',x:1,y:2},{id:'q',kind:'point',label:'Q',x:2,y:1}],points:{P:[1,2]}};audit.prepare(scene,'已知f(1)=2，点P(1,2)。\n（1）求圆的方程。\n（2）连接PQ，点Q(2,1)。',[{index:1,body:'求圆的方程。'},{index:2,body:'连接PQ，点Q(2,1)。'}]);assert(!scene.objects[0].parts,'Function argument must not truncate shared givens');assert(!scene.pointParts.P);assert.deepEqual(Array.from(scene.objects[1].parts),[2]);});
+  check(()=>{const scene={type:'circle',r:3,objects:[{id:'p',kind:'point',label:'P',x:1,y:2}],points:{}};audit.prepare(scene,'在（1）的条件下，点P(1,2)满足公共约束。',[{index:2,body:'连接PA。'}]);assert(!scene.objects[0].parts,'A reference is not a new question heading');});
   check(()=>assert.deepEqual(Array.from(audit.declared('点P_n与Q_{n-1}联动，初始点P₁(5,4)，点N₁₂(0,0)')),['P1','N12']));
   check(()=>assert.equal(audit.canonical('P₁₂′'),'P12′'));
   check(()=>assert.equal(audit.inspect({type:'circle',r:1,showDynamic:false,points:{},objects:[{id:'given-N',kind:'point',x:0,y:0,label:'N'}]},'点N(0,0)',[],construct).missing.length,0));

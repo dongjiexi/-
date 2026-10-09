@@ -65,7 +65,14 @@
     const needsSecant=/动直线|直线[^。；]{0,80}交(?:于|椭圆|曲线)|弦(?:AB|PQ|BC)/.test(s)||objects.some(n=>(n.refs||[]).some(r=>r==='$dynamic'||r==='$dynamic2'));
     if(externalContacts.length>=2&&/切线|相切/.test(s)&&!needsSecant)scene.showDynamic=false;
     scene.dynamicLine=scene.showDynamic!==false;
-    const first=String(question).search(/[（(]\s*\d{1,2}\s*[）)]/),global=new Set(declared(first<0?question:String(question).slice(0,first)));
+    const questionText=String(question);
+    let first=-1;
+    // Share the actual heading parser with the solver. Function arguments and
+    // references such as f(1) or 在（1）的条件下 are not section boundaries.
+    if(root.DongQuestionParts?.headings){
+      try{first=root.DongQuestionParts.headings(questionText)[0]?.index??-1;}catch{first=-1;}
+    }else first=questionText.search(/[（(]\s*\d{1,2}\s*[）)]/);
+    const global=new Set(declared(first<0?question:questionText.slice(0,first)));
     const partNames=new Map(parts.map(p=>[Number(p.index),new Set(declared(p.body||p.question||''))]));
     const nodes=[...(scene.objects||[]),...(scene.lines||[]),...(scene.polygons||[])];
     scene.pointParts||={};
