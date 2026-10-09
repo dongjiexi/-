@@ -28,6 +28,16 @@ test('coordinate limits, quadrants and exclusions reject illegal points without 
   const spec={motionDomain:{quadrant:1,x:{min:1,max:2,maxClosed:false},excludeAxes:['x']}};
   assert(domain.accepts(spec,{x:1.5,y:2}));for(const p of [{x:2,y:1},{x:1.5,y:0},{x:-1,y:2},{x:1,y:NaN}])assert(!domain.accepts(spec,p));
 });
+
+test('one-sided parameter domains reject nonfinite, missing and coerced parameters',()=>{
+  for(const bounds of [{min:0},{max:0},{min:-1,max:1}]){
+    const spec={motionDomain:{parameter:bounds}};
+    for(const t of [Infinity,-Infinity,NaN,undefined,null,'0',100001,-100001])assert.equal(domain.accepts(spec,{x:1,y:1},{t}),false,String(t));
+    assert.equal(domain.accepts(spec,{x:1,y:1},{t:0}),true);
+  }
+  assert(!domain.accepts({motionDomain:{parameter:{min:0,minClosed:false}}},{x:1,y:1},{t:0}));
+  assert(domain.accepts({motionDomain:{parameter:{min:0,minClosed:false}}},{x:1,y:1},{t:1e-10}));
+});
 test('closed coordinate endpoints tolerate only roundoff; open endpoints stay excluded',()=>{
   assert(domain.accepts({motionDomain:{y:{min:.5}}},{x:Math.sqrt(3),y:Math.sin(Math.asin(.5))}));
   assert(!domain.accepts({motionDomain:{y:{min:.5,minClosed:false}}},{x:Math.sqrt(3),y:.5}));

@@ -63,7 +63,7 @@
     if((d.excludeAxes||[]).includes('x')&&Math.abs(point.y)<EPS||(d.excludeAxes||[]).includes('y')&&Math.abs(point.x)<EPS)return false;
     if((d.excludePoints||[]).some(p=>Math.hypot(point.x-p[0],point.y-p[1])<=EPS*Math.max(1,Math.abs(p[0]),Math.abs(p[1]))))return false;
     if(object.excludeAxis==='x'&&Math.abs(point.y)<1e-7||object.excludeAxis==='y'&&Math.abs(point.x)<1e-7)return false;
-    if(d.parameter&&(!parameter||!contains(parameter.t,d.parameter)))return false;
+    if(d.parameter&&(!parameter||!finite(parameter.t)||!contains(parameter.t,d.parameter)))return false;
     if(d.arc&&(!parameter||!finite(parameter.t)||!contains(lift(parameter.t,d.arc),d.arc)))return false;
     if(d.branch!=null&&parameter?.branch!==d.branch)return false;
     return true;
