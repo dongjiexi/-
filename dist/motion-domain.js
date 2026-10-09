@@ -75,6 +75,7 @@
     return Math.max(lo,Math.min(hi,v));
   }
   function fit(object,parameter,{periodic=false,hyperbola=false}={}){
+    if(!plain(parameter)||!finite(parameter.t))throw new Error('运动参数必须是有效的有限数字。');
     const d=validate(object.motionDomain),p={...parameter};
     if(d.arc&&!periodic)throw new Error('弧段只适用于圆或椭圆。');
     if(d.branch!=null&&!hyperbola)throw new Error('分支限制只适用于双曲线。');
@@ -96,7 +97,45 @@
     if(d.excludePoints?.length)bits.push('不取点 '+d.excludePoints.map(p=>'('+p.map(fmt).join(', ')+')').join('、'));
     return bits.join('；');
   }
-  const exported={TAU,validate,validateProfiles,storage,driver,contains,accepts,fit,describe};
+  // Display geometry only: analytic boundary cuts, sampled smooth arcs. This
+  // is not a proof of a locus equation or an inference of missing constraints.
+  function periodicGeometry(shape,object){
+    const kind=shape.kind==='circle'?'circle':shape.conicType;
+    if(!['circle','ellipse'].includes(kind))return null;
+    let d;try{d=validate(object.motionDomain);}catch{return null;}
+    if(d.branch!=null)return null;
+    const h=Number(shape.h||0),k=Number(shape.k||0),rx=kind==='circle'?shape.r:shape.orientation==='vertical'?shape.b:shape.a,ry=kind==='circle'?shape.r:shape.orientation==='vertical'?shape.a:shape.b;
+    if(![h,k,rx,ry].every(finite)||!(rx>0&&ry>0))return null;
+    let lo=0,hi=TAU;
+    if(d.arc){lo=d.arc.min;hi=d.arc.max;}
+    else if(d.parameter){lo=d.parameter.min??((d.parameter.max??TAU)-TAU);hi=Math.min(d.parameter.max??(lo+TAU),lo+TAU);}
+    if(d.parameter){lo=Math.max(lo,d.parameter.min??lo);hi=Math.min(hi,d.parameter.max??hi);}
+    if(hi<lo)return{paths:[],markers:[]};
+    const bounds={x:[d.x?.min,d.x?.max],y:[d.y?.min,d.y?.max]};
+    if(d.quadrant){bounds.x.push(0);bounds.y.push(0);}
+    for(const axis of [...(d.excludeAxes||[]),...(object.excludeAxis?[object.excludeAxis]:[])])bounds[axis==='x'?'y':'x'].push(0);
+    const point=t=>{const p={x:h+rx*Math.cos(t),y:k+ry*Math.sin(t)};for(const axis of ['x','y'])for(const v of bounds[axis])if(v!=null&&Math.abs(p[axis]-v)<=32*Number.EPSILON*Math.max(1,Math.abs(v),rx,ry))p[axis]=v;return p;},legal=t=>accepts(object,point(t),{t}),cuts=[lo,hi];
+    const cut=t=>{const start=Math.ceil((lo-t)/TAU);for(let n=start;n<=start+2;n++){const v=t+n*TAU;if(v>=lo-1e-12&&v<=hi+1e-12)cuts.push(Math.max(lo,Math.min(hi,v)));}};
+    const boundary=(axis,value)=>{const ratio=(value-(axis==='x'?h:k))/(axis==='x'?rx:ry);if(Math.abs(ratio)>1)return;const t=axis==='x'?Math.acos(ratio):Math.asin(ratio);cut(t);cut(axis==='x'?-t:Math.PI-t);};
+    for(const axis of ['x','y']){for(const v of [d[axis]?.min,d[axis]?.max])if(v!=null)boundary(axis,v);}
+    if(d.quadrant){boundary('x',0);boundary('y',0);}
+    for(const axis of new Set([...(d.excludeAxes||[]),...(object.excludeAxis?[object.excludeAxis]:[])]))boundary(axis==='x'?'y':'x',0);
+    for(const [x,y] of d.excludePoints||[]){const u=(x-h)/rx,v=(y-k)/ry;if(Math.abs(u*u+v*v-1)<1e-8)cut(Math.atan2(v,u));}
+    const ts=cuts.sort((a,b)=>a-b).filter((t,i,a)=>!i||Math.abs(t-a[i-1])>1e-12),paths=[],markers=[],intervals=[];
+    for(let i=0;i<ts.length-1;i++){
+      const a=ts[i],b=ts[i+1],ok=legal((a+b)/2);intervals.push(ok);if(!ok)continue;
+      const count=Math.max(2,Math.ceil((b-a)/TAU*720));paths.push(Array.from({length:count+1},(_,j)=>point(a+(b-a)*j/count)));
+    }
+    const periodic=Math.abs(hi-lo-TAU)<1e-10;
+    for(let i=0;i<ts.length;i++){
+      const left=i?intervals[i-1]:periodic?intervals.at(-1):false,right=i<intervals.length?intervals[i]:periodic?intervals[0]:false;
+      const closed=legal(ts[i])||(periodic&&(i===0||i===ts.length-1)&&legal(i===0?hi:lo));
+      if(left&&right&&closed||!left&&!right&&!closed)continue;
+      const p=point(ts[i]),existing=markers.find(m=>Math.hypot(m.x-p.x,m.y-p.y)<1e-8);if(existing)existing.closed||=closed;else markers.push({...p,closed});
+    }
+    return{paths,markers};
+  }
+  const exported={TAU,validate,validateProfiles,storage,driver,contains,accepts,fit,describe,periodicGeometry};
   globalThis.DongMotionDomain=exported;
   if(typeof window!=='undefined')window.DongMotionDomain=exported;
   if(typeof module!=='undefined')module.exports=exported;

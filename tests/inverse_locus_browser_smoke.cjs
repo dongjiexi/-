@@ -21,6 +21,9 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.mouse.move(from.x,from.y);await page.mouse.down();await page.mouse.move(to.x,to.y,{steps:12});await page.mouse.up();
   frame=await get();assert(Math.abs(frame.R.x-.5)<1e-7&&Math.abs(frame.R.y+.5)<1e-7);const planePose={...frame.P};assert(Math.abs(planePose.y-2)<1e-5,JSON.stringify(planePose));
   await page.locator('[data-study-part="202"]').click();await page.locator('#homeButton').click();
+  const excluded=await page.evaluate(()=>{const record=JSON.parse(localStorage.getItem('zhigeometry:last')),scene=record.scene,obj=scene.objects.find(n=>n.id==='inverse-locus-circle'),driver=scene.objects.find(n=>n.id==='inverse-locus-P');return{geometry:window.DongMotionDomain.periodicGeometry(obj,window.DongMotionDomain.driver(driver,202)),labels:window.DongBoardLabels.snapshot().placements.flatMap(n=>n.names||[])};});
+  assert.equal(excluded.geometry.markers.length,2);assert(excluded.geometry.markers.every(p=>!p.closed&&p.x===0));
+  assert(excluded.labels.includes('不取'),'Actual locus drawing labels the excluded axis intersections');
   frame=await get();assert(Math.abs(frame.P.x**2+(frame.P.y+4)**2-18)<1e-7);assert(Math.abs(frame.R.y/frame.R.x-3*frame.P.y/frame.P.x)<1e-7);
   await page.locator('[data-inspector-view="geometry"]').click();await page.locator('[data-inverse-jump="0"]').click();frame=await get();assert(Math.abs(Math.hypot(frame.P.x-frame.M.x,frame.P.y-frame.M.y)-3*(Math.sqrt(2)+Math.sqrt(3)))<1e-7);
   assert.match(await page.locator('#metrics').textContent(),/已到达最大值/);await screenshot('inverse-locus-maximum-desktop.png',null);
@@ -29,4 +32,16 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="lesson"]').click();await page.locator('[data-study-part="202"]').click();await page.locator('[data-mobile-panel="board"]').click();await page.locator('#homeButton').click();await page.locator('#inverseDistancePanel summary').click();await page.locator('[data-inverse-board-jump="1"]').click();
   frame=await get();assert(frame.P.x>0&&frame.M.x<0);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot('inverse-locus-maximum-390.png',null);
   await page.setViewportSize({width:320,height:740});await screenshot('inverse-locus-maximum-320.png',null);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  // Imported geometry fixture, not an invented exam or AI correctness claim.
+  const fixture={schemaVersion:2,type:'ellipse',a:3,b:1,showConic:false,showDynamic:false,points:{},objects:[
+    {id:'range-circle',kind:'circle',h:0,k:0,r:2,role:'derived_locus',label:'P 的轨迹',visible:true},
+    {id:'range-P',kind:'construction',op:'point_on',refs:['range-circle'],t:Math.PI/4,label:'P',visible:false,motionDomain:{arc:{min:0,max:Math.PI/2,minClosed:false,maxClosed:true}}}
+  ]};
+  await page.locator('#openNativeFile').setInputFiles({name:'range-display-fixture.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
+  await page.locator('#homeButton').click();
+  const markerLabels=()=>page.evaluate(()=>window.DongBoardLabels.snapshot().placements.flatMap(n=>n.names||[]));
+  assert((await markerLabels()).includes('不取'));assert((await markerLabels()).includes('可取端点'),'A hidden driver retains its locus restrictions and endpoint marks');
+  await screenshot('restricted-locus-endpoints-mobile.png',null);
+  await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-mobile-panel="board"]').click();
+  assert((await markerLabels()).includes('不取'));assert((await markerLabels()).includes('可取端点'),'Endpoint marks survive imported-draft reload');
 };
