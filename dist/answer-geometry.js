@@ -19,7 +19,11 @@
     const current=()=>root.DongSceneAudit.frame(scene,construct);
     const point=name=>{
       if(blockedPoints.has(aliasKey(activePart||{},name)))return null;
-      const matches=all().filter(n=>canonical(n.label)===canonical(name)&&(n.kind==='point'||pointOps.has(n.op)));
+      let matches=all().filter(n=>canonical(n.label)===canonical(name)&&(n.kind==='point'||pointOps.has(n.op)));
+      if(matches.length>1&&Number.isInteger(activePart?.index)){
+        const scoped=matches.filter(n=>root.DongSceneAudit.visible({...n,visible:true},activePart.index));
+        if(scoped.length===1)matches=scoped;
+      }
       if(matches.length>1)return null;
       if(matches.length){if(!matches[0].id)matches[0].id=unique('answer-ref-point');return matches[0].id;}
       const features=current()?.features.filter(n=>canonical(n.name)===canonical(name))||[];
@@ -28,7 +32,7 @@
     const scope=part=>Number.isInteger(part?.index)?{part:part.index}:{};
     const owned=node=>node&&String(node.id).startsWith('answer-')&&node.source==='derived';
     const share=(part,node)=>{if(owned(node)&&node.part==null&&Number.isInteger(part.index)){node.parts=[...new Set([...(node.parts||[]),part.index])];}return node;};
-    const existingPoint=(part,name)=>!!point(name);
+    const existingPoint=(part,name)=>!!point(name)||all().some(n=>canonical(n.label)===canonical(name)&&(n.kind==='point'||pointOps.has(n.op)));
     const pending=(part,label,reason,persistent=false)=>{const value={...scope(part),label,reason,...(persistent?{dependencyUnconfirmed:true}:{})};if(report.unresolved.length<60&&!report.unresolved.some(n=>n.label===label&&n.part===value.part&&n.reason===reason))report.unresolved.push(value);};
     const checkExisting=(part,name,op,refs,parameters={})=>{
       if(!existingPoint(part,name))return false;

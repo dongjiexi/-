@@ -82,4 +82,27 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.match(await page.locator('.geometry-notice').textContent(),/N（关系冲突）/);
   await page.locator('[data-study-part="1"]').click();
   assert((await visibleLabels()).includes('N'),'Original point remains available in its original part');
+  await page.evaluate(()=>{
+    const api=window.__answerDependencyApi;
+    const result={title:'同名点分问校核',parts:[1,2].map(index=>({index,label:'第'+index+'问',status:'answered',answer:'连接PN。',steps:[]})),scene:{type:'circle',h:0,k:0,r:3,dynamicLine:false,points:{P:[0,0]},objects:[
+      {id:'scope-n1',kind:'point',source:'user',label:'N',part:1,x:1,y:1},
+      {id:'scope-n2',kind:'point',source:'user',label:'N',part:2,x:2,y:-1}
+    ],lines:[]}};
+    api.enrichSolvedScene(result,'已知点P。');api.installScene(api.modelFromJson(JSON.stringify(result.scene)),'分问同名测试');api.showSolution(result);api.render();
+  });
+  await page.locator('[data-inspector-view="lesson"]').click();
+  for(const index of [1,2]){
+    await page.locator('[data-study-part="'+index+'"]').click();
+    const selected=await page.evaluate(()=>{const api=window.__answerDependencyApi,scene=api.sceneData();return scene.objects.filter(n=>n.op==='segment'&&window.DongSceneAudit.visible(n,scene.activePart)).map(n=>n.refs);});
+    assert.equal(selected.length,1);assert.equal(selected[0][1],'scope-n'+index,'Current part selects its own N');
+    assert((await visibleLabels()).includes('N'));
+  }
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('[data-mobile-panel="lesson"]').click();
+  await page.locator('[data-study-part="1"]').click();
+  await page.locator('[data-mobile-panel="board"]').click();
+  const restored=await page.evaluate(()=>{const api=window.__answerDependencyApi,scene=api.sceneData();return scene.objects.filter(n=>n.op==='segment'&&window.DongSceneAudit.visible(n,scene.activePart)).map(n=>n.refs);});
+  assert.equal(restored.length,1);assert.equal(restored[0][1],'scope-n1','Saved scoped identities survive mobile part switching');
+  assert((await visibleLabels()).includes('N'));
 };
