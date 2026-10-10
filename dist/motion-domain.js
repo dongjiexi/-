@@ -174,7 +174,25 @@
     }
     return{paths,markers};
   }
-  const exported={TAU,validate,validateProfiles,storage,driver,contains,accepts,fit,describe,periodicGeometry,nonPeriodicGeometry};
+  // Binding audit is shared by drawing and its explanation. It does not infer
+  // a locus from a nearby point or certify the equation's sufficiency.
+  function locusDisplay(shape,objects,part,view){
+    if(shape?.role!=='derived_locus')return null;
+    const result=(status,detail,geometry=null)=>({status,detail,geometry});
+    if(!['circle','conic'].includes(shape.kind))return result('unsupported','此类轨迹暂不支持范围绘制；当前仅显示参考图形。');
+    const inPart=n=>part==null||Number(part)===0|| (n.part!=null?Number(n.part)===Number(part):!n.parts?.length||n.parts.some(p=>Number(p)===Number(part)));
+    const candidates=(objects||[]).filter(n=>n.op==='point_on'&&n.refs?.[0]===shape.id&&inPart(n)).map(n=>driver(n,part));
+    if(!candidates.length)return result('unbound','未找到当前小问中绑定此轨迹的动点；请核对动点与轨迹的关联，不能据此认定整条曲线都是轨迹。');
+    if(candidates.length>1)return result('ambiguous','当前小问有多个动点绑定此轨迹；请确认目标动点及其范围，暂不猜测合并或交集。');
+    const source=candidates[0];
+    if(source.mode==='plane')return result('plane','当前小问的动点为平面移动，未沿此曲线约束；请核对小问及运动方式。');
+    let d;try{d=validate(source.motionDomain);}catch{return result('invalid','动点范围数据无效；请检查上下界、开闭端点和排除条件。');}
+    if(!Object.keys(d).length&&!source.excludeAxis)return result('unspecified','未提供明确的运动范围；当前显示参考曲线，请结合原题核对分支、端点及反向构造。');
+    const geometry=periodicGeometry(shape,source)||nonPeriodicGeometry(shape,source,view);
+    if(!geometry)return result('unsupported','当前曲线与范围组合暂不支持绘制；请检查曲线参数，弧段仅适用于圆或椭圆。');
+    return result('displayed','按当前小问已绑定范围显示；这只是范围显示，不替代轨迹方程及充分性的证明。',geometry);
+  }
+  const exported={TAU,validate,validateProfiles,storage,driver,contains,accepts,fit,describe,periodicGeometry,nonPeriodicGeometry,locusDisplay};
   globalThis.DongMotionDomain=exported;
   if(typeof window!=='undefined')window.DongMotionDomain=exported;
   if(typeof module!=='undefined')module.exports=exported;

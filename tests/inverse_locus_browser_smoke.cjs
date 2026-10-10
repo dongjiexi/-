@@ -42,8 +42,18 @@ module.exports=async({page,context,assert,screenshot})=>{
   const markerLabels=()=>page.evaluate(()=>window.DongBoardLabels.snapshot().placements.flatMap(n=>n.names||[]));
   assert((await markerLabels()).includes('不取'));assert((await markerLabels()).includes('可取端点'),'A hidden driver retains its locus restrictions and endpoint marks');
   await screenshot('restricted-locus-endpoints-mobile.png',null);
+  assert.match(await page.locator('#locusRangeSummary').textContent(),/已按绑定范围显示/);
   await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-mobile-panel="board"]').click();
   assert((await markerLabels()).includes('不取'));assert((await markerLabels()).includes('可取端点'),'Endpoint marks survive imported-draft reload');
+  // Ambiguous binding is explained, never resolved by an arbitrary nearby point.
+  const ambiguous={...fixture,objects:[fixture.objects[0],fixture.objects[1],{...fixture.objects[1],id:'range-Q',label:'Q'}]};
+  await page.locator('#openNativeFile').setInputFiles({name:'ambiguous-range-fixture.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(ambiguous))});
+  assert.match(await page.locator('#locusRangeSummary').textContent(),/1 项待确认/);
+  await page.locator('#locusRangeSummary').click();assert.match(await page.locator('#locusRangeDetails').innerText(),/多个动点/);
+  await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-mobile-panel="board"]').click();
+  assert.match(await page.locator('#locusRangeSummary').textContent(),/1 项待确认/);
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await screenshot('locus-range-review-320.png',null);
   // Nonperiodic display protocol fixtures; no additional fabricated exam items.
   for(const shape of [{conicType:'parabola',p:1},{conicType:'hyperbola',a:2,b:1}]){
     const nonperiodic={...fixture,objects:[

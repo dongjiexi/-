@@ -6,6 +6,23 @@ const data=JSON.parse(fs.readFileSync(require.resolve('../dist/question-bank.jso
 const fixture=()=>bank.sceneFor(data.items.find(o=>o.id==='2025-i-18'));
 function engine(m){const c=box.window.DongConstruct.conicShape({...m,conicType:m.type});return box.window.DongConstruct.createEngine({model:()=>m,features:()=>Object.entries(m.points||{}).map(([name,[x,y]])=>({name,x,y})),coeffs:()=>c.q,conicPoint:c.pointAt,conicProject:c.project});}
 const near=(a,b)=>assert(Math.abs(a-b)<1e-8,`${a} != ${b}`);
+test('locus display explains bindings without mutating data or certifying proofs',()=>{
+  const s={id:'locus',role:'derived_locus',kind:'circle',h:0,k:0,r:2},v={xmin:-5,xmax:5,ymin:-5,ymax:5};
+  const p={id:'P',op:'point_on',refs:['locus'],visible:false,motionDomain:{quadrant:1}};
+  const run=(objects,part=1,shape=s)=>domain.locusDisplay(shape,objects,part,v);
+  assert.equal(run([]).status,'unbound');assert.equal(run([{...p,part:2}]).status,'unbound');
+  assert.equal(run([p,{...p,id:'Q'}]).status,'ambiguous');
+  assert.equal(run([{...p,motionDomain:{}}]).status,'unspecified');
+  assert.equal(run([{...p,motionDomain:{x:{min:3,max:1}}}]).status,'invalid');
+  assert.equal(run([p],1,{...s,kind:'function'}).status,'unsupported');
+  assert.equal(run([p],1,{...s,role:'manual'}),null);
+  const profiles={...p,motionByPart:{1:{mode:'plane',x:2,y:1,motionDomain:{}},2:{mode:'curve',t:1,motionDomain:{quadrant:2}}}};
+  const original=JSON.stringify(profiles);assert.equal(run([profiles],1).status,'plane');assert.equal(run([profiles],2).status,'displayed');assert.equal(JSON.stringify(profiles),original);
+  const success=run([p]);assert.equal(success.status,'displayed');assert(success.geometry.paths.length);assert.match(success.detail,/不替代/);
+  assert.equal(run([p,{...p,id:'Q',part:2}]).status,'displayed','Other part does not create ambiguity');
+  assert.equal(run([p,profiles]).status,'ambiguous','A plane-profile candidate must not silently disappear');
+  const axis=run([{...p,motionDomain:{},excludeAxis:'y'}]);assert.equal(axis.status,'displayed');assert.equal(axis.geometry.markers.length,2);
+});
 test('nonperiodic loci separate mathematical endpoints from viewport clipping',()=>{
   const view={xmin:-10,xmax:10,ymin:-8,ymax:8},shape={kind:'conic',conicType:'parabola',p:1};
   const render=d=>domain.nonPeriodicGeometry(shape,{motionDomain:d},view);
