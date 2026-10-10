@@ -48,6 +48,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   // Ambiguous binding is explained, never resolved by an arbitrary nearby point.
   const ambiguous={...fixture,objects:[fixture.objects[0],fixture.objects[1],{...fixture.objects[1],id:'range-Q',label:'Q'}]};
   await page.locator('#openNativeFile').setInputFiles({name:'ambiguous-range-fixture.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(ambiguous))});
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('zhigeometry:last')||'{}').scene?.objects?.some(n=>n.id==='range-Q'));
   assert.match(await page.locator('#locusRangeSummary').textContent(),/1 项待确认/);
   await page.locator('#locusRangeSummary').click();assert.match(await page.locator('#locusRangeDetails').innerText(),/多个动点/);
   await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-mobile-panel="board"]').click();
@@ -61,6 +62,7 @@ module.exports=async({page,context,assert,screenshot})=>{
       {id:'range-P',kind:'construction',op:'point_on',refs:['range-conic'],t:.5,label:'P',visible:false,motionDomain:{parameter:{min:0,max:1,minClosed:false,maxClosed:true}}}
     ]};
     await page.locator('#openNativeFile').setInputFiles({name:'nonperiodic-display-fixture.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(nonperiodic))});
+    await page.waitForFunction(kind=>JSON.parse(localStorage.getItem('zhigeometry:last')||'{}').scene?.objects?.some(n=>n.id==='range-conic'&&n.conicType===kind),shape.conicType);
     await page.locator('#homeButton').click();
     assert((await markerLabels()).includes('不取'),shape.conicType+' open endpoint rendered');
     assert((await markerLabels()).includes('可取端点'),shape.conicType+' closed endpoint rendered');
