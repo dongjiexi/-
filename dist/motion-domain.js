@@ -135,7 +135,46 @@
     }
     return{paths,markers};
   }
-  const exported={TAU,validate,validateProfiles,storage,driver,contains,accepts,fit,describe,periodicGeometry};
+  function nonPeriodicGeometry(shape,object,view){
+    const kind=shape.conicType;if(!['parabola','hyperbola'].includes(kind))return null;
+    let d;try{d=validate(object.motionDomain);}catch{return null;}
+    if(d.arc||!view||!['xmin','xmax','ymin','ymax'].every(key=>finite(view[key]))||view.xmin>=view.xmax||view.ymin>=view.ymax)return null;
+    const vertical=shape.orientation==='vertical',h=Number(shape.h||0),k=Number(shape.k||0),a=Number(shape.a),b=Number(shape.b),p=Number(shape.p),direction=shape.direction===-1?-1:1,branch=d.branch??object.branch??1;
+    if(![h,k].every(finite)||![-1,1].includes(branch)||kind==='parabola'&&(d.branch!=null||!finite(p)||p<=0)||kind==='hyperbola'&&(!finite(a)||!finite(b)||a<=0||b<=0))return null;
+    const minor=vertical?'x':'y',center=vertical?h:k,major=vertical?'y':'x',majorCenter=vertical?k:h;
+    const parameter=value=>kind==='parabola'?value-center:Math.asinh((value-center)/b);
+    const lo=parameter(view[minor+'min']),hi=parameter(view[minor+'max']),critical=[];
+    const bounds={x:[d.x?.min,d.x?.max],y:[d.y?.min,d.y?.max]};
+    if(d.quadrant){bounds.x.push(0);bounds.y.push(0);}
+    for(const axis of [...(d.excludeAxes||[]),...(object.excludeAxis?[object.excludeAxis]:[])])bounds[axis==='x'?'y':'x'].push(0);
+    const point=t=>{const q=kind==='parabola'?{[minor]:center+t,[major]:majorCenter+direction*t*t/(4*p)}:{[minor]:center+b*Math.sinh(t),[major]:majorCenter+branch*a*Math.cosh(t)};for(const axis of ['x','y'])for(const v of bounds[axis])if(v!=null&&Number.isFinite(q[axis])&&Math.abs(q[axis]-v)<=32*Number.EPSILON*Math.max(1,Math.abs(v),Math.abs(q[axis])))q[axis]=v;return q;};
+    const cut=t=>{if(Number.isFinite(t))critical.push(t);};
+    for(const t of [d.parameter?.min,d.parameter?.max])if(t!=null)cut(t);
+    for(const axis of ['x','y'])for(const value of bounds[axis])if(value!=null){
+      if(axis===minor)cut(parameter(value));
+      else if(kind==='parabola'){const square=4*p*(value-majorCenter)/direction;if(square>=0){cut(Math.sqrt(square));cut(-Math.sqrt(square));}}
+      else{const ratio=(value-majorCenter)/(branch*a);if(ratio>=1){cut(Math.acosh(ratio));cut(-Math.acosh(ratio));}}
+    }
+    for(const excluded of d.excludePoints||[]){const target={x:excluded[0],y:excluded[1]},t=parameter(target[minor]),q=point(t);if(Math.hypot(q.x-target.x,q.y-target.y)<=1e-8*Math.max(1,Math.abs(target.x),Math.abs(target.y)))cut(t);}
+    // Screen cuts improve sampling of very narrow visible branches without
+    // turning the screen edge into a mathematical endpoint.
+    const screenCuts=[];
+    for(const value of [view[major+'min'],view[major+'max']]){
+      if(kind==='parabola'){const square=4*p*(value-majorCenter)/direction;if(square>=0)screenCuts.push(Math.sqrt(square),-Math.sqrt(square));}
+      else{const ratio=(value-majorCenter)/(branch*a);if(ratio>=1)screenCuts.push(Math.acosh(ratio),-Math.acosh(ratio));}
+    }
+    const ts=[lo,hi,...critical,...screenCuts].sort((x,y)=>x-y).filter((t,i,arr)=>!i||Math.abs(t-arr[i-1])>1e-12),legal=t=>accepts(object,point(t),{t,branch}),paths=[],markers=[];
+    const intervals=ts.slice(0,-1).map((t,i)=>legal((t+ts[i+1])/2));
+    for(let i=0;i<ts.length-1;i++){const left=ts[i],right=ts[i+1],middle=point((left+right)/2);if(!intervals[i]||left<lo||right>hi||middle[major]<view[major+'min']||middle[major]>view[major+'max'])continue;const n=Math.max(48,Math.min(600,Math.ceil((right-left)/(hi-lo)*600)));paths.push(Array.from({length:n+1},(_,j)=>point(left+(right-left)*j/n)));}
+    for(let i=0;i<ts.length;i++){
+      const t=ts[i];if(t<lo||t>hi||!critical.some(v=>Math.abs(v-t)<1e-12))continue;
+      const left=i?intervals[i-1]:legal(t-1),right=i<intervals.length?intervals[i]:legal(t+1),closed=legal(t);
+      if(left&&right&&closed||!left&&!right&&!closed)continue;
+      const q=point(t);if(q.x>=view.xmin&&q.x<=view.xmax&&q.y>=view.ymin&&q.y<=view.ymax)markers.push({...q,closed});
+    }
+    return{paths,markers};
+  }
+  const exported={TAU,validate,validateProfiles,storage,driver,contains,accepts,fit,describe,periodicGeometry,nonPeriodicGeometry};
   globalThis.DongMotionDomain=exported;
   if(typeof window!=='undefined')window.DongMotionDomain=exported;
   if(typeof module!=='undefined')module.exports=exported;

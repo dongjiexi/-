@@ -44,4 +44,19 @@ module.exports=async({page,context,assert,screenshot})=>{
   await screenshot('restricted-locus-endpoints-mobile.png',null);
   await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-mobile-panel="board"]').click();
   assert((await markerLabels()).includes('不取'));assert((await markerLabels()).includes('可取端点'),'Endpoint marks survive imported-draft reload');
+  // Nonperiodic display protocol fixtures; no additional fabricated exam items.
+  for(const shape of [{conicType:'parabola',p:1},{conicType:'hyperbola',a:2,b:1}]){
+    const nonperiodic={...fixture,objects:[
+      {id:'range-conic',kind:'conic',...shape,h:0,k:0,role:'derived_locus',label:'P 的轨迹',visible:true},
+      {id:'range-P',kind:'construction',op:'point_on',refs:['range-conic'],t:.5,label:'P',visible:false,motionDomain:{parameter:{min:0,max:1,minClosed:false,maxClosed:true}}}
+    ]};
+    await page.locator('#openNativeFile').setInputFiles({name:'nonperiodic-display-fixture.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(nonperiodic))});
+    await page.locator('#homeButton').click();
+    assert((await markerLabels()).includes('不取'),shape.conicType+' open endpoint rendered');
+    assert((await markerLabels()).includes('可取端点'),shape.conicType+' closed endpoint rendered');
+    await screenshot('restricted-'+shape.conicType+'-320.png',null);
+    await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-mobile-panel="board"]').click();
+    assert((await markerLabels()).includes('不取'));assert((await markerLabels()).includes('可取端点'));
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  }
 };

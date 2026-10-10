@@ -6,6 +6,35 @@ const data=JSON.parse(fs.readFileSync(require.resolve('../dist/question-bank.jso
 const fixture=()=>bank.sceneFor(data.items.find(o=>o.id==='2025-i-18'));
 function engine(m){const c=box.window.DongConstruct.conicShape({...m,conicType:m.type});return box.window.DongConstruct.createEngine({model:()=>m,features:()=>Object.entries(m.points||{}).map(([name,[x,y]])=>({name,x,y})),coeffs:()=>c.q,conicPoint:c.pointAt,conicProject:c.project});}
 const near=(a,b)=>assert(Math.abs(a-b)<1e-8,`${a} != ${b}`);
+test('nonperiodic loci separate mathematical endpoints from viewport clipping',()=>{
+  const view={xmin:-10,xmax:10,ymin:-8,ymax:8},shape={kind:'conic',conicType:'parabola',p:1};
+  const render=d=>domain.nonPeriodicGeometry(shape,{motionDomain:d},view);
+  const full=render({});assert.equal(full.markers.length,0);assert.equal(full.paths.length,1);
+  const narrow=domain.nonPeriodicGeometry({...shape,p:1e-8},{motionDomain:{y:{min:0}}},view);assert(narrow.paths.length>0);assert(narrow.paths.flat().some(q=>q.x>5));assert.equal(narrow.markers.length,1);assert(narrow.markers[0].closed);
+  const cut=render({x:{min:1,max:4,maxClosed:false}});assert.equal(cut.paths.length,2);assert.equal(cut.markers.length,4);
+  assert.equal(cut.markers.filter(p=>p.closed&&p.x===1).length,2);assert.equal(cut.markers.filter(p=>!p.closed&&p.x===4).length,2);
+  for(const path of cut.paths)for(const p of path)near(p.y*p.y,4*p.x);
+  const singleton=render({x:{max:0}});assert.equal(singleton.paths.length,0);assert.deepEqual(singleton.markers,[{x:0,y:0,closed:true}]);
+  const empty=render({x:{max:0,maxClosed:false}});assert.equal(empty.paths.length,0);assert.equal(empty.markers.length,0);
+  const hole=render({excludePoints:[[1,2]]});assert.equal(hole.markers.length,1);assert.deepEqual(hole.markers[0],{x:1,y:2,closed:false});
+  assert.equal(render({parameter:{min:-100,max:100}}).markers.length,0,'Offscreen domain endpoints are not clamped onto viewport');
+  const edge=domain.nonPeriodicGeometry(shape,{motionDomain:{parameter:{min:2}}},{xmin:0,xmax:10,ymin:2,ymax:6});assert.deepEqual(edge.markers,[{x:1,y:2,closed:true}]);
+  const shifted={...shape,orientation:'vertical',direction:-1,h:2,k:3,p:2};
+  const down=domain.nonPeriodicGeometry(shifted,{motionDomain:{parameter:{min:-2,max:3,minClosed:false}}},view);
+  assert.equal(down.markers.length,2);for(const path of down.paths)for(const q of path)near((q.x-2)**2,-8*(q.y-3));
+});
+test('hyperbolic loci keep branch, open boundaries and finite display samples',()=>{
+  const view={xmin:-10,xmax:10,ymin:-8,ymax:8},shape={kind:'conic',conicType:'hyperbola',a:2,b:1};
+  const render=(d,branch)=>domain.nonPeriodicGeometry(shape,{motionDomain:d,branch},view);
+  const left=render({x:{min:-5,max:-3,minClosed:false}},-1);assert.equal(left.paths.length,2);assert.equal(left.markers.length,4);
+  assert(left.markers.filter(p=>!p.closed).every(p=>p.x===-5));assert(left.markers.filter(p=>p.closed).every(p=>p.x===-3));
+  for(const path of left.paths)for(const q of path){near(q.x*q.x/4-q.y*q.y,1);assert(q.x<0);}
+  const right=render({branch:1,excludeAxes:['x']},-1);assert.equal(right.markers.length,1);assert.deepEqual(right.markers[0],{x:2,y:0,closed:false});assert(right.paths.flat().every(q=>q.x>=2));
+  const vertical=domain.nonPeriodicGeometry({...shape,orientation:'vertical',h:1,k:2},{motionDomain:{branch:-1,parameter:{min:-1,max:1}}},view);
+  for(const path of vertical.paths)for(const q of path){near((q.y-2)**2/4-(q.x-1)**2,1);assert(q.y<=0);}
+  const extreme=render({parameter:{min:-100000,max:100000},x:{min:2}});assert.equal(extreme.markers.length,0);assert(extreme.paths.flat().every(q=>Number.isFinite(q.x)&&Number.isFinite(q.y)));
+  assert.equal(render({arc:{min:0,max:1}}),null);assert.equal(domain.nonPeriodicGeometry(shape,{motionDomain:{}},{...view,xmax:Infinity}),null);
+});
 test('literal domains reject executable, unknown, nonfinite, empty and malformed data',()=>{
   for(const raw of [[],{quadrant:0},{branch:0},{x:{min:2,max:1}},{parameter:{min:0,max:0,minClosed:false}},{arc:{min:0,max:0}},{arc:{min:0,max:7}},{x:{min:Infinity}},{y:{min:0,minClosed:'true'}},{excludeAxes:['z']},{eval:'alert(1)'},JSON.parse('{"__proto__":{}}')])assert.throws(()=>domain.validate(raw));
   assert.deepEqual(domain.validate({quadrant:2,excludeAxes:['y','y']}),{quadrant:2,excludeAxes:['y']});
