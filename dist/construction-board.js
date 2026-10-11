@@ -237,7 +237,6 @@
     function objectList(){
       const box=$('boardObjects');if(!box)return;
       const query=($('boardObjectSearch')?.value||'').trim().toLowerCase(),all=engine.objects();
-      if($('boardObjectsPanel'))$('boardObjectsPanel').hidden=!all.length;
       const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
       const rows=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:(o.refs||[]).map(title)})).filter(o=>!query||(o.label+' '+o.type).toLowerCase().includes(query));
       $('boardObjectsCount').textContent=`（${rows.length}/${all.length}）`;
@@ -255,6 +254,8 @@
       if(focusId)Array.from(box.querySelectorAll('[data-object-id]')).find(n=>n.dataset.objectId===focusId&&n.dataset.objectAction===focusAction)?.focus({preventScroll:true});
     }
     $('boardObjectSearch')?.addEventListener('input',objectList);
+    $('openObjectManager')?.addEventListener('click',()=>{objectList();$('objectManagerDialog').showModal();});
+    $('closeObjectManager')?.addEventListener('click',()=>$('objectManagerDialog').close());
     function title(id){if(id==='$conic')return '主圆锥曲线';if(id==='$dynamic')return '动直线';if(id?.startsWith('feature:'))return id.slice(8);return engine.getObject(id)?.label||staged.find(o=>o.id===id)?.label||'对象';}
     function describe(shape,object){
       if(!shape)return '暂未定义：检查依赖对象是否存在，或两条曲线当前是否相交。';

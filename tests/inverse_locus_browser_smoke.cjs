@@ -42,7 +42,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   const markerLabels=()=>page.evaluate(()=>window.DongBoardLabels.snapshot().placements.flatMap(n=>n.names||[]));
   assert((await markerLabels()).includes('不取'));assert((await markerLabels()).includes('可取端点'),'A hidden driver retains its locus restrictions and endpoint marks');
   await screenshot('restricted-locus-endpoints-mobile.png',null);
-  await page.locator('#boardObjectsPanel summary').click();
+  await page.locator('#openObjectManager').click();
   const driverRow=page.locator('#boardObjects [data-object-id="range-P"]');
   await driverRow.filter({hasText:'P'}).click();
   assert.equal(await page.locator('#boardObjects [data-object-id="range-P"][data-object-action="select"]').getAttribute('aria-pressed'),'true');
@@ -50,12 +50,15 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.equal(await visibility.isChecked(),false);await visibility.check();assert.equal(await visibility.isChecked(),true);
   assert((await markerLabels()).includes('不取'),'Showing the driver preserves its range');
   await visibility.uncheck();assert.equal(await visibility.isChecked(),false);
+  await page.locator('#closeObjectManager').click();
   await page.locator('#undoDrag').click();assert.equal(await visibility.isChecked(),true);
   await page.locator('#redoDrag').click();assert.equal(await visibility.isChecked(),false);
+  await page.locator('#openObjectManager').click();
   await page.locator('#boardObjectSearch').fill('不存在的对象');assert.match(await page.locator('#boardObjects').innerText(),/没有匹配/);
   await page.locator('#boardObjectSearch').fill('');assert.equal(await visibility.isChecked(),false);
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await screenshot('object-manager-mobile-320.png',null);
+  await page.locator('#closeObjectManager').click();
   assert.match(await page.locator('#locusRangeSummary').textContent(),/已按绑定范围显示/);
   await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-mobile-panel="board"]').click();
   assert((await markerLabels()).includes('不取'));assert((await markerLabels()).includes('可取端点'),'Endpoint marks survive imported-draft reload');

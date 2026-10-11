@@ -534,12 +534,13 @@
         <div id="dragHint" class="drag-hint" role="status">拖动动点沿轨迹；拖空白处移动视野。</div>
         <div id="snapStatus" class="snap-status" role="status" aria-live="polite"></div>
         <div class="canvas-wrap">
+          <button id="openObjectManager" class="button secondary" type="button" style="position:absolute;right:.5rem;top:.5rem;z-index:3" aria-haspopup="dialog">对象</button>
           <canvas id="canvas" aria-label="解析几何动态画板"></canvas>
           <div id="pointHoverCard" class="point-hover-card" role="tooltip" hidden></div>
           <div class="empty" id="emptyState"><div><strong>直接在这里作图</strong>选择上方“点”“直线”或“圆”，再点击画板。不必先输入标准方程；也可以在左侧导入题目。</div></div>
         </div>
         <p id="undefinedObjects" class="native-warning" role="status"></p>
-        <details id="boardObjectsPanel"><summary>对象管理 <span id="boardObjectsCount"></span></summary><div style="padding:.6rem"><label>查找对象 <input id="boardObjectSearch" type="search" placeholder="名称或构造类型" style="max-width:100%"></label><p class="help">包含追加的图形与关联构造；隐藏对象仍保留计算关系。点击名称选中，再到“解析与检验 → 几何”编辑。主曲线与题设坐标仍由原参数入口管理。</p><div id="boardObjects" style="max-height:18rem;overflow:auto"></div></div></details>
+        <dialog id="objectManagerDialog" class="study-dialog" aria-label="对象管理"><header><h2>对象管理</h2><button id="closeObjectManager" class="button secondary" type="button">返回画板</button></header><details id="boardObjectsPanel" open><summary>对象管理 <span id="boardObjectsCount"></span></summary><div style="padding:.6rem"><label>查找对象 <input id="boardObjectSearch" type="search" placeholder="名称或构造类型" style="max-width:100%"></label><p class="help">包含追加的图形与关联构造；隐藏对象仍保留计算关系。点击名称选中，再到“解析与检验 → 几何”编辑。主曲线与题设坐标仍由原参数入口管理。</p><div id="boardObjects" style="max-height:18rem;overflow:auto"></div></div></details></dialog>
         <details id="locusRangeAudit" hidden><summary id="locusRangeSummary">轨迹范围核对</summary><div id="locusRangeDetails" class="help" style="padding:.5rem 1rem;overflow-wrap:anywhere"></div></details>
         <div class="legend"><span style="--c:#0f9f99">圆锥曲线</span><span style="--c:#f2a33c">动直线</span><span style="--c:#e58c21">题设图形</span><span style="--c:#7c5ac9">题设点线</span><span style="--c:#df5b62">交点</span><span style="--c:#3f78d8">焦点 / 圆心</span></div>
         <details id="inverseDistancePanel" hidden><summary>距离最值与定位</summary><div id="inverseDistanceReadout"></div></details>
