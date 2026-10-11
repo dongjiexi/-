@@ -52,6 +52,8 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#confirmAddConic').click();await page.locator('#addConicDialog').waitFor({state:'hidden'});
   assert.equal(await page.locator('#objectManagerDialog').evaluate(el=>el.open),true,'Nested curve editor returns to object manager');
   await page.locator('#closeObjectManager').click();
+  // Native dialog close events are queued; wait for restoration, not a frame race.
+  await page.locator('#nativeInspectorHome #nativeInspector').waitFor({state:'attached'});
   assert.equal(await page.locator('#nativeInspectorHome #nativeInspector').count(),1);
   let edited=await scene();assert.equal(edited.objects.length,objectCount);
   const circle=edited.objects.find(o=>o.id==='c');assert.equal(circle.r,2);assert.equal(circle.h,.5);assert.equal(circle.label,'辅助圆');

@@ -62,6 +62,8 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert((await markerLabels()).includes('不取'),'Showing the driver preserves its range');
   await visibility.uncheck();assert.equal(await visibility.isChecked(),false);
   await page.locator('#closeObjectManager').click();
+  // Native dialog close events are queued; wait for restoration, not a frame race.
+  await page.locator('#nativeInspectorHome #nativeInspector').waitFor({state:'attached'});
   assert.equal(await page.locator('#nativeInspectorHome #nativeInspector').count(),1,'Closing restores the single inspector, not a stale duplicate');
   await page.locator('#undoDrag').click();assert.equal(await visibility.isChecked(),true);
   await page.locator('#redoDrag').click();assert.equal(await visibility.isChecked(),false);
