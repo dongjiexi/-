@@ -238,15 +238,18 @@
       const box=$('boardObjects');if(!box)return;
       const query=($('boardObjectSearch')?.value||'').trim().toLowerCase(),all=engine.objects();
       const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
-      const rows=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:(o.refs||[]).map(title)})).filter(o=>!query||(o.label+' '+o.type).toLowerCase().includes(query));
-      $('boardObjectsCount').textContent=`（${rows.length}/${all.length}）`;
+      const entries=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:(o.refs||[]).map(title)}));
+      if(state.model&&!state.model.isFreeBoard)entries.unshift({id:'$conic',label:'主圆锥曲线',type:'主曲线（参数入口编辑）',shown:state.model.showConic!==false,active:true,refs:[],readonly:true});
+      const seenFeatures=new Set();for(const feature of api.features()){if(seenFeatures.has(feature.name))continue;seenFeatures.add(feature.name);entries.push({id:'feature:'+feature.name,label:feature.name,type:'题设 / 内置点（只读）',shown:api.featureVisible?api.featureVisible(feature):true,active:true,refs:[],readonly:true});}
+      const rows=entries.filter(o=>!query||(o.label+' '+o.type).toLowerCase().includes(query));
+      $('boardObjectsCount').textContent=`（${rows.length}/${entries.length}）`;
       const key=JSON.stringify([selected,rows]);if(key===objectListKey)return;objectListKey=key;
       const focus=document.activeElement,focusId=box.contains(focus)?focus.dataset.objectId:null,focusAction=focus?.dataset.objectAction;
       box.replaceChildren();
-      if(!rows.length){const p=document.createElement('p');p.className='help';p.textContent=all.length?'没有匹配的对象。':'暂无追加对象，可用作图工具添加点、线或曲线。';box.append(p);}
+      if(!rows.length){const p=document.createElement('p');p.className='help';p.textContent=entries.length?'没有匹配的对象。':'暂无追加对象，可用作图工具添加点、线或曲线。';box.append(p);}
       for(const row of rows){
         const item=document.createElement('div');item.style.cssText='padding:.45rem 0;border-bottom:1px solid #dce5e8;overflow-wrap:anywhere';
-        const show=document.createElement('input');show.type='checkbox';show.checked=row.shown;show.setAttribute('aria-label','显示 '+row.label);show.dataset.objectId=row.id;show.dataset.objectAction='visibility';
+        const show=document.createElement('input');show.type='checkbox';show.checked=row.shown;show.disabled=!!row.readonly;show.style.cssText='width:20px;min-height:20px;margin:0 .5rem 0 0;vertical-align:middle';show.setAttribute('aria-label','显示 '+row.label);show.dataset.objectId=row.id;show.dataset.objectAction='visibility';
         show.onchange=()=>{const obj=engine.getObject(row.id);if(obj)api.transaction(()=>obj.visible=show.checked);};
         const pick=document.createElement('button');pick.type='button';pick.className='button secondary';pick.textContent=row.label;pick.setAttribute('aria-pressed',String(selected===row.id));pick.dataset.objectId=row.id;pick.dataset.objectAction='select';pick.onclick=()=>{select(row.id);api.render();};
         const detail=document.createElement('p');detail.className='help';detail.style.margin='.25rem 0';detail.textContent=row.type+(row.active?'':' · 不属于当前小问')+(row.reason?' · '+row.reason:'')+(row.refs.length?' · 依赖：'+row.refs.join('、'):'');item.append(show,pick,detail);box.append(item);
@@ -254,8 +257,9 @@
       if(focusId)Array.from(box.querySelectorAll('[data-object-id]')).find(n=>n.dataset.objectId===focusId&&n.dataset.objectAction===focusAction)?.focus({preventScroll:true});
     }
     $('boardObjectSearch')?.addEventListener('input',objectList);
-    $('openObjectManager')?.addEventListener('click',()=>{objectList();$('objectManagerDialog').showModal();});
+    $('openObjectManager')?.addEventListener('click',()=>{objectList();$('objectInspectorSlot').append($('nativeInspector'));$('objectManagerDialog').showModal();inspector();});
     $('closeObjectManager')?.addEventListener('click',()=>$('objectManagerDialog').close());
+    $('objectManagerDialog')?.addEventListener('close',()=>{$('nativeInspectorHome').append($('nativeInspector'));});
     function title(id){if(id==='$conic')return '主圆锥曲线';if(id==='$dynamic')return '动直线';if(id?.startsWith('feature:'))return id.slice(8);return engine.getObject(id)?.label||staged.find(o=>o.id===id)?.label||'对象';}
     function describe(shape,object){
       if(!shape)return '暂未定义：检查依赖对象是否存在，或两条曲线当前是否相交。';
@@ -269,7 +273,8 @@
     function inspector(){
       const box=$('nativeInspector');if(!selected){box.textContent='点击画板上的对象，查看坐标、方程与构造关系。';return;}
       box.replaceChildren();const heading=document.createElement('strong');heading.textContent=title(selected);box.append(heading);
-      const object=engine.getObject(selected),p=document.createElement('p');p.dataset.liveEquation='';p.textContent=engine.invalidReason(selected)||describe(engine.resolve(selected),object);box.append(p);
+      const object=engine.getObject(selected),p=document.createElement('p');p.dataset.liveEquation='';p.textContent=selected==='$conic'?api.primaryEquation?.()||describe(engine.resolve(selected)):engine.invalidReason(selected)||describe(engine.resolve(selected),object);box.append(p);
+      if(!object){const note=document.createElement('p');note.className='help';note.textContent='主曲线和题设 / 内置点在此只读，避免误改题设或断开构造；主曲线请在参数入口编辑。';box.append(note);}
       if(object?.refs){const refs=document.createElement('p');refs.className='help';refs.textContent='依赖：'+object.refs.map(title).join('、')+'。拖动源点会自动重算。';box.append(refs);}
       if(object){
         if(api.editableConic?.(object)){const edit=document.createElement('button');edit.className='button secondary';edit.textContent='编辑曲线参数';edit.onclick=()=>api.editConic(object.id);box.append(edit);}
@@ -282,7 +287,8 @@
           field.append(angle);box.append(field,apply,keyboard);
         }
         const rename=document.createElement('input');rename.setAttribute('aria-label','对象名称');rename.value=object.label||'';rename.maxLength=24;rename.title='修改名称，不改变构造关系';
-        rename.onchange=()=>{const name=rename.value.trim(),old=object.label;if(!name){rename.value=old;return;}if(engine.objects().some(o=>o.id!==object.id&&o.label===name)||api.features().some(p=>p.name===name)){hint('该名称已被使用，请换一个名称。');rename.value=old;return;}api.transaction(()=>{object.label=name;for(const line of engine.objects())if(line.kind==='through_points'){if(line.a===old)line.a=name;if(line.b===old)line.b=name;}});};box.append(rename);
+        const feedback=document.createElement('p');feedback.className='help';feedback.dataset.objectFeedback='';feedback.setAttribute('role','status');
+        rename.onchange=()=>{const name=rename.value.trim(),old=object.label;if(!name){feedback.textContent='名称不能为空，已保留原名称。';rename.value=old||'';return;}if(name===old){feedback.textContent='';return;}if(engine.objects().some(o=>o.id!==object.id&&o.label===name)||api.features().some(p=>p.name===name)){feedback.textContent='该名称已被使用，请换一个名称。';rename.value=old||'';return;}api.transaction(()=>{object.label=name;for(const line of engine.objects())if(line.kind==='through_points'){if(line.a===old)line.a=name;if(line.b===old)line.b=name;}});feedback.textContent='名称已更新，构造标识不变。';};box.append(rename,feedback);
         const row=document.createElement('div');row.className='native-inspector-actions';
         const toggle=document.createElement('button');toggle.textContent=object.visible===false?'显示对象':'隐藏对象';toggle.onclick=()=>{api.transaction(()=>object.visible=object.visible===false);inspector();};
         const remove=document.createElement('button'),count=engine.descendants(selected).size;remove.textContent=count>1?`删除及关联 (${count})`:'删除对象';remove.onclick=()=>removeObject(selected);row.append(toggle,remove);box.append(row);

@@ -40,8 +40,9 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.deepEqual(circleTangent.refs,[circlePoint.id,'c']);
   await page.locator('[data-construct="normal"]').click();await click(-1,0);await click(Math.SQRT1_2,Math.SQRT1_2);
   await page.locator('#moveMode').click();
-  const row=page.locator('#layers .layer-row').filter({hasText:'C1'});
-  await row.getByRole('button',{name:'编辑',exact:true}).click();
+  await page.locator('#openObjectManager').click();
+  await page.locator('#boardObjects [data-object-id="c"][data-object-action="select"]').click();
+  await page.locator('#objectInspectorSlot #nativeInspector').getByRole('button',{name:'编辑曲线参数',exact:true}).click();
   assert.equal(await page.locator('#addConicType').isDisabled(),true);
   assert.equal(await page.locator('#addConicFields [data-equation-param="r"]').inputValue(),'1');
   await page.locator('#addConicFields [data-equation-param="r"]').fill('2');
@@ -49,6 +50,9 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#addConicName').fill('辅助圆');
   const objectCount=(await scene()).objects.length;
   await page.locator('#confirmAddConic').click();await page.locator('#addConicDialog').waitFor({state:'hidden'});
+  assert.equal(await page.locator('#objectManagerDialog').evaluate(el=>el.open),true,'Nested curve editor returns to object manager');
+  await page.locator('#closeObjectManager').click();
+  assert.equal(await page.locator('#nativeInspectorHome #nativeInspector').count(),1);
   let edited=await scene();assert.equal(edited.objects.length,objectCount);
   const circle=edited.objects.find(o=>o.id==='c');assert.equal(circle.r,2);assert.equal(circle.h,.5);assert.equal(circle.label,'辅助圆');
   assert.equal(circle.equation,'(x−(1/2))²+y²=4');

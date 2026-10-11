@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.62.0">
+  <meta name="dongjiexi-version" content="0.63.0">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.62.0">
-  <link rel="stylesheet" href="classroom.css?v=0.62.0">
-  <link rel="stylesheet" href="question-bank.css?v=0.62.0">
+  <link rel="stylesheet" href="learning-ui.css?v=0.63.0">
+  <link rel="stylesheet" href="classroom.css?v=0.63.0">
+  <link rel="stylesheet" href="question-bank.css?v=0.63.0">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -418,12 +418,12 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.62.0">
+  <link rel="stylesheet" href="theme.css?v=0.63.0">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.62.0 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.63.0 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -540,7 +540,7 @@
           <div class="empty" id="emptyState"><div><strong>直接在这里作图</strong>选择上方“点”“直线”或“圆”，再点击画板。不必先输入标准方程；也可以在左侧导入题目。</div></div>
         </div>
         <p id="undefinedObjects" class="native-warning" role="status"></p>
-        <dialog id="objectManagerDialog" class="study-dialog" aria-label="对象管理"><header><h2>对象管理</h2><button id="closeObjectManager" class="button secondary" type="button">返回画板</button></header><details id="boardObjectsPanel" open><summary>对象管理 <span id="boardObjectsCount"></span></summary><div style="padding:.6rem"><label>查找对象 <input id="boardObjectSearch" type="search" placeholder="名称或构造类型" style="max-width:100%"></label><p class="help">包含追加的图形与关联构造；隐藏对象仍保留计算关系。点击名称选中，再到“解析与检验 → 几何”编辑。主曲线与题设坐标仍由原参数入口管理。</p><div id="boardObjects" style="max-height:18rem;overflow:auto"></div></div></details></dialog>
+        <dialog id="objectManagerDialog" class="study-dialog" aria-label="对象管理"><header><h2>对象管理</h2><button id="closeObjectManager" class="button secondary" type="button">返回画板</button></header><details id="boardObjectsPanel" open><summary>对象管理 <span id="boardObjectsCount"></span></summary><div style="padding:.6rem"><label>查找对象 <input id="boardObjectSearch" type="search" placeholder="名称或构造类型" style="max-width:100%"></label><p class="help">点击名称可在下方查看和编辑属性。主曲线和题设坐标可查看；题设点不在这里改名或解绑。隐藏对象仍保留依赖关系。</p><div id="boardObjects" style="max-height:18rem;overflow:auto"></div></div></details><section id="objectInspectorSlot" aria-label="对象属性"></section></dialog>
         <details id="locusRangeAudit" hidden><summary id="locusRangeSummary">轨迹范围核对</summary><div id="locusRangeDetails" class="help" style="padding:.5rem 1rem;overflow-wrap:anywhere"></div></details>
         <div class="legend"><span style="--c:#0f9f99">圆锥曲线</span><span style="--c:#f2a33c">动直线</span><span style="--c:#e58c21">题设图形</span><span style="--c:#7c5ac9">题设点线</span><span style="--c:#df5b62">交点</span><span style="--c:#3f78d8">焦点 / 圆心</span></div>
         <details id="inverseDistancePanel" hidden><summary>距离最值与定位</summary><div id="inverseDistanceReadout"></div></details>
@@ -560,7 +560,7 @@
             <div class="divider"></div>
             <h2 class="panel-title">当前模型</h2>
             <div id="equation" class="equation">—</div>
-            <section id="nativeInspector" class="native-inspector" aria-label="选中对象与构造关系"></section>
+            <div id="nativeInspectorHome"><section id="nativeInspector" class="native-inspector" aria-label="选中对象与构造关系"></section></div>
             <section class="construction" aria-label="自由作图与图层">
               <h2 class="panel-title" style="margin-bottom:.2rem">函数与图层</h2>
               <details id="objectBuilderDetails" class="compact-section"><summary>展开方程模板与添加对象</summary><div>
@@ -625,49 +625,49 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.62.0"></script>
+  <script src="runtime.js?v=0.63.0"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.62.0"></script>
-  <script src="number-display.js?v=0.62.0"></script>
-  <script src="label-layout.js?v=0.62.0"></script>
-  <script src="step-highlight.js?v=0.62.0"></script>
-  <script src="scene-audit.js?v=0.62.0"></script>
-  <script src="answer-geometry.js?v=0.62.0"></script>
-  <script src="scene-merge.js?v=0.62.0"></script>
-  <script src="tangent-solver.js?v=0.62.0"></script>
-  <script src="ellipse-distance.js?v=0.62.0"></script>
-  <script src="circle-dot.js?v=0.62.0"></script>
-  <script src="orthogonal-chord.js?v=0.62.0"></script>
-  <script src="axis-intercept-chord.js?v=0.62.0"></script>
-  <script src="conic-area.js?v=0.62.0"></script>
-  <script src="basic-conditions.js?v=0.62.0"></script>
-  <script src="ellipse-area-chord.js?v=0.62.0"></script>
-  <script src="vertex-secant.js?v=0.62.0"></script>
-  <script src="inverse-locus.js?v=0.62.0"></script>
-  <script src="symmetric-chord.js?v=0.62.0"></script>
-  <script src="parabola-locus.js?v=0.62.0"></script>
-  <script src="question-parts.js?v=0.62.0"></script>
-  <script src="goal-coverage.js?v=0.62.0"></script>
-  <script src="solution-review.js?v=0.62.0"></script>
-  <script src="parabola-focal-data.js?v=0.62.0"></script>
-  <script src="circle-fold.js?v=0.62.0"></script>
-  <script src="circle-fold-view.js?v=0.62.0"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.62.0">
-  <script src="hyperbola-iteration.js?v=0.62.0"></script>
-  <script src="conic-parameter.js?v=0.62.0"></script>
-  <script src="ellipse-focal-chord.js?v=0.62.0"></script>
-  <script src="external-ai.js?v=0.62.0"></script>
-  <script src="learning-ui.js?v=0.62.0"></script>
-  <script src="classroom.js?v=0.62.0"></script>
-  <script src="question-bank.js?v=0.62.0"></script>
-  <script src="construction-board.js?v=0.62.0"></script>
-  <script src="motion-domain.js?v=0.62.0"></script>
-  <script src="motion-protection.js?v=0.62.0"></script>
-  <script src="drag-board.js?v=0.62.0"></script>
-  <script src="equation-builder.js?v=0.62.0"></script>
-  <script src="math-keyboard.js?v=0.62.0"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.62.0"></script>
+  <script src="math-input.js?v=0.63.0"></script>
+  <script src="number-display.js?v=0.63.0"></script>
+  <script src="label-layout.js?v=0.63.0"></script>
+  <script src="step-highlight.js?v=0.63.0"></script>
+  <script src="scene-audit.js?v=0.63.0"></script>
+  <script src="answer-geometry.js?v=0.63.0"></script>
+  <script src="scene-merge.js?v=0.63.0"></script>
+  <script src="tangent-solver.js?v=0.63.0"></script>
+  <script src="ellipse-distance.js?v=0.63.0"></script>
+  <script src="circle-dot.js?v=0.63.0"></script>
+  <script src="orthogonal-chord.js?v=0.63.0"></script>
+  <script src="axis-intercept-chord.js?v=0.63.0"></script>
+  <script src="conic-area.js?v=0.63.0"></script>
+  <script src="basic-conditions.js?v=0.63.0"></script>
+  <script src="ellipse-area-chord.js?v=0.63.0"></script>
+  <script src="vertex-secant.js?v=0.63.0"></script>
+  <script src="inverse-locus.js?v=0.63.0"></script>
+  <script src="symmetric-chord.js?v=0.63.0"></script>
+  <script src="parabola-locus.js?v=0.63.0"></script>
+  <script src="question-parts.js?v=0.63.0"></script>
+  <script src="goal-coverage.js?v=0.63.0"></script>
+  <script src="solution-review.js?v=0.63.0"></script>
+  <script src="parabola-focal-data.js?v=0.63.0"></script>
+  <script src="circle-fold.js?v=0.63.0"></script>
+  <script src="circle-fold-view.js?v=0.63.0"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.63.0">
+  <script src="hyperbola-iteration.js?v=0.63.0"></script>
+  <script src="conic-parameter.js?v=0.63.0"></script>
+  <script src="ellipse-focal-chord.js?v=0.63.0"></script>
+  <script src="external-ai.js?v=0.63.0"></script>
+  <script src="learning-ui.js?v=0.63.0"></script>
+  <script src="classroom.js?v=0.63.0"></script>
+  <script src="question-bank.js?v=0.63.0"></script>
+  <script src="construction-board.js?v=0.63.0"></script>
+  <script src="motion-domain.js?v=0.63.0"></script>
+  <script src="motion-protection.js?v=0.63.0"></script>
+  <script src="drag-board.js?v=0.63.0"></script>
+  <script src="equation-builder.js?v=0.63.0"></script>
+  <script src="math-keyboard.js?v=0.63.0"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.63.0"></script>
   <script src="geogebra-bridge.js?v=0.7.0"></script>
   <script>
   (() => {
@@ -1916,7 +1916,7 @@
     function nativeFeatures(){if(!state.model)return [];const fs=features();if(!state.model.isFreeBoard)intersections().forEach((p,i)=>{const name=(state.model.dynamicIntersectionLabels||['A','B'])[i];if(name&&!fs.some(f=>f.name===name))fs.push({...p,name,nativeDynamic:true});});if(state.model.pairedChord)secondIntersections().forEach((p,i)=>{const name=state.model.pairedChord.labels[i];if(name&&!fs.some(f=>f.name===name))fs.push({...p,name,nativeDynamic:true});});if(Number.isFinite(state.model.fixedPoint?.x))fs.push({...state.model.fixedPoint,nativeDynamic:true});return fs;}
     nativeController=window.DongConstruct.attach({state,canvas,ctx,xy,features:nativeFeatures,featureVisible:p=>p.nativeDynamic?state.model.showDynamic!==false&&state.model.showConic!==false&&visibleForPart({part:state.model.dynamicLinePart,parts:state.model.dynamicLineParts}):featureVisible(p),coeffs,origin:lineOrigin,angle2:()=>P('theta2'),conicPoint,conicProject,visible:visibleForPart,render,
       world:p=>({x:worldX(p.x),y:worldY(p.y)}),snap:p=>$('#snapDrag').checked?{x:Math.round(p.x*2)/2,y:Math.round(p.y*2)/2}:p,
-      point,path:strokePath,annotation,clip:clipNativeLine,transaction:nativeTransaction,editConic,editableConic,
+      point,path:strokePath,annotation,clip:clipNativeLine,transaction:nativeTransaction,editConic,editableConic,primaryEquation:equationText,
       ensureScene(){if(!state.model)installScene(modelFromJson('{"type":"circle","r":3,"isFreeBoard":true,"showConic":false,"showDynamic":false,"showFeatures":false,"title":"本地自由画板"}'),'自由画板');}
     });
     dragController=window.DongDrag.attach({canvas,ctx,state,xy,worldX,worldY,features,lineOrigin,intersections,endpoints:endpointsForLine,visible:visibleForPart,render,
@@ -1974,6 +1974,6 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.62.0"></script>
+  <script src="pwa.js?v=0.63.0"></script>
 </body>
 </html>
