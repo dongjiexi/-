@@ -191,7 +191,7 @@
       if(objects().some(o=>o.id!==id&&o.label===name)||(api.features?.()||[]).some(p=>p.name===name))throw new Error('该名称已被使用，请换一个名称。');
       // Only migrate named point references when the old name unambiguously
       // resolves to this point. Curve names must never rewrite point bindings.
-      const point=resolve(id)?.type==='point';
+      const point=object.kind==='point'||object.kind==='construction'&&['midpoint','inverse','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection','point_on'].includes(object.op);
       if(point&&old&&objects().filter(o=>o.label===old).length!==1)throw new Error('原名称存在重复，请先核对图稿，避免改错引用。');
       if(point&&old){
         for(const line of objects())if(line.kind==='through_points'){if(line.a===old)line.a=name;if(line.b===old)line.b=name;}

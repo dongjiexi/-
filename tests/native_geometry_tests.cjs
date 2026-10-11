@@ -23,6 +23,11 @@ test('curve rename cannot rewrite point references and ambiguous point names are
   model.lines=[{id:'line',kind:'through_points',a:'C',b:'P'}];engine.renameObject('c','圆');assert.equal(model.lines[0].a,'C');
   const before=JSON.stringify(model);assert.throws(()=>engine.renameObject('p','T'),/重复/);assert.equal(JSON.stringify(model),before);
 });
+test('temporarily undefined constructed points retain name references when renamed',()=>{
+  const {model,engine}=fixture([{id:'hit',kind:'construction',op:'intersection',refs:['missing-a','missing-b'],label:'X'}]);
+  model.lines=[{id:'line',kind:'through_points',a:'X',b:'O'}];model.polygons=[{labels:['X','O','Q'],label:'△XOQ'}];
+  assert.equal(engine.resolve('hit'),null);engine.renameObject('hit','Y');assert.equal(model.lines[0].a,'Y');assert.equal(model.polygons[0].labels[0],'Y');assert.equal(model.polygons[0].label,'△YOQ');
+});
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../dist/equation-builder.js'), 'utf8'), sandbox);
 
 function near(actual, expected, label = 'number') {
