@@ -33,7 +33,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   frame=await get();assert(frame.P.x>0&&frame.M.x<0);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot('inverse-locus-maximum-390.png',null);
   await page.setViewportSize({width:320,height:740});await screenshot('inverse-locus-maximum-320.png',null);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   // Imported geometry fixture, not an invented exam or AI correctness claim.
-  const fixture={schemaVersion:2,type:'ellipse',a:3,b:1,showConic:false,showDynamic:false,points:{},objects:[
+  const fixture={schemaVersion:2,type:'ellipse',a:3,b:1,showConic:false,showDynamic:false,points:{V:[0,0],W:[2,0]},polygons:[{id:'rename-triangle',labels:['V','P','W'],label:'△VPW'}],objects:[
     {id:'range-circle',kind:'circle',h:0,k:0,r:2,role:'derived_locus',label:'P 的轨迹',visible:true},
     {id:'range-P',kind:'construction',op:'point_on',refs:['range-circle'],t:Math.PI/4,label:'P',visible:false,motionDomain:{arc:{min:0,max:Math.PI/2,minClosed:false,maxClosed:true}}}
   ]};
@@ -47,6 +47,11 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#boardObjects [data-object-id="$conic"][data-object-action="select"]').click();
   assert.equal(await page.locator('#nativeInspector input[aria-label="对象名称"]').count(),0,'Primary curve remains read-only');
   assert.equal(await page.locator('#boardObjects [data-object-id="$conic"][data-object-action="visibility"]').isDisabled(),true);
+  await page.locator('[data-primary-parameters]').click();
+  await page.locator('#nativeInspectorHome #nativeInspector').waitFor({state:'attached'});
+  assert.equal(await page.locator('#parameterTarget').inputValue(),'$conic');
+  assert(await page.locator('#parameterTarget').isVisible(),'Primary parameters are reachable on mobile');
+  await page.locator('[data-mobile-panel="board"]').click();await page.locator('#openObjectManager').click();
   await page.locator('#boardObjects [data-object-id="feature:O"][data-object-action="select"]').click();
   assert.match(await page.locator('#nativeInspector').innerText(),/只读/);
   const driverRow=page.locator('#boardObjects [data-object-id="range-P"]');
@@ -55,6 +60,12 @@ module.exports=async({page,context,assert,screenshot})=>{
   await rename.fill('O');await rename.press('Tab');assert.match(await page.locator('#nativeInspector [data-object-feedback]').innerText(),/已被使用/);
   await rename.fill('T');await rename.press('Tab');
   assert.equal(await page.locator('#boardObjects [data-object-id="range-P"][data-object-action="select"]').innerText(),'T');
+  const polygonNames=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).scene.polygons[0].labels.join(','));
+  assert.equal(await polygonNames(),'V,T,W','Point rename migrates polygon vertices in the stored draft');
+  await page.locator('#closeObjectManager').click();await page.locator('#nativeInspectorHome #nativeInspector').waitFor({state:'attached'});
+  await page.locator('#undoDrag').click();assert.equal(await polygonNames(),'V,P,W');
+  await page.locator('#redoDrag').click();assert.equal(await polygonNames(),'V,T,W');
+  await page.locator('#openObjectManager').click();await page.locator('#boardObjects [data-object-id="range-P"][data-object-action="select"]').click();
   await rename.fill('P');await rename.press('Tab');
   assert.equal(await page.locator('#boardObjects [data-object-id="range-P"][data-object-action="select"]').getAttribute('aria-pressed'),'true');
   const visibility=page.locator('#boardObjects [data-object-id="range-P"][data-object-action="visibility"]');

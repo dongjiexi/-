@@ -7,6 +7,22 @@ const test = require('node:test');
 const sandbox = {window: {}};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../dist/construction-board.js'), 'utf8'), sandbox);
 const {createEngine, conicShape} = sandbox.window.DongConstruct;
+test('renaming points preserves named lines, polygon vertices and ID dependencies atomically',()=>{
+  const {model,engine}=fixture([{id:'p',kind:'point',label:'P',x:1,y:2},{id:'q',kind:'point',label:'Q',x:3,y:4},{id:'mid',kind:'construction',op:'midpoint',refs:['p','q'],label:'M'}],{O:[0,0]});
+  model.lines=[{id:'pq',kind:'through_points',a:'P',b:'Q',infinite:true}];
+  model.polygons=[{labels:['O','P','Q'],label:'△OPQ'},{labels:['O','P','Q'],label:'自定义区域'}];
+  const before=JSON.stringify(model);assert.throws(()=>engine.renameObject('p','O'),/已被使用/);assert.equal(JSON.stringify(model),before);
+  assert.throws(()=>engine.renameObject('p','  '),/不能为空/);assert.equal(JSON.stringify(model),before);
+  assert.equal(engine.renameObject('p','P'),false);
+  assert.equal(engine.renameObject('p','T'),true);assert.equal(model.lines[0].a,'T');assert.equal(model.polygons[0].labels.join(','),'O,T,Q');assert.equal(model.polygons[0].label,'△OTQ');assert.equal(model.polygons[1].label,'自定义区域');
+  pointNear(engine.resolve('mid'),{x:2,y:3});pointNear(engine.resolve('pq').o,{x:1,y:2});assert.equal(model.objects[2].refs[0],'p');
+  engine.renameObject('p','P');assert.equal(JSON.stringify(model),before);
+});
+test('curve rename cannot rewrite point references and ambiguous point names are rejected',()=>{
+  const {model,engine}=fixture([{id:'c',kind:'circle',label:'C',h:0,k:0,r:2},{id:'p',kind:'point',label:'P',x:1,y:2},{id:'p2',kind:'point',label:'P',x:3,y:4}]);
+  model.lines=[{id:'line',kind:'through_points',a:'C',b:'P'}];engine.renameObject('c','圆');assert.equal(model.lines[0].a,'C');
+  const before=JSON.stringify(model);assert.throws(()=>engine.renameObject('p','T'),/重复/);assert.equal(JSON.stringify(model),before);
+});
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../dist/equation-builder.js'), 'utf8'), sandbox);
 
 function near(actual, expected, label = 'number') {

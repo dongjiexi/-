@@ -182,7 +182,28 @@
       if(object.op==='intersection')return '当前无此分支的实交点（可能相离、相切合并或重合）';
       return '构造退化或参数无效';
     }
-    return {objects,ensureIds,getObject,resolve,project,pointOn,driver,moveDriver,dragDriver,freePoint,descendants,intersect,invalidReason};
+    function renameObject(id,value){
+      const object=getObject(id),name=String(value??'').trim();
+      if(!object)throw new Error('对象已不存在。');
+      if(!name)throw new Error('名称不能为空，已保留原名称。');
+      if(name.length>24)throw new Error('名称最多 24 个字符。');
+      const old=object.label;if(name===old)return false;
+      if(objects().some(o=>o.id!==id&&o.label===name)||(api.features?.()||[]).some(p=>p.name===name))throw new Error('该名称已被使用，请换一个名称。');
+      // Only migrate named point references when the old name unambiguously
+      // resolves to this point. Curve names must never rewrite point bindings.
+      const point=resolve(id)?.type==='point';
+      if(point&&old&&objects().filter(o=>o.label===old).length!==1)throw new Error('原名称存在重复，请先核对图稿，避免改错引用。');
+      if(point&&old){
+        for(const line of objects())if(line.kind==='through_points'){if(line.a===old)line.a=name;if(line.b===old)line.b=name;}
+        for(const polygon of api.model()?.polygons||[]){
+          if(!Array.isArray(polygon.labels)||!polygon.labels.includes(old))continue;
+          const before=polygon.labels.join('');polygon.labels=polygon.labels.map(label=>label===old?name:label);
+          for(const prefix of ['△','三角形','四边形','多边形'])if(polygon.label===prefix+before){polygon.label=prefix+polygon.labels.join('');break;}
+        }
+      }
+      object.label=name;return true;
+    }
+    return {objects,ensureIds,getObject,resolve,project,pointOn,driver,moveDriver,dragDriver,freePoint,descendants,intersect,invalidReason,renameObject};
   }
 
   function attach(api){
@@ -275,6 +296,7 @@
       box.replaceChildren();const heading=document.createElement('strong');heading.textContent=title(selected);box.append(heading);
       const object=engine.getObject(selected),p=document.createElement('p');p.dataset.liveEquation='';p.textContent=selected==='$conic'?api.primaryEquation?.()||describe(engine.resolve(selected)):engine.invalidReason(selected)||describe(engine.resolve(selected),object);box.append(p);
       if(!object){const note=document.createElement('p');note.className='help';note.textContent='主曲线和题设 / 内置点在此只读，避免误改题设或断开构造；主曲线请在参数入口编辑。';box.append(note);}
+      if(selected==='$conic'&&api.openPrimaryParameters){const edit=document.createElement('button');edit.className='button secondary';edit.textContent='调节主曲线参数';edit.dataset.primaryParameters='';edit.onclick=()=>{$('objectManagerDialog').close();api.openPrimaryParameters();};box.append(edit);}
       if(object?.refs){const refs=document.createElement('p');refs.className='help';refs.textContent='依赖：'+object.refs.map(title).join('、')+'。拖动源点会自动重算。';box.append(refs);}
       if(object){
         if(api.editableConic?.(object)){const edit=document.createElement('button');edit.className='button secondary';edit.textContent='编辑曲线参数';edit.onclick=()=>api.editConic(object.id);box.append(edit);}
@@ -288,7 +310,7 @@
         }
         const rename=document.createElement('input');rename.setAttribute('aria-label','对象名称');rename.value=object.label||'';rename.maxLength=24;rename.title='修改名称，不改变构造关系';
         const feedback=document.createElement('p');feedback.className='help';feedback.dataset.objectFeedback='';feedback.setAttribute('role','status');
-        rename.onchange=()=>{const name=rename.value.trim(),old=object.label;if(!name){feedback.textContent='名称不能为空，已保留原名称。';rename.value=old||'';return;}if(name===old){feedback.textContent='';return;}if(engine.objects().some(o=>o.id!==object.id&&o.label===name)||api.features().some(p=>p.name===name)){feedback.textContent='该名称已被使用，请换一个名称。';rename.value=old||'';return;}api.transaction(()=>{object.label=name;for(const line of engine.objects())if(line.kind==='through_points'){if(line.a===old)line.a=name;if(line.b===old)line.b=name;}});feedback.textContent='名称已更新，构造标识不变。';};box.append(rename,feedback);
+        rename.onchange=()=>{if(rename.value.trim()===object.label){feedback.textContent='';return;}try{api.transaction(()=>engine.renameObject(object.id,rename.value));feedback.textContent='名称已更新，关联直线与多边形顶点已同步。';}catch(error){feedback.textContent=error.message;rename.value=object.label||'';}};box.append(rename,feedback);
         const row=document.createElement('div');row.className='native-inspector-actions';
         const toggle=document.createElement('button');toggle.textContent=object.visible===false?'显示对象':'隐藏对象';toggle.onclick=()=>{api.transaction(()=>object.visible=object.visible===false);inspector();};
         const remove=document.createElement('button'),count=engine.descendants(selected).size;remove.textContent=count>1?`删除及关联 (${count})`:'删除对象';remove.onclick=()=>removeObject(selected);row.append(toggle,remove);box.append(row);

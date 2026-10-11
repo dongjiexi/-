@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.63.0">
+  <meta name="dongjiexi-version" content="0.63.1">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.63.0">
-  <link rel="stylesheet" href="classroom.css?v=0.63.0">
-  <link rel="stylesheet" href="question-bank.css?v=0.63.0">
+  <link rel="stylesheet" href="learning-ui.css?v=0.63.1">
+  <link rel="stylesheet" href="classroom.css?v=0.63.1">
+  <link rel="stylesheet" href="question-bank.css?v=0.63.1">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -418,12 +418,12 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.63.0">
+  <link rel="stylesheet" href="theme.css?v=0.63.1">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.63.0 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.63.1 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -625,49 +625,49 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.63.0"></script>
+  <script src="runtime.js?v=0.63.1"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.63.0"></script>
-  <script src="number-display.js?v=0.63.0"></script>
-  <script src="label-layout.js?v=0.63.0"></script>
-  <script src="step-highlight.js?v=0.63.0"></script>
-  <script src="scene-audit.js?v=0.63.0"></script>
-  <script src="answer-geometry.js?v=0.63.0"></script>
-  <script src="scene-merge.js?v=0.63.0"></script>
-  <script src="tangent-solver.js?v=0.63.0"></script>
-  <script src="ellipse-distance.js?v=0.63.0"></script>
-  <script src="circle-dot.js?v=0.63.0"></script>
-  <script src="orthogonal-chord.js?v=0.63.0"></script>
-  <script src="axis-intercept-chord.js?v=0.63.0"></script>
-  <script src="conic-area.js?v=0.63.0"></script>
-  <script src="basic-conditions.js?v=0.63.0"></script>
-  <script src="ellipse-area-chord.js?v=0.63.0"></script>
-  <script src="vertex-secant.js?v=0.63.0"></script>
-  <script src="inverse-locus.js?v=0.63.0"></script>
-  <script src="symmetric-chord.js?v=0.63.0"></script>
-  <script src="parabola-locus.js?v=0.63.0"></script>
-  <script src="question-parts.js?v=0.63.0"></script>
-  <script src="goal-coverage.js?v=0.63.0"></script>
-  <script src="solution-review.js?v=0.63.0"></script>
-  <script src="parabola-focal-data.js?v=0.63.0"></script>
-  <script src="circle-fold.js?v=0.63.0"></script>
-  <script src="circle-fold-view.js?v=0.63.0"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.63.0">
-  <script src="hyperbola-iteration.js?v=0.63.0"></script>
-  <script src="conic-parameter.js?v=0.63.0"></script>
-  <script src="ellipse-focal-chord.js?v=0.63.0"></script>
-  <script src="external-ai.js?v=0.63.0"></script>
-  <script src="learning-ui.js?v=0.63.0"></script>
-  <script src="classroom.js?v=0.63.0"></script>
-  <script src="question-bank.js?v=0.63.0"></script>
-  <script src="construction-board.js?v=0.63.0"></script>
-  <script src="motion-domain.js?v=0.63.0"></script>
-  <script src="motion-protection.js?v=0.63.0"></script>
-  <script src="drag-board.js?v=0.63.0"></script>
-  <script src="equation-builder.js?v=0.63.0"></script>
-  <script src="math-keyboard.js?v=0.63.0"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.63.0"></script>
+  <script src="math-input.js?v=0.63.1"></script>
+  <script src="number-display.js?v=0.63.1"></script>
+  <script src="label-layout.js?v=0.63.1"></script>
+  <script src="step-highlight.js?v=0.63.1"></script>
+  <script src="scene-audit.js?v=0.63.1"></script>
+  <script src="answer-geometry.js?v=0.63.1"></script>
+  <script src="scene-merge.js?v=0.63.1"></script>
+  <script src="tangent-solver.js?v=0.63.1"></script>
+  <script src="ellipse-distance.js?v=0.63.1"></script>
+  <script src="circle-dot.js?v=0.63.1"></script>
+  <script src="orthogonal-chord.js?v=0.63.1"></script>
+  <script src="axis-intercept-chord.js?v=0.63.1"></script>
+  <script src="conic-area.js?v=0.63.1"></script>
+  <script src="basic-conditions.js?v=0.63.1"></script>
+  <script src="ellipse-area-chord.js?v=0.63.1"></script>
+  <script src="vertex-secant.js?v=0.63.1"></script>
+  <script src="inverse-locus.js?v=0.63.1"></script>
+  <script src="symmetric-chord.js?v=0.63.1"></script>
+  <script src="parabola-locus.js?v=0.63.1"></script>
+  <script src="question-parts.js?v=0.63.1"></script>
+  <script src="goal-coverage.js?v=0.63.1"></script>
+  <script src="solution-review.js?v=0.63.1"></script>
+  <script src="parabola-focal-data.js?v=0.63.1"></script>
+  <script src="circle-fold.js?v=0.63.1"></script>
+  <script src="circle-fold-view.js?v=0.63.1"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.63.1">
+  <script src="hyperbola-iteration.js?v=0.63.1"></script>
+  <script src="conic-parameter.js?v=0.63.1"></script>
+  <script src="ellipse-focal-chord.js?v=0.63.1"></script>
+  <script src="external-ai.js?v=0.63.1"></script>
+  <script src="learning-ui.js?v=0.63.1"></script>
+  <script src="classroom.js?v=0.63.1"></script>
+  <script src="question-bank.js?v=0.63.1"></script>
+  <script src="construction-board.js?v=0.63.1"></script>
+  <script src="motion-domain.js?v=0.63.1"></script>
+  <script src="motion-protection.js?v=0.63.1"></script>
+  <script src="drag-board.js?v=0.63.1"></script>
+  <script src="equation-builder.js?v=0.63.1"></script>
+  <script src="math-keyboard.js?v=0.63.1"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.63.1"></script>
   <script src="geogebra-bridge.js?v=0.7.0"></script>
   <script>
   (() => {
@@ -1146,6 +1146,11 @@
       else{const object=nativeController?.engine.getObject(parameterTarget);box.textContent=object?.equation||'';}
     }
     $('#parameterTarget').addEventListener('change',e=>{parameterTarget=e.target.value;buildParams();});
+    function openPrimaryParameters(){
+      parameterTarget='$conic';buildParams();
+      document.querySelector('[data-mobile-panel="lesson"]')?.click();
+      requestAnimationFrame(()=>{const target=$('#parameterTarget');target.scrollIntoView({block:'center',behavior:'instant'});target.focus({preventScroll:true});});
+    }
     function buildObjectParams(object){
       if(!window.DongMotion.editable(state.model,object.id)){paramsEl.innerHTML='<p class="help">题设对象已锁定。点击画板上的“无限制移动”后可修改；关闭后恢复题设约束。</p>';return;}
       const spec=window.DongEquationBuilder.editSpec(object);if(!spec)return;
@@ -1717,9 +1722,9 @@
         if(current){
           if(obj.kind!==current.kind||obj.conicType!==current.conicType)throw new Error('编辑时不能更换曲线类型，请使用追加曲线。');
           nativeTransaction(()=>{
-            const oldLabel=current.label,id=current.id,visible=current.visible;
+            const id=current.id,visible=current.visible;
+            nativeController.engine.renameObject(id,obj.label);
             Object.assign(current,obj,{id,visible});if(part==='all')delete current.part;
-            if(oldLabel!==current.label)for(const line of nativeController.engine.objects())if(line.kind==='through_points'){if(line.a===oldLabel)line.a=current.label;if(line.b===oldLabel)line.b=current.label;}
             state.exploring=true;
           });
           $('#addConicDialog').close();nativeController.select(current.id);homeView();render();
@@ -1916,7 +1921,7 @@
     function nativeFeatures(){if(!state.model)return [];const fs=features();if(!state.model.isFreeBoard)intersections().forEach((p,i)=>{const name=(state.model.dynamicIntersectionLabels||['A','B'])[i];if(name&&!fs.some(f=>f.name===name))fs.push({...p,name,nativeDynamic:true});});if(state.model.pairedChord)secondIntersections().forEach((p,i)=>{const name=state.model.pairedChord.labels[i];if(name&&!fs.some(f=>f.name===name))fs.push({...p,name,nativeDynamic:true});});if(Number.isFinite(state.model.fixedPoint?.x))fs.push({...state.model.fixedPoint,nativeDynamic:true});return fs;}
     nativeController=window.DongConstruct.attach({state,canvas,ctx,xy,features:nativeFeatures,featureVisible:p=>p.nativeDynamic?state.model.showDynamic!==false&&state.model.showConic!==false&&visibleForPart({part:state.model.dynamicLinePart,parts:state.model.dynamicLineParts}):featureVisible(p),coeffs,origin:lineOrigin,angle2:()=>P('theta2'),conicPoint,conicProject,visible:visibleForPart,render,
       world:p=>({x:worldX(p.x),y:worldY(p.y)}),snap:p=>$('#snapDrag').checked?{x:Math.round(p.x*2)/2,y:Math.round(p.y*2)/2}:p,
-      point,path:strokePath,annotation,clip:clipNativeLine,transaction:nativeTransaction,editConic,editableConic,primaryEquation:equationText,
+      point,path:strokePath,annotation,clip:clipNativeLine,transaction:nativeTransaction,editConic,editableConic,primaryEquation:equationText,openPrimaryParameters,
       ensureScene(){if(!state.model)installScene(modelFromJson('{"type":"circle","r":3,"isFreeBoard":true,"showConic":false,"showDynamic":false,"showFeatures":false,"title":"本地自由画板"}'),'自由画板');}
     });
     dragController=window.DongDrag.attach({canvas,ctx,state,xy,worldX,worldY,features,lineOrigin,intersections,endpoints:endpointsForLine,visible:visibleForPart,render,
@@ -1974,6 +1979,6 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.63.0"></script>
+  <script src="pwa.js?v=0.63.1"></script>
 </body>
 </html>
