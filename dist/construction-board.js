@@ -232,7 +232,29 @@
       const target=add(origin,{x:length*Math.cos(nearest),y:length*Math.sin(nearest)});
       if(distance(xy(target.x,target.y),xy(point.x,point.y))<10){snapPreview={point:target,label:`方向吸附 ${((Math.round(nearest*180/Math.PI)%360)+360)%360}°`};return target;}return point;
     }
-    function select(id){selected=id;inspector();}
+    function select(id){selected=id;inspector();objectList();}
+    let objectListKey='';
+    function objectList(){
+      const box=$('boardObjects');if(!box)return;
+      const query=($('boardObjectSearch')?.value||'').trim().toLowerCase(),all=engine.objects();
+      if($('boardObjectsPanel'))$('boardObjectsPanel').hidden=!all.length;
+      const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
+      const rows=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:(o.refs||[]).map(title)})).filter(o=>!query||(o.label+' '+o.type).toLowerCase().includes(query));
+      $('boardObjectsCount').textContent=`（${rows.length}/${all.length}）`;
+      const key=JSON.stringify([selected,rows]);if(key===objectListKey)return;objectListKey=key;
+      const focus=document.activeElement,focusId=box.contains(focus)?focus.dataset.objectId:null,focusAction=focus?.dataset.objectAction;
+      box.replaceChildren();
+      if(!rows.length){const p=document.createElement('p');p.className='help';p.textContent=all.length?'没有匹配的对象。':'暂无追加对象，可用作图工具添加点、线或曲线。';box.append(p);}
+      for(const row of rows){
+        const item=document.createElement('div');item.style.cssText='padding:.45rem 0;border-bottom:1px solid #dce5e8;overflow-wrap:anywhere';
+        const show=document.createElement('input');show.type='checkbox';show.checked=row.shown;show.setAttribute('aria-label','显示 '+row.label);show.dataset.objectId=row.id;show.dataset.objectAction='visibility';
+        show.onchange=()=>{const obj=engine.getObject(row.id);if(obj)api.transaction(()=>obj.visible=show.checked);};
+        const pick=document.createElement('button');pick.type='button';pick.className='button secondary';pick.textContent=row.label;pick.setAttribute('aria-pressed',String(selected===row.id));pick.dataset.objectId=row.id;pick.dataset.objectAction='select';pick.onclick=()=>{select(row.id);api.render();};
+        const detail=document.createElement('p');detail.className='help';detail.style.margin='.25rem 0';detail.textContent=row.type+(row.active?'':' · 不属于当前小问')+(row.reason?' · '+row.reason:'')+(row.refs.length?' · 依赖：'+row.refs.join('、'):'');item.append(show,pick,detail);box.append(item);
+      }
+      if(focusId)Array.from(box.querySelectorAll('[data-object-id]')).find(n=>n.dataset.objectId===focusId&&n.dataset.objectAction===focusAction)?.focus({preventScroll:true});
+    }
+    $('boardObjectSearch')?.addEventListener('input',objectList);
     function title(id){if(id==='$conic')return '主圆锥曲线';if(id==='$dynamic')return '动直线';if(id?.startsWith('feature:'))return id.slice(8);return engine.getObject(id)?.label||staged.find(o=>o.id===id)?.label||'对象';}
     function describe(shape,object){
       if(!shape)return '暂未定义：检查依赖对象是否存在，或两条曲线当前是否相交。';
@@ -349,7 +371,7 @@
       commit([{id:uid(),kind:'construction',op:tool,refs:[...pending],label:label(prefix),visible:true}]);
     }
     function draw(){
-      if(!state.model)return;engine.ensureIds();
+      if(!state.model){objectList();return;}engine.ensureIds();objectList();
       const invalid=engine.objects().filter(obj=>(obj.kind==='construction'||linkedCurveLine(obj))&&api.visible(obj)&&!engine.resolve(obj.id)).map(obj=>(obj.label||'未命名')+'：'+engine.invalidReason(obj.id));
       for(const obj of state.model.objects||[]){if(obj.kind!=='construction'||!api.visible(obj))continue;const shape=engine.resolve(obj.id);if(!shape)continue;
         const color=selected===obj.id?'#f09819':'#7060b7';
@@ -407,8 +429,8 @@
     $('moveMode').addEventListener('click',()=>setTool(null));$('panMode').addEventListener('click',()=>setTool(null));
     $('undoDrag').addEventListener('click',()=>{resetPending();select(null);});$('redoDrag').addEventListener('click',()=>{resetPending();select(null);});
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.querySelector('dialog[open]')){setTool(null);$('moveMode').click();}if((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase()))resetPending();});
-    inspector();
-    return {engine,draw,hit,begin,move,active:()=>!!tool,select,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();tool=null;selected=null;document.querySelectorAll('[data-construct]').forEach(b=>b.setAttribute('aria-pressed','false'));inspector();}};
+    inspector();objectList();
+    return {engine,draw,hit,begin,move,active:()=>!!tool,select,selectedId:()=>selected,refreshObjects:objectList,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();tool=null;selected=null;document.querySelectorAll('[data-construct]').forEach(b=>b.setAttribute('aria-pressed','false'));inspector();objectList();}};
   }
   window.DongConstruct={createEngine,intersect,conicShape,attach};
 })();
