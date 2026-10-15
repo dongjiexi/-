@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.64.0">
+  <meta name="dongjiexi-version" content="0.65.0">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.64.0">
-  <link rel="stylesheet" href="classroom.css?v=0.64.0">
-  <link rel="stylesheet" href="question-bank.css?v=0.64.0">
+  <link rel="stylesheet" href="learning-ui.css?v=0.65.0">
+  <link rel="stylesheet" href="classroom.css?v=0.65.0">
+  <link rel="stylesheet" href="question-bank.css?v=0.65.0">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -418,12 +418,12 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.64.0">
+  <link rel="stylesheet" href="theme.css?v=0.65.0">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.64.0 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.65.0 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -496,6 +496,7 @@
       </aside>
 
       <section class="panel board-shell toolbox-collapsed" aria-label="动态图形画板">
+        <div id="geoGebraInlineSlot" hidden></div>
         <div class="board-toolbar">
           <div class="board-title-wrap"><span class="board-kicker">第 3 步 · 动态画板</span><div class="board-title" id="boardTitle">未载入图形</div></div>
           <div class="tool-actions"><button class="toolbox-toggle" id="inputPanelToggle" type="button" aria-expanded="true">隐藏题目栏</button><button class="toolbox-toggle" id="toolboxToggle" type="button" aria-expanded="false" aria-controls="nativeToolbar">展开作图工具</button><button class="tool-button" id="zoomOut" title="缩小视图">−</button><button class="tool-button" id="homeButton" title="适应图形">⌂</button><button class="tool-button" id="zoomIn" title="放大视图">＋</button><label class="toggle"><input type="checkbox" id="guideToggle" checked>辅助线</label><label class="toggle"><input type="checkbox" id="gridToggle" checked>网格</label></div>
@@ -534,6 +535,7 @@
         <div id="dragHint" class="drag-hint" role="status">拖动动点沿轨迹；拖空白处移动视野。</div>
         <div id="snapStatus" class="snap-status" role="status" aria-live="polite"></div>
         <div class="canvas-wrap">
+          <button id="openGeoGebraInline" class="button secondary" type="button" style="position:absolute;left:.5rem;top:.5rem;z-index:3">GeoGebra 画板（试验）</button>
           <button id="openObjectManager" class="button secondary" type="button" style="position:absolute;right:.5rem;top:.5rem;z-index:3" aria-haspopup="dialog">对象</button>
           <canvas id="canvas" aria-label="解析几何动态画板"></canvas>
           <div id="pointHoverCard" class="point-hover-card" role="tooltip" hidden></div>
@@ -625,49 +627,49 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.64.0"></script>
+  <script src="runtime.js?v=0.65.0"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.64.0"></script>
-  <script src="number-display.js?v=0.64.0"></script>
-  <script src="label-layout.js?v=0.64.0"></script>
-  <script src="step-highlight.js?v=0.64.0"></script>
-  <script src="scene-audit.js?v=0.64.0"></script>
-  <script src="answer-geometry.js?v=0.64.0"></script>
-  <script src="scene-merge.js?v=0.64.0"></script>
-  <script src="tangent-solver.js?v=0.64.0"></script>
-  <script src="ellipse-distance.js?v=0.64.0"></script>
-  <script src="circle-dot.js?v=0.64.0"></script>
-  <script src="orthogonal-chord.js?v=0.64.0"></script>
-  <script src="axis-intercept-chord.js?v=0.64.0"></script>
-  <script src="conic-area.js?v=0.64.0"></script>
-  <script src="basic-conditions.js?v=0.64.0"></script>
-  <script src="ellipse-area-chord.js?v=0.64.0"></script>
-  <script src="vertex-secant.js?v=0.64.0"></script>
-  <script src="inverse-locus.js?v=0.64.0"></script>
-  <script src="symmetric-chord.js?v=0.64.0"></script>
-  <script src="parabola-locus.js?v=0.64.0"></script>
-  <script src="question-parts.js?v=0.64.0"></script>
-  <script src="goal-coverage.js?v=0.64.0"></script>
-  <script src="solution-review.js?v=0.64.0"></script>
-  <script src="parabola-focal-data.js?v=0.64.0"></script>
-  <script src="circle-fold.js?v=0.64.0"></script>
-  <script src="circle-fold-view.js?v=0.64.0"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.64.0">
-  <script src="hyperbola-iteration.js?v=0.64.0"></script>
-  <script src="conic-parameter.js?v=0.64.0"></script>
-  <script src="ellipse-focal-chord.js?v=0.64.0"></script>
-  <script src="external-ai.js?v=0.64.0"></script>
-  <script src="learning-ui.js?v=0.64.0"></script>
-  <script src="classroom.js?v=0.64.0"></script>
-  <script src="question-bank.js?v=0.64.0"></script>
-  <script src="construction-board.js?v=0.64.0"></script>
-  <script src="motion-domain.js?v=0.64.0"></script>
-  <script src="motion-protection.js?v=0.64.0"></script>
-  <script src="drag-board.js?v=0.64.0"></script>
-  <script src="equation-builder.js?v=0.64.0"></script>
-  <script src="math-keyboard.js?v=0.64.0"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.64.0"></script>
+  <script src="math-input.js?v=0.65.0"></script>
+  <script src="number-display.js?v=0.65.0"></script>
+  <script src="label-layout.js?v=0.65.0"></script>
+  <script src="step-highlight.js?v=0.65.0"></script>
+  <script src="scene-audit.js?v=0.65.0"></script>
+  <script src="answer-geometry.js?v=0.65.0"></script>
+  <script src="scene-merge.js?v=0.65.0"></script>
+  <script src="tangent-solver.js?v=0.65.0"></script>
+  <script src="ellipse-distance.js?v=0.65.0"></script>
+  <script src="circle-dot.js?v=0.65.0"></script>
+  <script src="orthogonal-chord.js?v=0.65.0"></script>
+  <script src="axis-intercept-chord.js?v=0.65.0"></script>
+  <script src="conic-area.js?v=0.65.0"></script>
+  <script src="basic-conditions.js?v=0.65.0"></script>
+  <script src="ellipse-area-chord.js?v=0.65.0"></script>
+  <script src="vertex-secant.js?v=0.65.0"></script>
+  <script src="inverse-locus.js?v=0.65.0"></script>
+  <script src="symmetric-chord.js?v=0.65.0"></script>
+  <script src="parabola-locus.js?v=0.65.0"></script>
+  <script src="question-parts.js?v=0.65.0"></script>
+  <script src="goal-coverage.js?v=0.65.0"></script>
+  <script src="solution-review.js?v=0.65.0"></script>
+  <script src="parabola-focal-data.js?v=0.65.0"></script>
+  <script src="circle-fold.js?v=0.65.0"></script>
+  <script src="circle-fold-view.js?v=0.65.0"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.65.0">
+  <script src="hyperbola-iteration.js?v=0.65.0"></script>
+  <script src="conic-parameter.js?v=0.65.0"></script>
+  <script src="ellipse-focal-chord.js?v=0.65.0"></script>
+  <script src="external-ai.js?v=0.65.0"></script>
+  <script src="learning-ui.js?v=0.65.0"></script>
+  <script src="classroom.js?v=0.65.0"></script>
+  <script src="question-bank.js?v=0.65.0"></script>
+  <script src="construction-board.js?v=0.65.0"></script>
+  <script src="motion-domain.js?v=0.65.0"></script>
+  <script src="motion-protection.js?v=0.65.0"></script>
+  <script src="drag-board.js?v=0.65.0"></script>
+  <script src="equation-builder.js?v=0.65.0"></script>
+  <script src="math-keyboard.js?v=0.65.0"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.65.0"></script>
   <script src="geogebra-bridge.js?v=0.7.0"></script>
   <script>
   (() => {
@@ -1945,6 +1947,7 @@
     $('#saveNativeFile').addEventListener('click',exportJson);
     $('#openNativeFile').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>2*1024*1024)throw new Error('图稿超过 2 MB，暂不支持。');const raw=await file.text(),parsed=JSON.parse(raw);if(parsed.schemaVersion>2)throw new Error('这是更高版本的图稿，请先更新董解析。');if((parsed.objects||[]).length>500)throw new Error('图稿对象超过 500 个，暂不支持。');const scene=modelFromJson(raw);state.solution=null;state.activePart=parsed.activePart??null;$('#solution').hidden=true;installScene(scene,'图稿文件');setStatus('图稿及构造关系已恢复，可继续拖动与编辑。');}catch(error){setStatus(error.message,true);}finally{e.target.value='';}});
     $('#openGeoGebra').addEventListener('click',()=>window.DongGeoGebra.open(state.model?{...sceneData(),activePart:state.activePart}:null));
+    $('#openGeoGebraInline').addEventListener('click',()=>{stopMotion(true);const current=()=>state.model?{...sceneData(),activePart:state.activePart}:null;window.DongGeoGebra.open(current(),$('#geoGebraInlineSlot'),current);});
     $('#objectInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addFreeObject();}});
     $('#equationFields').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addFreeObject();}});
     new ResizeObserver(()=>render()).observe(canvas.parentElement);
@@ -1979,6 +1982,6 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.64.0"></script>
+  <script src="pwa.js?v=0.65.0"></script>
 </body>
 </html>

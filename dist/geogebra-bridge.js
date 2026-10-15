@@ -11,6 +11,15 @@
   const BACKUP = KEY + ':previous';
   let dialog, host, status, api, loading, scriptPromise, latestScene = null;
   let saveTimer, busy = false, previousFocus, sessionTitle = 'GeoGebra 自由作图';
+  let inlineSlot=null, importReport={skipped:[]}, startGeneration=0, sceneProvider=null;
+  let narrowLayout=null;
+  function resizeApplet(){
+    if(!api||!dialog?.open||!host.clientWidth)return;
+    api.setSize(Math.max(300,host.clientWidth),Math.max(180,host.clientHeight));
+    const narrow=host.clientWidth<600;
+    if(narrowLayout!==narrow){narrowLayout=narrow;api.setPerspective(narrow?'G':'AG');api.showAlgebraInput(!narrow);}
+  }
+  const importedMessage=()=>importReport.skipped.length?'部分导入；未转换对象：'+importReport.skipped.join('、')+'。原画板完整保留，请返回原画板核对。':'已导入支持的图形；此处为独立探索图稿，不自动回写题目答案。';
   const copy = value => value == null ? null : JSON.parse(JSON.stringify(value));
   const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const positive = (value, fallback) => Math.max(0.000001, Math.abs(finite(value, fallback)));
@@ -25,6 +34,9 @@
     css.textContent = `
       .dong-ggb-dialog{position:fixed;inset:0;z-index:10000;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#f6f8fb;color:#0c1b33;font-family:"Microsoft YaHei UI",system-ui,sans-serif;}
       .dong-ggb-dialog[open]{display:flex;flex-direction:column;}
+      .dong-ggb-dialog.dong-ggb-inline{position:relative;inset:auto;z-index:auto;width:100%;height:78dvh;min-height:480px;max-height:none;box-sizing:border-box;}
+      .board-shell[data-ggb-active="true"]>:not(#geoGebraInlineSlot){display:none!important;}
+      #geoGebraInlineSlot{width:100%;min-width:0;}
       .dong-ggb-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid #d7e0eb;background:#fff;}
       .dong-ggb-title{font-size:16px;font-weight:750;margin-right:auto;}
       .dong-ggb-head button,.dong-ggb-import{font:inherit;font-size:13px;border:1px solid #c3d0df;border-radius:7px;background:#f8fafc;color:#163b53;padding:7px 10px;cursor:pointer;}
@@ -53,11 +65,13 @@
       el.type = 'button'; el.textContent = label; el.className = className;
       el.addEventListener('click', wrap(fn)); header.append(el); return el;
     };
-    button('导入当前画板', () => replaceWithScene(latestScene));
+    button('导入当前画板', () => replaceWithScene(sceneProvider?sceneProvider():latestScene));
+    button('重试加载', () => start());
     button('新建空白图', () => replaceWithScene(null));
     button('恢复上一图', restorePrevious);
     button('保存 .ggb', download);
     button('保存图片', exportPng);
+    button('图形 / 代数',()=>{if(!api)throw new Error('请等待 GeoGebra 加载完成。');narrowLayout=!narrowLayout;api.setPerspective(narrowLayout?'G':'AG');api.showAlgebraInput(!narrowLayout);});
     const fileLabel = document.createElement('label');
     fileLabel.className = 'dong-ggb-import'; fileLabel.textContent = '打开 .ggb';
     const file = document.createElement('input');
@@ -83,14 +97,14 @@
     button('返回董解析', close, 'dong-ggb-close');
     const note = document.createElement('p');
     note.className = 'dong-ggb-note';
-    note.innerHTML = '选择“移动”后可拖动点、直线和圆；拖动 T 可改变题设动直线。用工具栏作平行线、垂线、切线、交点，输入栏可直接输入方程。此编辑器需要联网加载；图稿单独自动保存在本机，不自动回写题目答案。<br>GeoGebra® © GeoGebra GmbH · <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">官方网站</a> · <a href="https://www.geogebra.org/license" target="_blank" rel="noopener noreferrer">非商业使用许可</a>';
+    note.innerHTML = '试验画板：支持 GeoGebra 几何与函数工具，需要联网加载。题目、解析和原画板保持不变；此处图稿独立保存，不自动回写答案。原画板变化后需手动“导入当前画板”；不保证特殊动点范围转换，未支持对象会列出。<br>Made with GeoGebra® © GeoGebra GmbH · <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">官方网站</a> · <a href="https://www.geogebra.org/license" target="_blank" rel="noopener noreferrer">非商业使用许可</a>';
     status = document.createElement('p'); status.className = 'dong-ggb-status'; status.setAttribute('role', 'status');
     host = document.createElement('div'); host.className = 'dong-ggb-host';
     const target = document.createElement('div'); target.id = 'dong-geogebra-applet'; host.append(target);
     dialog.append(header, note, status, host); document.body.append(dialog);
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
     new ResizeObserver(() => {
-      if (api && dialog.open) api.setSize(Math.max(300, host.clientWidth), Math.max(180, host.clientHeight));
+      resizeApplet();
     }).observe(host);
     document.addEventListener('visibilitychange', () => { if (document.hidden && api) save().catch(() => {}); });
   }
@@ -117,7 +131,8 @@
       await loadScript();
       return new Promise((resolve, reject) => {
         const saved = read(KEY);
-        const timer = setTimeout(() => { info('GeoGebra 仍在加载，可返回本地画板继续使用，或检查网络后重试。'); }, 45000);
+        const generation=++startGeneration;
+        const timer = setTimeout(() => { startGeneration++;api=null;host.querySelector('#dong-geogebra-applet').replaceChildren();reject(new Error('GeoGebra 加载超时，可重试或返回原画板；原图稿未改动。')); }, 45000);
         const params = {
           id: 'dongGeoGebraApi', appName: 'classic', language: 'zh', country: 'CN',
           width: Math.max(300, host.clientWidth), height: Math.max(180, host.clientHeight),
@@ -128,26 +143,28 @@
           useBrowserForJS: true, enableFileFeatures: false, showResetIcon: false,
           capturingThreshold: 6, preventFocus: true, showStartTooltip: false,
           appletOnLoad: async loadedApi => {
+            if(generation!==startGeneration)return;
             clearTimeout(timer); api = loadedApi;
+            narrowLayout=null;resizeApplet();
             try {
               api.setErrorDialogsActive(false);
               if (saved && saved.base64) {
                 sessionTitle = saved.title || sessionTitle;
                 info('已恢复上次的 GeoGebra 图稿。点击“导入当前画板”可载入董解析当前题目。');
               } else {
-                populate(latestScene); await save();
-                info('已导入当前图形。拖动点或 T，关联直线和交点会同步改变；新增对象可在左侧单独显示或隐藏。');
+                importReport=populate(latestScene); await save();
+                info(importedMessage());
               }
               listen(); resolve(api);
             } catch (error) { reject(error); }
           }
         };
         if (saved && saved.base64) params.ggbBase64 = saved.base64;
-        else params.perspective = 'AG';
+        else params.perspective = host.clientWidth<600?'G':'AG';
         try { new window.GGBApplet(params, true).inject('dong-geogebra-applet'); }
         catch (error) { clearTimeout(timer); reject(error); }
       });
-    })().catch(error => { loading = null; throw error; });
+    })().catch(error => { loading = null;api=null; throw error; });
     return loading;
   }
 
@@ -206,9 +223,9 @@
   async function replaceWithScene(scene) {
     await backupCurrent();
     busy = true;
-    try { api.newConstruction(); populate(scene); listen(); await save(); }
+    try { api.newConstruction(); importReport=populate(scene); listen(); await save(); }
     finally { busy = false; }
-    info(scene ? '已导入当前画板，原 GeoGebra 图稿可用“恢复上一图”取回。' : '已打开空白画板；原图可用“恢复上一图”取回。');
+    info(scene ? importedMessage()+' 原 GeoGebra 图稿可用“恢复上一图”取回。' : '已打开空白画板；原图可用“恢复上一图”取回。');
   }
 
   async function restorePrevious() {
@@ -245,11 +262,11 @@
     const scene = raw && raw.model ? { ...raw.model, ...raw.p, activePart: raw.activePart } : (raw || {});
     sessionTitle = scene.title || 'GeoGebra 自由作图';
     let serial = 0;
-    const labels = new Map(), anchors = {}, skipped = [], deferred = [];
+    const labels = new Map(), ids=new Map(), anchors = {}, skipped = [], deferred = [];
     const active = scene.activePart;
-    const visible = item => item.visible !== false && (active == null || item.part == null || Number(item.part) === Number(active));
+    const visible = item => item.visible !== false && (active == null || (item.part!=null?Number(item.part)===Number(active):!Array.isArray(item.parts)||item.parts.includes(Number(active))));
     function object(expression, caption, color = [124, 90, 201], show = true) {
-      const serialLabel = 'DG' + (++serial);
+      let serialLabel;do{serialLabel='DG'+(++serial);}while(api.exists(serialLabel));
       const candidate = String(caption||'').replace(/₁/g,'1').replace(/₂/g,'2').replace(/（.*）/g,'');
       const label = /^[A-Za-z][A-Za-z0-9_]*$/.test(candidate)&&!['x','y','z','e','i'].includes(candidate)&&!api.exists(candidate) ? candidate : serialLabel;
       if (!api.evalCommand(label + (expression.includes('=') ? ':' : '=') + expression)) { skipped.push(caption || expression); return null; }
@@ -267,7 +284,7 @@
     let conic = null, center = null;
     api.setRepaintingActive(false);
     try {
-      if (['ellipse', 'hyperbola', 'circle', 'parabola'].includes(scene.type)) {
+      if (!scene.isFreeBoard&&['ellipse', 'hyperbola', 'circle', 'parabola'].includes(scene.type)) {
         center = point(h, k, scene.type === 'parabola' ? 'V' : 'O', showFeatures);
         anchors.center = center; anchors.vertex = center;
         labels.set('O', center); labels.set('V', center);
@@ -304,15 +321,19 @@
       const objects = Array.isArray(scene.objects) ? scene.objects : [];
       for (const item of objects.filter(value => value.kind === 'point')) {
         const label = point(item.x, item.y, item.label || 'P', visible(item));
-        if (item.id) labels.set(item.id, label);
+        if (item.id) ids.set(item.id, label);
         if (item.label) labels.set(item.label, label);
       }
       for (const item of [...(scene.lines || []), ...objects.filter(value => value.kind !== 'point')]) {
         let label = null;
-        if (item.kind === 'circle') {
+        if(['tangent','normal'].includes(item.role)&&Array.isArray(item.refs)&&item.refs.length===2){
+          deferred.push({...item,kind:'construction',op:item.role});
+        } else if (item.kind === 'circle') {
           const c = point(item.h, item.k, (item.label || '圆') + '心', visible(item));
           const edge = point(finite(item.h) + positive(item.r, 1), item.k, '半径点', visible(item));
           label = object('Circle(' + c + ',' + edge + ')', item.label || '圆', [193, 91, 135], visible(item));
+        } else if(item.kind==='construction'){
+          deferred.push(item);
         } else if (item.kind === 'through_points') {
           const first = labels.get(item.a), second = labels.get(item.b);
           if (first && second) label = object((item.infinite ? 'Line' : 'Segment') + '(' + first + ',' + second + ')', item.label || item.a + item.b, [124, 90, 201], visible(item));
@@ -327,7 +348,7 @@
             label = object('Line(' + first + ',' + second + ')', item.label || '直线', [124, 90, 201], visible(item));
           } else skipped.push(item.label || '不支持的直线');
         } else skipped.push(item.label || item.kind || '对象');
-        if (label && item.id) labels.set(item.id, label);
+        if (label && item.id) ids.set(item.id, label);
       }
       if (center && conic && scene.showDynamic !== false && scene.dynamicLine !== false && visible({part:scene.dynamicLinePart})) {
         const mode = scene.lineThrough || 'center';
@@ -338,14 +359,38 @@
         const angle = finite(scene.theta, 42) * Math.PI / 180;
         if (handle) api.setCoords(handle, api.getXcoord(pivot) + radius * Math.cos(angle), api.getYcoord(pivot) + radius * Math.sin(angle));
         const line = object('Line(' + pivot + ',' + handle + ')', scene.dynamicLineLabel || 'l', [242, 163, 60]);
+        if(line)ids.set('$dynamic',line);
         if (line) {
-          const first = object('Intersect(' + line + ',' + conic + ',1)', 'A', [223, 91, 98], scene.showConic !== false);
-          const second = object('Intersect(' + line + ',' + conic + ',2)', 'B', [223, 91, 98], scene.showConic !== false);
-          if(!labels.has('A')) labels.set('A',first);
-          if(!labels.has('B')) labels.set('B',second);
+          const pair=scene.dynamicIntersectionLabels||['A','B'];
+          const first = object('Intersect(' + line + ',' + conic + ',1)', pair[0], [223, 91, 98], scene.showConic !== false);
+          const second = object('Intersect(' + line + ',' + conic + ',2)', pair[1], [223, 91, 98], scene.showConic !== false);
+          if(!labels.has(pair[0])) labels.set(pair[0],first);
+          if(!labels.has(pair[1])) labels.set(pair[1],second);
         }
       }
-      for(const item of deferred){const first=labels.get(item.a),second=labels.get(item.b);if(first&&second)object((item.infinite?'Line':'Segment')+'('+first+','+second+')',item.label||item.a+item.b,[124,90,201],visible(item));else skipped.push(item.label||'缺少端点的线');}
+      if(conic)ids.set('$conic',conic);
+      const ref=id=>String(id).startsWith('feature:')?labels.get(String(id).slice(8)):ids.get(id);
+      let pending=deferred.slice();
+      for(let pass=0;pending.length&&pass<=deferred.length;pass++){
+        const next=[];let made=0;
+        for(const item of pending){
+          const refs=item.kind==='through_points'?[labels.get(item.a),labels.get(item.b)]:(item.refs||[]).map(ref);
+          if(!refs.length||refs.some(v=>!v)){next.push(item);continue;}
+          const names={line:'Line',segment:'Segment',ray:'Ray',midpoint:'Midpoint',circle:'Circle',circumcircle:'Circle',perp_bisector:'PerpendicularBisector',parallel:'Line',perpendicular:'PerpendicularLine',tangent:'Tangent',distance:'Distance'};
+          let expression=null;
+          if(item.kind==='through_points')expression=(item.infinite?'Line':'Segment')+'('+refs.join(',')+')';
+          else if(names[item.op])expression=names[item.op]+'('+refs.join(',')+')';
+          else if(item.op==='intersection')expression='Intersect('+refs.join(',')+','+((item.branch||0)+1)+')';
+          else if(item.op==='normal')expression='PerpendicularLine('+refs[0]+',Tangent('+refs.join(',')+'))';
+          else if(item.op==='reflect_axis')expression='Reflect('+refs[0]+','+(item.axis==='y'?'x':'y')+'='+number(item.axisValue||0)+')';
+          if(!expression){skipped.push(item.label||item.op);continue;}
+          const label=object(expression,item.label,[124,90,201],visible(item));
+          if(label){ids.set(item.id,label);if(item.label)labels.set(item.label,label);made++;}
+        }
+        pending=next;if(!made)break;
+      }
+      skipped.push(...pending.map(item=>item.label||item.id||'缺少引用的构造'));
+      for(const polygon of scene.polygons||[]){const refs=(polygon.labels||[]).map(name=>labels.get(name));if(refs.length>=3&&refs.every(Boolean))object('Polygon('+refs.join(',')+')',polygon.label,[229,140,33],visible(polygon));else skipped.push(polygon.label||'多边形');}
       const size = Math.max(a, b, r, p * 2, 3) * 1.65;
       const rawView=api.getViewProperties(1),view=typeof rawView==='string'?JSON.parse(rawView):rawView;
       const ratio=(view.width||800)/(view.height||600),halfWidth=Math.max(size,size*ratio),halfHeight=halfWidth/ratio;
@@ -357,16 +402,22 @@
   }
 
   function sync(scene) { latestScene = copy(scene); }
-  async function open(scene) {
+  async function open(scene,slot=null,provider=null) {
+    sceneProvider=provider;
     if (scene !== undefined) sync(scene);
     buildShell(); previousFocus = document.activeElement;
-    if (!dialog.open) dialog.showModal();
+    if(dialog.open)dialog.close();
+    if(inlineSlot)inlineSlot.closest('.board-shell').removeAttribute('data-ggb-active');
+    inlineSlot=slot;dialog.classList.toggle('dong-ggb-inline',!!slot);
+    if(slot){slot.hidden=false;slot.append(dialog);slot.closest('.board-shell').dataset.ggbActive='true';dialog.show();}
+    else{document.body.append(dialog);dialog.showModal();}
     try { await start(); }
     catch (error) { info(error.message || 'GeoGebra 加载失败，请返回画板稍后重试。'); }
   }
   function close() {
     if (api) save().catch(error => info(error.message));
     if (dialog && dialog.open) dialog.close();
+    if(inlineSlot){inlineSlot.hidden=true;inlineSlot.closest('.board-shell').removeAttribute('data-ggb-active');inlineSlot=null;window.dispatchEvent(new Event('resize'));}
     if (previousFocus && previousFocus.isConnected) previousFocus.focus();
   }
   window.DongGeoGebra = Object.freeze({ open, close, sync, download, save, getAPI: () => api });
