@@ -13,13 +13,16 @@
   let saveTimer, busy = false, previousFocus, sessionTitle = 'GeoGebra 自由作图';
   let inlineSlot=null, importReport={skipped:[]}, startGeneration=0, sceneProvider=null;
   let narrowLayout=null;
+  let teachingBinding=null,linkedTimer=null,linkedRunning=false,linkedSignature='',linkedStructure='';
+  const draftKey=()=>KEY+(teachingBinding?':teaching':'');
+  const structureKey=scene=>{const value={...scene};for(const key of ['a','b','h','k','p','r','theta','parameterExpressions'])delete value[key];if(!scene?.objects?.some(o=>o.motionByPart))delete value.activePart;return JSON.stringify(value);};
   function resizeApplet(){
     if(!api||!dialog?.open||!host.clientWidth)return;
     api.setSize(Math.max(300,host.clientWidth),Math.max(180,host.clientHeight));
     const narrow=host.clientWidth<600;
-    if(narrowLayout!==narrow){narrowLayout=narrow;api.setPerspective(narrow?'G':'AG');api.showAlgebraInput(!narrow);}
+    if(narrowLayout!==narrow){narrowLayout=narrow;api.setPerspective(teachingBinding||narrow?'G':'AG');api.showAlgebraInput(!teachingBinding&&!narrow);}
   }
-  const importedMessage=()=>importReport.skipped.length?'部分导入；未转换对象：'+importReport.skipped.join('、')+'。原画板完整保留，请返回原画板核对。':'已导入支持的图形；此处为独立探索图稿，不自动回写题目答案。';
+  const importedMessage=()=>importReport.skipped.length?'部分导入；未转换对象：'+importReport.skipped.join('、')+'。原画板完整保留，请返回原画板核对。':teachingBinding?'题目与画板已同步；参数请在董解析参数区调整。':'已导入支持的图形；此处为独立探索图稿，不自动回写题目答案。';
   const copy = value => value == null ? null : JSON.parse(JSON.stringify(value));
   const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const positive = (value, fallback) => Math.max(0.000001, Math.abs(finite(value, fallback)));
@@ -42,6 +45,9 @@
       .dong-ggb-head button,.dong-ggb-import{font:inherit;font-size:13px;border:1px solid #c3d0df;border-radius:7px;background:#f8fafc;color:#163b53;padding:7px 10px;cursor:pointer;}
       .dong-ggb-head button:focus-visible,.dong-ggb-import:focus-within{outline:3px solid #25b8ad;outline-offset:2px;}
       .dong-ggb-head .dong-ggb-close{background:#0f9f99;color:#fff;border-color:#0f9f99;}
+      .dong-ggb-tools{position:relative;font-size:13px}.dong-ggb-tools summary{cursor:pointer;padding:7px;border:1px solid #c3d0df;border-radius:7px}.dong-ggb-tools>div{position:absolute;top:100%;right:0;z-index:5;background:white;padding:10px;box-shadow:0 6px 20px #163b5333;width:240px;max-height:45dvh;overflow:auto;display:flex;flex-wrap:wrap;gap:6px}
+      .dong-ggb-dialog[data-teaching="true"] [data-standalone="true"]{display:none!important}
+      @media(min-width:1280px){.workspace[data-teaching="true"]{grid-template-columns:minmax(280px,.9fr) minmax(310px,1fr) minmax(0,3.2fr)}.workspace.input-collapsed[data-teaching="true"]{grid-template-columns:minmax(310px,1fr) minmax(0,2.5fr)}.workspace[data-teaching="true"] .quick-conic-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
       .dong-ggb-note{margin:0;padding:7px 16px;font-size:12px;line-height:1.5;color:#496078;background:#eef7fa;}
       .dong-ggb-note a{color:#176779;}
       .dong-ggb-status{margin:0;padding:6px 16px;min-height:31px;font-size:12px;line-height:1.5;color:#385268;background:#fff;}
@@ -60,20 +66,28 @@
     title.className = 'dong-ggb-title';
     title.textContent = '董解析 × GeoGebra · 动态几何编辑器';
     header.append(title);
+    const more=document.createElement('details');more.className='dong-ggb-tools';
+    const summary=document.createElement('summary');summary.textContent='文件与工具';
+    const toolPanel=document.createElement('div');more.append(summary,toolPanel);
     const button = (label, fn, className = '') => {
       const el = document.createElement('button');
       el.type = 'button'; el.textContent = label; el.className = className;
       el.addEventListener('click', wrap(fn)); header.append(el); return el;
     };
-    button('导入当前画板', () => replaceWithScene(sceneProvider?sceneProvider():latestScene));
-    button('重试加载', () => start());
-    button('新建空白图', () => replaceWithScene(null));
-    button('恢复上一图', restorePrevious);
-    button('保存 .ggb', download);
-    button('保存图片', exportPng);
-    button('图形 / 代数',()=>{if(!api)throw new Error('请等待 GeoGebra 加载完成。');narrowLayout=!narrowLayout;api.setPerspective(narrowLayout?'G':'AG');api.showAlgebraInput(!narrowLayout);});
+    button('导入当前画板', () => replaceWithScene(sceneProvider?sceneProvider():latestScene)).dataset.standalone='true';
+    toolPanel.append(button('重试加载', () => start()));
+    const blank=button('新建空白图', () => replaceWithScene(null));blank.dataset.standalone='true';toolPanel.append(blank);
+    const previous=button('恢复上一图', restorePrevious);previous.dataset.standalone='true';toolPanel.append(previous);
+    toolPanel.append(button('保存 .ggb', download));
+    toolPanel.append(button('下载上次题图',()=>{
+      const record=read(draftKey()+':previous');if(!record?.base64)throw new Error('还没有上一图备份。');
+      const bytes=Uint8Array.from(atob(record.base64),c=>c.charCodeAt(0));
+      downloadBlob(new Blob([bytes],{type:'application/vnd.geogebra.file'}),'董解析-上一题图.ggb');
+    }));
+    toolPanel.append(button('保存图片', exportPng));
+    button('图形 / 代数',()=>{if(!api)throw new Error('请等待 GeoGebra 加载完成。');narrowLayout=!narrowLayout;api.setPerspective(narrowLayout?'G':'AG');api.showAlgebraInput(!narrowLayout);}).dataset.standalone='true';
     const fileLabel = document.createElement('label');
-    fileLabel.className = 'dong-ggb-import'; fileLabel.textContent = '打开 .ggb';
+    fileLabel.className = 'dong-ggb-import'; fileLabel.textContent = '打开 .ggb';fileLabel.dataset.standalone='true';
     const file = document.createElement('input');
     file.type = 'file'; file.accept = '.ggb'; file.hidden = true;
     file.addEventListener('change', wrap(async () => {
@@ -93,7 +107,7 @@
       info('已打开 ' + selected.name + '；此图保存在当前设备。');
       file.value = '';
     }));
-    fileLabel.append(file); header.append(fileLabel);
+    fileLabel.append(file);toolPanel.append(fileLabel);header.append(more);
     button('返回董解析', close, 'dong-ggb-close');
     const note = document.createElement('p');
     note.className = 'dong-ggb-note';
@@ -130,7 +144,8 @@
     loading = (async () => {
       await loadScript();
       return new Promise((resolve, reject) => {
-        const saved = read(KEY);
+        // Teaching sessions must never restore another question's standalone draft.
+        const saved=teachingBinding?null:read(KEY);
         const generation=++startGeneration;
         const timer = setTimeout(() => { startGeneration++;api=null;host.querySelector('#dong-geogebra-applet').replaceChildren();reject(new Error('GeoGebra 加载超时，可重试或返回原画板；原图稿未改动。')); }, 45000);
         const params = {
@@ -148,11 +163,13 @@
             narrowLayout=null;resizeApplet();
             try {
               api.setErrorDialogsActive(false);
-              if (saved && saved.base64) {
+              if (saved && saved.base64&&!teachingBinding) {
                 sessionTitle = saved.title || sessionTitle;
                 info('已恢复上次的 GeoGebra 图稿。点击“导入当前画板”可载入董解析当前题目。');
               } else {
-                importReport=populate(latestScene); await save();
+                const initial=copy(latestScene);importReport=populate(initial);
+                if(teachingBinding){linkedSignature=JSON.stringify(initial);linkedStructure=structureKey(initial);}
+                await save();
                 info(importedMessage());
               }
               listen(); resolve(api);
@@ -176,9 +193,15 @@
     };
     api.registerStoreUndoListener(schedule);
     api.registerAddListener(schedule);
-    api.registerRemoveListener(schedule);
-    api.registerRenameListener(schedule);
+    const structuralEdit=label=>{if(teachingBinding&&!busy&&importReport.owned?.includes(Array.isArray(label)?label[0]:label)){linkedStructure='';linkedSignature='';syncTeaching(sceneProvider());}schedule();};
+    api.registerRemoveListener(structuralEdit);
+    api.registerRenameListener(structuralEdit);
     api.registerClientListener(event => {
+      if(teachingBinding&&!busy&&['dragEnd','undo','redo'].includes(event.type)){
+        const changes=(importReport.drivers||[]).filter(({label})=>api.exists(label)&&api.isDefined(label)&&api.getVisible(label)).map(({id,label})=>({id,x:api.getXcoord(label),y:api.getYcoord(label)})).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+        teachingBinding.changed(changes);
+        latestScene=copy(sceneProvider());linkedSignature=JSON.stringify(latestScene);linkedStructure=structureKey(latestScene);
+      }
       if (['dragEnd', 'undo', 'redo', 'updateStyle', 'viewChanged2D', 'editorStop'].includes(event.type)) schedule();
     });
   }
@@ -193,9 +216,10 @@
   }
 
   async function save() {
+    const key=draftKey();
     const base64 = await getBase64();
-    const record = { base64, title: sessionTitle, savedAt: new Date().toISOString() };
-    try { localStorage.setItem(KEY, JSON.stringify(record)); }
+    const record = { base64, title: sessionTitle, savedAt: new Date().toISOString(),sceneSignature:teachingBinding?JSON.stringify(latestScene):null };
+    try { localStorage.setItem(key, JSON.stringify(record)); }
     catch { throw new Error('浏览器存储空间不足，请点击“保存 .ggb”把图稿保存到文件。'); }
     return record;
   }
@@ -203,7 +227,7 @@
   async function backupCurrent() {
     if (!api) throw new Error('请等待 GeoGebra 加载完成。');
     const record = await save();
-    try { localStorage.setItem(BACKUP, JSON.stringify(record)); }
+    try { localStorage.setItem(draftKey()+':previous', JSON.stringify(record)); }
     catch { throw new Error('无法备份当前图，请先保存 .ggb 文件并清理浏览器存储空间。'); }
   }
 
@@ -262,7 +286,7 @@
     const scene = raw && raw.model ? { ...raw.model, ...raw.p, activePart: raw.activePart } : (raw || {});
     sessionTitle = scene.title || 'GeoGebra 自由作图';
     let serial = 0;
-    const labels = new Map(), ids=new Map(), anchors = {}, skipped = [], deferred = [];
+    const labels = new Map(), ids=new Map(), paths=new Map(), anchors = {}, skipped = [], deferred = [],drivers=[],owned=[],visibility=[];
     const active = scene.activePart;
     const visible = item => item.visible !== false && (active == null || (item.part!=null?Number(item.part)===Number(active):!Array.isArray(item.parts)||item.parts.includes(Number(active))));
     function object(expression, caption, color = [124, 90, 201], show = true) {
@@ -271,7 +295,7 @@
       const label = /^[A-Za-z][A-Za-z0-9_]*$/.test(candidate)&&!['x','y','z','e','i'].includes(candidate)&&!api.exists(candidate) ? candidate : serialLabel;
       if (!api.evalCommand(label + (expression.includes('=') ? ':' : '=') + expression)) { skipped.push(caption || expression); return null; }
       if (caption) { api.setCaption(label, String(caption)); api.setLabelStyle(label, 3); api.setLabelVisible(label, true); }
-      api.setColor(label, ...color); api.setVisible(label, show); return label;
+      owned.push(label);api.setColor(label, ...color); api.setVisible(label, show); return label;
     }
     function point(x, y, caption, show = true) {
       const label = object('(' + number(x) + ',' + number(y) + ')', caption, [63, 120, 216], show);
@@ -281,7 +305,7 @@
     const h = finite(scene.h), k = finite(scene.k), a = positive(scene.a, 3), b = positive(scene.b, 2);
     const r = positive(scene.r, 3), p = positive(scene.p, 2), direction = finite(scene.direction, 1) < 0 ? -1 : 1;
     const vertical = scene.orientation === 'vertical', showFeatures = scene.showFeatures !== false;
-    let conic = null, center = null;
+    let conic = null, center = null, axisA=null,axisB=null,parabolaP=null,circleEdge=null,dynamic=null;
     api.setRepaintingActive(false);
     try {
       if (!scene.isFreeBoard&&['ellipse', 'hyperbola', 'circle', 'parabola'].includes(scene.type)) {
@@ -292,6 +316,7 @@
         if (scene.type === 'ellipse' || scene.type === 'hyperbola') {
           const ax = object(number(a), 'a', [15, 159, 153], false);
           const by = object(number(b), 'b', [15, 159, 153], false);
+          axisA=ax;axisB=by;
           const major = vertical ? y : x, minor = vertical ? x : y;
           conic = object(major + '^2/' + ax + '^2' + (scene.type === 'ellipse' ? '+' : '-') + minor + '^2/' + by + '^2=1', 'C', [15, 159, 153], scene.showConic !== false);
           const f = 'sqrt(' + ax + '^2' + (scene.type === 'ellipse' ? '-' : '+') + by + '^2)';
@@ -302,9 +327,11 @@
           labels.set('F₂', anchors.focus2); labels.set('F2', anchors.focus2);
         } else if (scene.type === 'circle') {
           const edge = point(h + r, k, 'R（调半径）');
+          circleEdge=edge;
           conic = object('Circle(' + center + ',' + edge + ')', 'C', [15, 159, 153], scene.showConic !== false);
         } else {
           const parameter = object(number(p), 'p', [15, 159, 153], false);
+          parabolaP=parameter;
           conic = object((vertical ? x : y) + '^2=' + (4 * direction) + '*' + parameter + '*' + (vertical ? y : x), 'C', [15, 159, 153], scene.showConic !== false);
           const focus = vertical ? '(x(' + center + '),y(' + center + ')+' + direction + '*' + parameter + ')' : '(x(' + center + ')+' + direction + '*' + parameter + ',y(' + center + '))';
           anchors.focus1 = anchors.focus2 = object(focus, 'F', [63, 120, 216], showFeatures);
@@ -323,6 +350,7 @@
         const label = point(item.x, item.y, item.label || 'P', visible(item));
         if (item.id) ids.set(item.id, label);
         if (item.label) labels.set(item.label, label);
+        if(item.source==='user'&&label)drivers.push({id:item.id,label});
       }
       for (const item of [...(scene.lines || []), ...objects.filter(value => value.kind !== 'point')]) {
         let label = null;
@@ -332,6 +360,7 @@
           const c = point(item.h, item.k, (item.label || '圆') + '心', visible(item));
           const edge = point(finite(item.h) + positive(item.r, 1), item.k, '半径点', visible(item));
           label = object('Circle(' + c + ',' + edge + ')', item.label || '圆', [193, 91, 135], visible(item));
+          if(label)paths.set(label,{x:'x('+c+')+Radius('+label+')*cos(tt)',y:'y('+c+')+Radius('+label+')*sin(tt)'});
         } else if(item.kind==='construction'){
           deferred.push(item);
         } else if (item.kind === 'through_points') {
@@ -350,25 +379,39 @@
         } else skipped.push(item.label || item.kind || '对象');
         if (label && item.id) ids.set(item.id, label);
       }
-      if (center && conic && scene.showDynamic !== false && scene.dynamicLine !== false && visible({part:scene.dynamicLinePart})) {
+      if (center && conic && scene.showDynamic !== false && scene.dynamicLine !== false) {
+        const dynamicItem={part:scene.dynamicLinePart,parts:scene.dynamicLineParts};
         const mode = scene.lineThrough || 'center';
         const pivot = mode.startsWith('point:') ? (labels.get(mode.slice(6)) || center) : (anchors[mode] || center);
         const radius = Math.max(a, b, r, p, 2) * 0.85;
         const ring = object('Circle(' + pivot + ',' + number(radius) + ')', '', [220, 225, 235], false);
-        const handle = object('Point(' + ring + ')', 'T（拖动旋转）', [242, 163, 60]);
+        const handle = object('Point(' + ring + ')', 'T（拖动旋转）', [242, 163, 60],visible(dynamicItem));
+        visibility.push({label:handle,item:dynamicItem});
+        dynamic={pivot,handle,radius};
+        if(handle)drivers.push({id:'$dynamic-angle',label:handle});
         const angle = finite(scene.theta, 42) * Math.PI / 180;
         if (handle) api.setCoords(handle, api.getXcoord(pivot) + radius * Math.cos(angle), api.getYcoord(pivot) + radius * Math.sin(angle));
-        const line = object('Line(' + pivot + ',' + handle + ')', scene.dynamicLineLabel || 'l', [242, 163, 60]);
+        const line = object('Line(' + pivot + ',' + handle + ')', scene.dynamicLineLabel || 'l', [242, 163, 60],visible(dynamicItem));
+        visibility.push({label:line,item:dynamicItem});
         if(line)ids.set('$dynamic',line);
         if (line) {
           const pair=scene.dynamicIntersectionLabels||['A','B'];
-          const first = object('Intersect(' + line + ',' + conic + ',1)', pair[0], [223, 91, 98], scene.showConic !== false);
-          const second = object('Intersect(' + line + ',' + conic + ',2)', pair[1], [223, 91, 98], scene.showConic !== false);
+          const intersectionItem={...dynamicItem,visible:scene.showConic!==false};
+          const first = object('Intersect(' + line + ',' + conic + ',1)', pair[0], [223, 91, 98], visible(intersectionItem));
+          const second = object('Intersect(' + line + ',' + conic + ',2)', pair[1], [223, 91, 98], visible(intersectionItem));
+          visibility.push({label:first,item:intersectionItem},{label:second,item:intersectionItem});
           if(!labels.has(pair[0])) labels.set(pair[0],first);
           if(!labels.has(pair[1])) labels.set(pair[1],second);
         }
       }
-      if(conic)ids.set('$conic',conic);
+      if(conic){
+        ids.set('$conic',conic);
+        const cx='x('+center+')',cy='y('+center+')';
+        if(scene.type==='ellipse')paths.set(conic,{x:cx+'+'+(vertical?axisB:axisA)+'*cos(tt)',y:cy+'+'+(vertical?axisA:axisB)+'*sin(tt)'});
+        if(scene.type==='circle')paths.set(conic,{x:cx+'+Radius('+conic+')*cos(tt)',y:cy+'+Radius('+conic+')*sin(tt)'});
+        if(scene.type==='parabola')paths.set(conic,{x:cx+'+'+(vertical?'tt':'tt^2/('+number(4*direction)+'*'+parabolaP+')'),y:cy+'+'+(vertical?'tt^2/('+number(4*direction)+'*'+parabolaP+')':'tt')});
+        if(scene.type==='hyperbola')paths.set(conic,{requiresRange:true,x:cx+'+'+(vertical?axisB+'*sinh(tt)':'BR*'+axisA+'*cosh(tt)'),y:cy+'+'+(vertical?'BR*'+axisA+'*cosh(tt)':axisB+'*sinh(tt)')});
+      }
       const ref=id=>String(id).startsWith('feature:')?labels.get(String(id).slice(8)):ids.get(id);
       let pending=deferred.slice();
       for(let pass=0;pending.length&&pass<=deferred.length;pass++){
@@ -377,20 +420,42 @@
           const refs=item.kind==='through_points'?[labels.get(item.a),labels.get(item.b)]:(item.refs||[]).map(ref);
           if(!refs.length||refs.some(v=>!v)){next.push(item);continue;}
           const names={line:'Line',segment:'Segment',ray:'Ray',midpoint:'Midpoint',circle:'Circle',circumcircle:'Circle',perp_bisector:'PerpendicularBisector',parallel:'Line',perpendicular:'PerpendicularLine',tangent:'Tangent',distance:'Distance'};
-          let expression=null;
+          let expression=null,seed=null;
           if(item.kind==='through_points')expression=(item.infinite?'Line':'Segment')+'('+refs.join(',')+')';
           else if(names[item.op])expression=names[item.op]+'('+refs.join(',')+')';
           else if(item.op==='intersection')expression='Intersect('+refs.join(',')+','+((item.branch||0)+1)+')';
           else if(item.op==='normal')expression='PerpendicularLine('+refs[0]+',Tangent('+refs.join(',')+'))';
           else if(item.op==='reflect_axis')expression='Reflect('+refs[0]+','+(item.axis==='y'?'x':'y')+'='+number(item.axisValue||0)+')';
+          else if(item.op==='point_on'){
+            const spec=window.DongMotionDomain?.driver(item,active)||item;
+            let domain;try{domain=window.DongMotionDomain?.validate(spec.motionDomain)||spec.motionDomain||{};}catch{skipped.push(item.label||item.op);continue;}
+            const range=domain.parameter,path=paths.get(refs[0]);
+            // Never silently relax an unsupported condition or an open endpoint.
+            const supported=spec.mode!=='plane'&&Number.isFinite(spec.t)&&path&&(!path.requiresRange||range)&&Object.keys(domain).every(k=>k==='parameter'||k==='branch')&&(!range||(Number.isFinite(range.min)&&Number.isFinite(range.max)&&range.min<range.max&&range.minClosed!==false&&range.maxClosed!==false&&spec.t>=range.min&&spec.t<=range.max));
+            if(supported){
+              const branch=domain.branch??spec.branch??1;
+              if(branch!==1&&branch!==-1||domain.branch!=null&&spec.branch!=null&&domain.branch!==spec.branch){skipped.push(item.label||item.op);continue;}
+              const x=path.x.replace(/BR/g,String(branch)),y=path.y.replace(/BR/g,String(branch));
+              let target=refs[0];
+              if(range)target=object('Curve('+x+','+y+',tt,'+number(range.min)+','+number(range.max)+')','',[124,90,201],false);
+              if(target){expression='Point('+target+')';seed='('+x.replace(/\btt\b/g,'('+number(spec.t)+')')+','+y.replace(/\btt\b/g,'('+number(spec.t)+')')+')';}
+            }
+          }
           if(!expression){skipped.push(item.label||item.op);continue;}
           const label=object(expression,item.label,[124,90,201],visible(item));
-          if(label){ids.set(item.id,label);if(item.label)labels.set(item.label,label);made++;}
+          if(label){
+            if(seed){const initial=object(seed,'',[124,90,201],false);if(initial){api.setCoords(label,api.getXcoord(initial),api.getYcoord(initial));api.deleteObject(initial);}api.setPointSize(label,5);}
+            if(item.op==='point_on')drivers.push({id:item.id,label});
+            if(['circle','circumcircle'].includes(item.op))paths.set(label,{x:'x(Center('+label+'))+Radius('+label+')*cos(tt)',y:'y(Center('+label+'))+Radius('+label+')*sin(tt)'});
+            ids.set(item.id,label);if(item.label)labels.set(item.label,label);made++;
+          }
         }
         pending=next;if(!made)break;
       }
       skipped.push(...pending.map(item=>item.label||item.id||'缺少引用的构造'));
-      for(const polygon of scene.polygons||[]){const refs=(polygon.labels||[]).map(name=>labels.get(name));if(refs.length>=3&&refs.every(Boolean))object('Polygon('+refs.join(',')+')',polygon.label,[229,140,33],visible(polygon));else skipped.push(polygon.label||'多边形');}
+      for(const polygon of scene.polygons||[]){const refs=(polygon.labels||[]).map(name=>labels.get(name));if(refs.length>=3&&refs.every(Boolean)){const label=object('Polygon('+refs.join(',')+')',polygon.label,[229,140,33],visible(polygon));if(label)visibility.push({label,item:polygon});}else skipped.push(polygon.label||'多边形');}
+      for(const item of [...(scene.lines||[]),...objects]){const label=ids.get(item.id);if(label)visibility.push({label,item});}
+      if(teachingBinding){for(const label of owned)if(api.exists(label))api.setFixed(label,true,true);for(const {label}of drivers)api.setFixed(label,false,true);}
       const size = Math.max(a, b, r, p * 2, 3) * 1.65;
       const rawView=api.getViewProperties(1),view=typeof rawView==='string'?JSON.parse(rawView):rawView;
       const ratio=(view.width||800)/(view.height||600),halfWidth=Math.max(size,size*ratio),halfHeight=halfWidth/ratio;
@@ -398,27 +463,61 @@
       api.setAxesVisible(true, true); api.setGridVisible(true); api.setMode(0); api.setUndoPoint();
       if (skipped.length) info('已转换支持的图形；未转换对象：' + skipped.join('、') + '。可用 GeoGebra 工具栏补建。');
     } finally { api.setRepaintingActive(true); }
-    return { skipped };
+    return { skipped,drivers,owned,update(next){
+      const show=item=>item.visible!==false&&(next.activePart==null||(item.part!=null?Number(item.part)===Number(next.activePart):!Array.isArray(item.parts)||item.parts.includes(Number(next.activePart))));
+      api.setRepaintingActive(false);
+      try{
+        if(center)api.setCoords(center,finite(next.h),finite(next.k));
+        if(axisA)api.setValue(axisA,positive(next.a,3));if(axisB)api.setValue(axisB,positive(next.b,2));if(parabolaP)api.setValue(parabolaP,positive(next.p,2));
+        if(circleEdge)api.setCoords(circleEdge,finite(next.h)+positive(next.r,3),finite(next.k));
+        if(dynamic){const angle=finite(next.theta,42)*Math.PI/180;api.setCoords(dynamic.handle,api.getXcoord(dynamic.pivot)+dynamic.radius*Math.cos(angle),api.getYcoord(dynamic.pivot)+dynamic.radius*Math.sin(angle));}
+        for(const {label,item}of visibility)if(label)api.setVisible(label,show(item));
+      }finally{api.setRepaintingActive(true);}
+    }};
   }
 
   function sync(scene) { latestScene = copy(scene); }
-  async function open(scene,slot=null,provider=null) {
+  async function open(scene,slot=null,provider=null,binding=null) {
+    teachingBinding=binding;
     sceneProvider=provider;
     if (scene !== undefined) sync(scene);
     buildShell(); previousFocus = document.activeElement;
+    dialog.dataset.teaching=String(!!binding);
+    document.querySelector('.workspace')?.setAttribute('data-teaching',String(!!binding));
+    if(binding){dialog.querySelector('.dong-ggb-title').textContent='董解析 · 教学画板（集成预览）';dialog.querySelector('.dong-ggb-note').innerHTML='<details><summary>使用说明与能力边界</summary><p>当前题目自动同步，参数统一在董解析调整。题设构造锁定，支持的动点可拖动并回写原画板。更换构造会备份上一图；新增高级作图暂未回写题目模型，请及时保存 .ggb。</p></details>Made with GeoGebra® © GeoGebra GmbH · <a href="https://www.geogebra.org/license" target="_blank" rel="noopener noreferrer">非商业使用许可</a>';}
     if(dialog.open)dialog.close();
     if(inlineSlot)inlineSlot.closest('.board-shell').removeAttribute('data-ggb-active');
     inlineSlot=slot;dialog.classList.toggle('dong-ggb-inline',!!slot);
     if(slot){slot.hidden=false;slot.append(dialog);slot.closest('.board-shell').dataset.ggbActive='true';dialog.show();}
     else{document.body.append(dialog);dialog.showModal();}
-    try { await start(); }
+    try { await start();if(binding)syncTeaching(scene); }
     catch (error) { info(error.message || 'GeoGebra 加载失败，请返回画板稍后重试。'); }
   }
   function close() {
+    clearTimeout(linkedTimer);linkedTimer=null;document.querySelector('.workspace')?.removeAttribute('data-teaching');
     if (api) save().catch(error => info(error.message));
     if (dialog && dialog.open) dialog.close();
     if(inlineSlot){inlineSlot.hidden=true;inlineSlot.closest('.board-shell').removeAttribute('data-ggb-active');inlineSlot=null;window.dispatchEvent(new Event('resize'));}
     if (previousFocus && previousFocus.isConnected) previousFocus.focus();
   }
-  window.DongGeoGebra = Object.freeze({ open, close, sync, download, save, getAPI: () => api });
+  function syncTeaching(scene){
+    if(!teachingBinding||!dialog?.open)return;
+    latestScene=copy(scene);if(linkedTimer)return;
+    linkedTimer=setTimeout(()=>{linkedTimer=null;flushTeaching();},120);
+  }
+  async function flushTeaching(){
+    if(linkedRunning||!api||!teachingBinding||!dialog?.open)return;
+    const scene=copy(latestScene),signature=JSON.stringify(scene),structure=structureKey(scene);
+    if(signature===linkedSignature)return;
+    linkedRunning=true;busy=true;
+    try{
+      if(structure===linkedStructure&&importReport.update)importReport.update(scene);
+      else {await backupCurrent();if(!dialog?.open)return;api.newConstruction();importReport=populate(scene);}
+      linkedSignature=signature;linkedStructure=structure;
+      info(importReport.skipped.length?importedMessage():'题目与画板已同步；参数请在董解析参数区调整。');
+      await save();
+    }catch(error){info('画板同步未完成：'+error.message+'。请返回原画板核对。');}
+    finally{busy=false;linkedRunning=false;if(JSON.stringify(latestScene)!==signature)syncTeaching(latestScene);}
+  }
+  window.DongGeoGebra = Object.freeze({ open, close, sync, syncTeaching, download, save, getAPI: () => api });
 })();

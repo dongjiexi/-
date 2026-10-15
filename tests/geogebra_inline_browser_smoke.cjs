@@ -14,7 +14,9 @@ module.exports=async({page,context,baseURL,assert,screenshot})=>{
     {id:'u',kind:'point',label:'U',x:-2,y:0},{id:'v',kind:'point',label:'V',x:2,y:0},{id:'w',kind:'point',label:'W',x:0,y:2},
     {id:'circle',kind:'construction',op:'circumcircle',refs:['u','v','w'],label:'c'},
     {id:'bis',kind:'construction',op:'perp_bisector',refs:['u','v'],label:'b'},
-    {id:'limited',kind:'construction',op:'point_on',refs:['circle'],t:.5,label:'受限点',motionDomain:{parameter:{min:0,max:1}}},
+    {id:'moving',kind:'construction',op:'point_on',refs:['circle'],t:.5,label:'T'},
+    {id:'bounded',kind:'construction',op:'point_on',refs:['circle'],t:.5,label:'S',motionDomain:{parameter:{min:0,max:1}}},
+    {id:'limited',kind:'construction',op:'point_on',refs:['circle'],t:.5,label:'受限点',motionDomain:{parameter:{min:0,max:1,minClosed:false}}},
     {id:'missing',kind:'construction',op:'midpoint',refs:['limited','u'],label:'依赖受限点'}
   ],polygons:[{label:'△UVW',labels:['U','V','W']}]};
   await page.locator('#sceneJson').evaluate((el,value)=>{el.value=value;document.querySelector('#applyJson').click();},JSON.stringify(fixture));
@@ -26,6 +28,8 @@ module.exports=async({page,context,baseURL,assert,screenshot})=>{
   const calls=await page.evaluate(()=>window.__ggbCalls.join('\n'));
   for(const name of ['Midpoint(U,V)','Circle(U,V,W)','PerpendicularBisector(U,V)','Polygon(U,V,W)'])assert(calls.includes(name),name);
   assert(!calls.includes('调半径'),'Free board must not synthesize a primary curve');
+  assert(calls.includes('T=Point(c)'),'Unrestricted path point remains attached');
+  assert(calls.includes('Curve(x(Center(c))+Radius(c)*cos(tt),y(Center(c))+Radius(c)*sin(tt),tt,0,1)'),'Closed range becomes a bounded path');
   assert.match(await page.locator('.dong-ggb-status').innerText(),/受限点.*依赖受限点/);
   assert.equal(await page.locator('#sceneJson').inputValue(),original,'Import does not rewrite native graph');
   for(const width of [390,320]){await page.setViewportSize({width,height:844});await page.locator('[data-mobile-panel="board"]').click();assert(await page.locator('.dong-ggb-close').isVisible());assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}

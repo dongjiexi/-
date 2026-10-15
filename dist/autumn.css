@@ -1,0 +1,49 @@
+/* Dongjiexi autumn classroom. Decorations never intercept input or enter the board. */
+:root{--ink:#3e2926;--ink-2:#61423b;--paper:#f7eee5;--panel:#fffcf8;--line:#e7d4c7;--muted:#82685e;--teal:#a34239;--teal-soft:#faeae1;--accent:#a34239;--shadow:0 6px 26px #703a2510,0 1px 3px #703a2508}
+body{background:radial-gradient(ellipse at 4% 4%,#f2d4ba99,transparent 40%),radial-gradient(ellipse at 95% 65%,#eac7bd66,transparent 45%),linear-gradient(145deg,#fcf6ed,#f4e6dc 58%,#f9f0e6);color:var(--ink);isolation:isolate}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:url('autumn-background.svg') center/cover no-repeat}
+.topbar{background:linear-gradient(112deg,#69302f,#8b3c35 52%,#a65640);border-bottom:1px solid #b27959;box-shadow:0 3px 18px #672d291c}
+.brand-mark{color:#ffe0b4;background:linear-gradient(145deg,#ffffff20,#ffffff06);border-color:#e5bc914f}
+.top-note{color:#f6d9c6}.topbar .install-button{background:#ffffff12;border-color:#d7ab91;color:#fff4e8}.topbar .install-button:hover{background:#ffffff25}
+.topbar .button.secondary{background:linear-gradient(#fff8e9,#f5e6cf);color:#74372e;border-color:#e4c4a3}
+.panel{background:linear-gradient(150deg,#fffefa,#fffaf5);border-color:var(--line);box-shadow:var(--shadow)}
+.panel-heading{background:linear-gradient(110deg,#fffdf8,#fcf2e9);border-color:var(--line)}
+.panel-heading h1,.panel-heading h2,.board-title,.panel-title{color:var(--ink)}
+.step-badge,.workflow-number{background:linear-gradient(135deg,#f1d3bd,#f9e7d7);color:#873e31;border-color:#e8c6b0}
+.workflow-strip{background:transparent}.workflow-step{background:linear-gradient(110deg,#fffcf5e8,#f7e8dce8);border-color:#e5cebd;color:#68483f}.workflow-step small{color:#82685e}
+.button.primary,#solveButton{background:linear-gradient(120deg,#a34239,#b65843);border-color:#984036;box-shadow:0 3px 9px #973f3920;color:#fffaf2}
+.button.primary:hover,#solveButton:hover{background:linear-gradient(120deg,#8c362f,#a64b39)}
+.button.secondary,.parameter-keyboard,.toolbox-toggle{background:linear-gradient(#fffaf4,#f6eade);border-color:#dfc5b3;color:#794435}.button.secondary:hover{background:#f4e0cf}
+textarea,input:not([type=range]):not([type=checkbox]),select{background-color:#fffdf9;border-color:#ddc5b6;color:#432e29}
+input[type=checkbox],input[type=range]{accent-color:#a34239}textarea:focus,input:focus,select:focus{outline-color:#b65b43}
+#question{background:linear-gradient(165deg,#fffef9,#fff8ef);border-color:#d9bca8}
+.starter-details,details.tool-section,#objectBuilderDetails{background:#fff8f0;border-color:var(--line)}
+.inspector-switch,.mobile-panel-nav{background:#fff9f1}.inspector-switch button,.mobile-panel-nav button{border-color:#dfc5b3;color:#71483d}
+.inspector-switch button[aria-pressed=true],.mobile-panel-nav button[aria-pressed=true]{background:linear-gradient(120deg,#963d35,#b15a45);border-color:#a34b3e;color:#fffaf2}
+.answer-summary,.model-card{background:linear-gradient(130deg,#fcf0e3,#f8e5da);border-color:#e8ceba;color:#674237}
+.board-toolbar{background:linear-gradient(100deg,#fffdf8,#f9ebdd);border-color:var(--line)}
+.drag-toolbar,.native-toolbar{background:#fff8f0;border-color:#e8d4c3}.drag-toolbar button,.native-toolbar button{border-color:#e0c7b6;color:#704338;background:#fffcf7}
+.drag-toolbar button[aria-pressed=true],.native-toolbar button[aria-pressed=true]{background:#a34239;color:#fffaf2;border-color:#a34239}
+.board-help,.drag-hint{background:#faf0e5;color:#7a584b}.help{color:#82685e}
+.pwa-banner{background:#fbf0e2;border-color:#e3cbb6;color:#785340}.pwa-banner button{background:#fffaf3;border-color:#dcbda5;color:#794536}
+.status,.engine-route-summary{background:#f8ede1;border-color:#e6cdb8;color:#775144}.status.error{background:#fff0ea;border-color:#e9bdab;color:#922d2a}
+.quick-conics,.quick-function-details,.compact-section{background:#fff8ef;border-color:#e4cdbb}.quick-conics-head strong{color:#754a3a}.quick-conic{color:#804839;border-color:#dbbda8;background:#fffdf8}.quick-conic:hover{background:#f7e8d8;border-color:#b57a58}
+.metric{border-color:#ecded1}.metric-value.good{color:#8e4c31}.model-card{color:#754735}
+.study-dialog,.cloud-auth-dialog,.release-dialog,.question-bank-dialog{background:#fffcf8;border-color:#dbc0ac;box-shadow:0 24px 70px #54241f30}
+dialog::backdrop{background:#482820a8}
+.solve-mode-option[aria-pressed=true],.solve-mode-option:hover{border-color:#ba7962;background:#fbecdf}
+.cloud-connection{border-color:#e7d3c3;background:#fcf4ea}
+/* Keep semantic success/error colors distinct; a seasonal palette is not an error state. */
+.cloud-connection[data-state=connected]{color:#316147;background:#f0f5e9;border-color:#ccd8ba}
+.cloud-connection[data-state=failed]{color:#8b302c;background:#fff0e9;border-color:#e9b9a6}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #b9693d;outline-offset:3px}
+body .dong-ggb-dialog{background:#fffaf4;color:#432e29}
+body .dong-ggb-head{background:linear-gradient(100deg,#fffaf2,#f7e7d9);border-color:#e2c8b5}
+body .dong-ggb-head button,body .dong-ggb-import,body .dong-ggb-tools summary{background:#fffaf2;color:#774238;border-color:#d9bba5}
+body .dong-ggb-head .dong-ggb-close{background:linear-gradient(120deg,#963d35,#ad5341);border-color:#963d35;color:#fffaf2}
+body .dong-ggb-note{background:#fbefdf;color:#775244}body .dong-ggb-note a{color:#873a30}body .dong-ggb-status{background:#fffaf4;color:#6f4b40}
+body .dong-ggb-tools>div{background:#fffaf4;box-shadow:0 6px 20px #69352824}
+/* Coordinate canvas and mathematical object colors deliberately remain unchanged. */
+@media(max-width:760px){body::before{background-size:auto 100%;opacity:.65}.topbar{box-shadow:0 2px 10px #672d2914}.panel{box-shadow:0 3px 12px #703a250b}}
+@media print{body{background:white!important}body::before{display:none}.panel{background:white;box-shadow:none}.topbar{background:white;color:black}}
+@media(forced-colors:active){body::before{display:none}.button.primary,#solveButton,.topbar{background:Canvas;color:CanvasText}.panel{border:1px solid CanvasText}}

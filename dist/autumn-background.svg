@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" fill="none">
+  <!-- Original decorative artwork for Dongjiexi; not interactive tool icons. -->
+  <defs>
+    <linearGradient id="leaf" x2="1" y2="1"><stop stop-color="#cf744d"/><stop offset="1" stop-color="#9c3e39"/></linearGradient>
+    <linearGradient id="knit" x2="1" y2="1"><stop stop-color="#b95c4d"/><stop offset="1" stop-color="#813d3b"/></linearGradient>
+    <g id="maple"><path d="m0-80 17 32 20-12-3 33 31-12-10 25 18 8-46 29 8 19-32-9-28 17 4-26-44-23 20-12-13-24 29 10-2-31 19 10Z" fill="url(#leaf)"/><path d="M0-61 3 70M3 26-32 3M3 26 34-4" stroke="#733c35" stroke-width="2" stroke-linecap="round"/></g>
+  </defs>
+  <g opacity=".18"><use href="#maple" transform="translate(58 180) rotate(-30) scale(1.1)"/><use href="#maple" transform="translate(1510 130) rotate(32) scale(.7)"/><use href="#maple" transform="translate(1350 970) rotate(-35) scale(.55)"/><use href="#maple" transform="translate(145 840) rotate(20) scale(.6)"/></g>
+  <g transform="translate(20 935) rotate(-12)" opacity=".15">
+    <path d="M10 0C50-28 120-21 170 6L154 44C105 23 65 24 32 44Z" fill="url(#knit)"/>
+    <path d="m104 28 52 14-8 103-51-10Z" fill="url(#knit)"/>
+    <path d="m25 9 7 22m17-29 7 21m17-25 6 22m18-19 5 20m19-15 2 22m20-14-1 22M103 54l49 11m-50 11 49 11m-51 11 49 10m-50 12 48 10m-47 7-3 17m13-14-2 17m13-14-2 17m14-14-2 17m13-14-2 17" stroke="#f8ddba" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(1418 922) rotate(8)" opacity=".2">
+    <ellipse cx="57" cy="101" rx="84" ry="15" fill="#b98565" opacity=".35"/>
+    <path d="M109 20c58-9 53 66-3 59" stroke="#9d5141" stroke-width="13"/>
+    <path d="M0 10h116l-8 65c-3 35-94 35-100 0Z" fill="#bd7054"/>
+    <ellipse cx="58" cy="10" rx="58" ry="15" fill="#f5d7b6"/>
+    <ellipse cx="58" cy="11" rx="49" ry="10" fill="#694033"/>
+    <path d="m34 7 14-4 5 10-15 3Zm28-4 16 2-2 10-17-2Z" fill="#fff1d9"/>
+    <path d="M27-8c-17-18 13-24 0-41m33 37c-15-17 12-30 0-48m29 52c-13-19 12-23 3-40" stroke="#a45a40" stroke-width="4" stroke-linecap="round"/>
+    <path d="M23 32v38" stroke="#fbe9d1" stroke-width="6" stroke-linecap="round" opacity=".65"/>
+  </g>
+  <g transform="translate(780 1050) rotate(-7)" opacity=".12" stroke="#99664d" stroke-width="2">
+    <path d="M-78-25Q-40-38 0-16Q40-38 78-25L75 21Q36 12 0 32Q-36 12-75 21Z" fill="#e4bb89"/>
+    <path d="M0-16v48m-63-44q25-7 49 5m-49 4q25-7 49 5m-49 4q25-7 49 5m28-18q25-12 49-5m-49 14q25-12 49-5m-49 14q25-12 49-5"/>
+  </g>
+  <g transform="translate(1540 580) rotate(26)" opacity=".16">
+    <path d="M0 35Q-72-5-45-44Q-16-61 0-28Q16-61 45-44Q72-5 0 35Z" fill="#c59a4c"/>
+    <path d="M0 63V34M0 32-29-30M0 32 29-30M0 32-45-9M0 32 45-9" stroke="#92703d" stroke-width="2"/>
+  </g>
+</svg>
