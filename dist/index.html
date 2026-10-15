@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.63.1">
+  <meta name="dongjiexi-version" content="0.64.0">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.63.1">
-  <link rel="stylesheet" href="classroom.css?v=0.63.1">
-  <link rel="stylesheet" href="question-bank.css?v=0.63.1">
+  <link rel="stylesheet" href="learning-ui.css?v=0.64.0">
+  <link rel="stylesheet" href="classroom.css?v=0.64.0">
+  <link rel="stylesheet" href="question-bank.css?v=0.64.0">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -418,12 +418,12 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.63.1">
+  <link rel="stylesheet" href="theme.css?v=0.64.0">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.63.1 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.64.0 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -517,7 +517,7 @@
           <span class="toolbar-caption">构造</span>
           <span class="tool-group"><button data-construct="point" aria-pressed="false">点</button><button data-construct="line" aria-pressed="false">两点直线</button><button data-construct="line_angle" aria-pressed="false" title="先选定点，再指定方向；拖动时始终经过定点">过点直线</button><button data-construct="segment" aria-pressed="false">线段</button><button data-construct="ray" aria-pressed="false">射线</button><button data-construct="circle" aria-pressed="false">两点定圆</button></span>
           <span class="tool-group"><button data-construct="midpoint" aria-pressed="false">中点</button><button data-construct="reflect_x" aria-pressed="false" title="选点后生成关于 x 轴的联动对称点">x 轴对称</button><button data-construct="reflect_y" aria-pressed="false" title="选点后生成关于 y 轴的联动对称点">y 轴对称</button><button data-construct="perpendicular" aria-pressed="false">垂线</button><button data-construct="parallel" aria-pressed="false">平行线</button><button data-construct="intersection" aria-pressed="false">交点</button><button data-construct="foot" aria-pressed="false">垂足</button><button data-construct="distance" aria-pressed="false">测距</button></span>
-          <span class="tool-group"><button data-construct="tangent" aria-pressed="false" title="先选曲线，再选曲线上的点">切线</button><button data-construct="normal" aria-pressed="false" title="过曲线上一点、垂直于该点切线的直线">法线</button></span>
+          <span class="tool-group"><button data-construct="perp_bisector" aria-pressed="false" title="依次选择线段的两个端点">垂直平分线</button><button data-construct="circumcircle" aria-pressed="false" title="依次选择三个不共线的点">三点定圆</button><button data-construct="tangent" aria-pressed="false" title="先选曲线，再选曲线上的点">切线</button><button data-construct="normal" aria-pressed="false" title="过曲线上一点、垂直于该点切线的直线">法线</button></span>
           <span class="tool-group"><button id="saveNativeFile" title="导出完整构造依赖">保存图稿</button><label class="native-file">打开图稿<input type="file" id="openNativeFile" accept=".json,application/json"></label></span>
         <details id="motionRules" class="compact-section" hidden><summary>动点约束 · 查看 / 设置</summary><div>
           <label>选择动点<select id="motionRulePoint"></select></label><p id="motionRuleDescription" class="help"></p>
@@ -625,49 +625,49 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.63.1"></script>
+  <script src="runtime.js?v=0.64.0"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.63.1"></script>
-  <script src="number-display.js?v=0.63.1"></script>
-  <script src="label-layout.js?v=0.63.1"></script>
-  <script src="step-highlight.js?v=0.63.1"></script>
-  <script src="scene-audit.js?v=0.63.1"></script>
-  <script src="answer-geometry.js?v=0.63.1"></script>
-  <script src="scene-merge.js?v=0.63.1"></script>
-  <script src="tangent-solver.js?v=0.63.1"></script>
-  <script src="ellipse-distance.js?v=0.63.1"></script>
-  <script src="circle-dot.js?v=0.63.1"></script>
-  <script src="orthogonal-chord.js?v=0.63.1"></script>
-  <script src="axis-intercept-chord.js?v=0.63.1"></script>
-  <script src="conic-area.js?v=0.63.1"></script>
-  <script src="basic-conditions.js?v=0.63.1"></script>
-  <script src="ellipse-area-chord.js?v=0.63.1"></script>
-  <script src="vertex-secant.js?v=0.63.1"></script>
-  <script src="inverse-locus.js?v=0.63.1"></script>
-  <script src="symmetric-chord.js?v=0.63.1"></script>
-  <script src="parabola-locus.js?v=0.63.1"></script>
-  <script src="question-parts.js?v=0.63.1"></script>
-  <script src="goal-coverage.js?v=0.63.1"></script>
-  <script src="solution-review.js?v=0.63.1"></script>
-  <script src="parabola-focal-data.js?v=0.63.1"></script>
-  <script src="circle-fold.js?v=0.63.1"></script>
-  <script src="circle-fold-view.js?v=0.63.1"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.63.1">
-  <script src="hyperbola-iteration.js?v=0.63.1"></script>
-  <script src="conic-parameter.js?v=0.63.1"></script>
-  <script src="ellipse-focal-chord.js?v=0.63.1"></script>
-  <script src="external-ai.js?v=0.63.1"></script>
-  <script src="learning-ui.js?v=0.63.1"></script>
-  <script src="classroom.js?v=0.63.1"></script>
-  <script src="question-bank.js?v=0.63.1"></script>
-  <script src="construction-board.js?v=0.63.1"></script>
-  <script src="motion-domain.js?v=0.63.1"></script>
-  <script src="motion-protection.js?v=0.63.1"></script>
-  <script src="drag-board.js?v=0.63.1"></script>
-  <script src="equation-builder.js?v=0.63.1"></script>
-  <script src="math-keyboard.js?v=0.63.1"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.63.1"></script>
+  <script src="math-input.js?v=0.64.0"></script>
+  <script src="number-display.js?v=0.64.0"></script>
+  <script src="label-layout.js?v=0.64.0"></script>
+  <script src="step-highlight.js?v=0.64.0"></script>
+  <script src="scene-audit.js?v=0.64.0"></script>
+  <script src="answer-geometry.js?v=0.64.0"></script>
+  <script src="scene-merge.js?v=0.64.0"></script>
+  <script src="tangent-solver.js?v=0.64.0"></script>
+  <script src="ellipse-distance.js?v=0.64.0"></script>
+  <script src="circle-dot.js?v=0.64.0"></script>
+  <script src="orthogonal-chord.js?v=0.64.0"></script>
+  <script src="axis-intercept-chord.js?v=0.64.0"></script>
+  <script src="conic-area.js?v=0.64.0"></script>
+  <script src="basic-conditions.js?v=0.64.0"></script>
+  <script src="ellipse-area-chord.js?v=0.64.0"></script>
+  <script src="vertex-secant.js?v=0.64.0"></script>
+  <script src="inverse-locus.js?v=0.64.0"></script>
+  <script src="symmetric-chord.js?v=0.64.0"></script>
+  <script src="parabola-locus.js?v=0.64.0"></script>
+  <script src="question-parts.js?v=0.64.0"></script>
+  <script src="goal-coverage.js?v=0.64.0"></script>
+  <script src="solution-review.js?v=0.64.0"></script>
+  <script src="parabola-focal-data.js?v=0.64.0"></script>
+  <script src="circle-fold.js?v=0.64.0"></script>
+  <script src="circle-fold-view.js?v=0.64.0"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.64.0">
+  <script src="hyperbola-iteration.js?v=0.64.0"></script>
+  <script src="conic-parameter.js?v=0.64.0"></script>
+  <script src="ellipse-focal-chord.js?v=0.64.0"></script>
+  <script src="external-ai.js?v=0.64.0"></script>
+  <script src="learning-ui.js?v=0.64.0"></script>
+  <script src="classroom.js?v=0.64.0"></script>
+  <script src="question-bank.js?v=0.64.0"></script>
+  <script src="construction-board.js?v=0.64.0"></script>
+  <script src="motion-domain.js?v=0.64.0"></script>
+  <script src="motion-protection.js?v=0.64.0"></script>
+  <script src="drag-board.js?v=0.64.0"></script>
+  <script src="equation-builder.js?v=0.64.0"></script>
+  <script src="math-keyboard.js?v=0.64.0"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.64.0"></script>
   <script src="geogebra-bridge.js?v=0.7.0"></script>
   <script>
   (() => {
@@ -1979,6 +1979,6 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.63.1"></script>
+  <script src="pwa.js?v=0.64.0"></script>
 </body>
 </html>

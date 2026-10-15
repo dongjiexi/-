@@ -17,6 +17,19 @@ module.exports=async({page,context,assert,screenshot})=>{
   const click=async(x,y)=>{const p=xy(x,y);await page.mouse.click(p.x,p.y);};
   const move=async(x,y)=>{const p=xy(x,y);await page.mouse.move(p.x,p.y);};
   const constructed=async op=>(await scene()).objects.filter(o=>o.op===op);
+  // Geometry-only protocol fixture; no fabricated exam or AI accuracy claim.
+  await install({...model,showConic:false,showFeatures:false,objects:[{id:'ga',kind:'point',label:'U',x:-2,y:0},{id:'gb',kind:'point',label:'V',x:2,y:0},{id:'gc',kind:'point',label:'W',x:0,y:2}]});
+  await page.locator('[data-construct="perp_bisector"]').click();await click(-2,0);await click(2,0);
+  assert.deepEqual((await constructed('perp_bisector'))[0].refs,['ga','gb']);
+  await page.locator('[data-construct="circumcircle"]').click();await click(-2,0);await click(2,0);await click(0,0);
+  assert.equal((await constructed('circumcircle')).length,0);assert.match(await page.locator('#dragHint').innerText(),/共线/);
+  await click(0,2);assert.deepEqual((await constructed('circumcircle'))[0].refs,['ga','gb','gc']);
+  assert.equal((await scene()).objects.length,5,'Rejected third point does not leave an orphan');
+  await page.locator('#moveMode').click();await page.locator('#undoDrag').click();assert.equal((await constructed('circumcircle')).length,0);
+  await page.locator('#redoDrag').click();assert.equal((await constructed('circumcircle')).length,1);
+  await page.reload();await page.waitForFunction(()=>JSON.parse(document.querySelector('#sceneJson').value).objects?.some(o=>o.op==='circumcircle'));
+  if(!await page.locator('[data-construct="tangent"]').isVisible())await page.locator('#toolboxToggle').click();
+  await install(model);box=await page.locator('#canvas').boundingBox();scale=Math.max(10.5/box.width,7.6/box.height);
   await page.locator('[data-construct="tangent"]').click();await click(-3,0);
   await move(3/Math.sqrt(2),Math.sqrt(2));assert.match(await page.locator('#snapStatus').innerText(),/切线预览/);
   await click(3/Math.sqrt(2),Math.sqrt(2));

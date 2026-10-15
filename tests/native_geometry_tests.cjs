@@ -7,6 +7,15 @@ const test = require('node:test');
 const sandbox = {window: {}};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../dist/construction-board.js'), 'utf8'), sandbox);
 const {createEngine, conicShape} = sandbox.window.DongConstruct;
+test('perpendicular bisectors and circumcircles follow sources, report degeneracy and recover',()=>{
+  const {model,engine}=fixture([{id:'a',kind:'point',label:'A',x:-2,y:0},{id:'b',kind:'point',label:'B',x:2,y:0},{id:'c',kind:'point',label:'C',x:0,y:2},{id:'bis',kind:'construction',op:'perp_bisector',refs:['a','b']},{id:'circle',kind:'construction',op:'circumcircle',refs:['a','b','c']}]);
+  let line=engine.resolve('bis'),circle=engine.resolve('circle');near(line.o.x,0);near(line.d.x,0);near(circle.x,0);near(circle.y,0);near(circle.r,2);
+  model.objects[2].y=4;circle=engine.resolve('circle');near(circle.y,1.5);near(circle.r,2.5);
+  model.objects[2].y=0;assert.equal(engine.resolve('circle'),null);assert.match(engine.invalidReason('circle'),/共线/);
+  model.objects[2].y=2;assert(engine.resolve('circle'));model.objects[1].x=-2;assert.equal(engine.resolve('bis'),null);assert.equal(engine.resolve('circle'),null);
+  model.objects[1].x=2;assert(engine.resolve('bis'));assert(engine.resolve('circle'));
+  for(const p of model.objects.slice(0,3)){p.x+=10000;p.y-=7000;}circle=engine.resolve('circle');near(circle.x,10000);near(circle.y,-7000);near(circle.r,2);
+});
 test('renaming points preserves named lines, polygon vertices and ID dependencies atomically',()=>{
   const {model,engine}=fixture([{id:'p',kind:'point',label:'P',x:1,y:2},{id:'q',kind:'point',label:'Q',x:3,y:4},{id:'mid',kind:'construction',op:'midpoint',refs:['p','q'],label:'M'}],{O:[0,0]});
   model.lines=[{id:'pq',kind:'through_points',a:'P',b:'Q',infinite:true}];
