@@ -109,3 +109,43 @@ body[data-single-board=true] .board-shell[data-ggb-active=true] label:has(#guide
 @media(min-width:1280px){body .workspace,body .workspace[data-teaching=true]{grid-template-columns:minmax(270px,.9fr) minmax(300px,1fr) minmax(0,2.5fr);gap:14px;padding:8px 20px 24px}body .workspace.input-collapsed,body .workspace.input-collapsed[data-teaching=true]{grid-template-columns:minmax(300px,1fr) minmax(0,3fr)}}
 @media(max-width:760px){.topbar{min-height:110px;padding-top:18px;padding-bottom:12px;background:linear-gradient(90deg,#fff7e6f2,#fff7e6aa 65%,transparent)}body::before{background-size:auto 100vh;background-position:62% top;opacity:1}.topbar .top-actions{gap:6px}.panel-heading p{font-size:12px}.mobile-panel-nav{background:#fbefdde8;border-radius:4px;padding:4px}.mobile-panel-nav button{border-radius:3px 8px 3px 3px;font-size:14px}body[data-single-board=true] .dong-ggb-inline{height:68dvh;min-height:400px}.unified-tool-content{max-height:46dvh}.top-note{display:none!important}}
 @media print,(forced-colors:active){body::before{display:none}.topbar,.panel{background:Canvas;box-shadow:none}.unified-tool-content{background:Canvas;color:CanvasText}}
+
+/* The illustration belongs to the paper furniture, not a wallpaper underneath. */
+body{background:#efe3d1}
+body::before{background-image:radial-gradient(ellipse at 20% 0%,#fff8e6,transparent 65%),linear-gradient(115deg,#ecdbc3,#f5ecdf 55%,#e9d5bf);opacity:1}
+.topbar{min-height:72px;padding:12px 20px;align-items:center;background-image:linear-gradient(90deg,#faf1df 5%,#faf1dfed 40%,#faf1df33 78%),url('autumn-study.webp');background-position:center,85% 24%;background-size:cover,cover;border-bottom:1px solid #b786602b}
+.topbar .top-note{background:#fff8e6d9}.topbar .top-actions .button{background:#fff7e8eb;box-shadow:2px 3px 0 #9a67422e;border-radius:2px 3px 12px 2px}
+.workflow-strip{padding-top:5px;padding-bottom:5px}.workflow-step{background:transparent;box-shadow:none;border-bottom:2px solid #bd856d33;border-radius:0}
+.panel{border-radius:3px 14px 4px 3px;background:#fffaf0;box-shadow:2px 3px 0 #b18c6728;border-color:#d8bea1}
+.controls>.panel-heading,.inspect>.panel-heading{isolation:isolate;min-height:62px;padding-right:72px;background:linear-gradient(105deg,#f2dfbf,#fff8e9);border-bottom:1px solid #bd8b622e}
+.controls>.panel-heading::after,.inspect>.panel-heading::after{display:block;z-index:-1;right:0;top:0;width:110px;height:100%;transform:none;background-image:url('autumn-study.webp');background-size:320px auto;background-position:right top;opacity:.7;mask-image:linear-gradient(90deg,transparent,#000 55%);border-radius:0 12px 0 0}
+.inspect>.panel-heading::after{background-position:left top}
+.panel-heading .step-badge{align-self:flex-start;border-radius:0 0 10px 1px;box-shadow:2px 2px 0 #75492f20}
+.quick-conics{background:linear-gradient(115deg,#f4e3c8,#fff8e9);border:1px solid #d1ae89;border-radius:2px 12px 3px 3px;box-shadow:2px 3px 0 #ab7b4820}
+.quick-conics::after{display:block;right:3px;top:-10px;width:42px;height:45px;background-image:url('autumn-leaves.svg');transform:rotate(14deg);opacity:.7}
+.quick-conics-head{padding-right:36px}
+.quick-conic{background:#fffcf2;box-shadow:1px 2px 0 #c99c6b40;border-radius:2px 7px 2px 2px}
+#solveButton{border-radius:2px 0 0 12px;box-shadow:0 3px 0 #71402d40;background:linear-gradient(120deg,#8a4033,#b46b49)}
+/* A desktop app-sized shell: page scrolling is never needed to reach a column. */
+@media screen and (min-width:761px){
+  html{height:100%;overflow:hidden}
+  body{height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+  body>.app{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .topbar,.workflow-strip,.pwa-banner,.footer{flex:none}
+  .workflow-strip{display:none}
+  .topbar{position:relative;top:auto}
+  body .workspace,body .workspace[data-teaching=true]{flex:1;min-height:0;height:auto;width:100%;max-width:none;box-sizing:border-box;grid-template-areas:"input lesson board";grid-template-columns:minmax(230px,.85fr) minmax(250px,.95fr) minmax(0,2.5fr);grid-template-rows:minmax(0,1fr);align-items:stretch;gap:10px;margin:0;padding:6px 12px 8px;overflow:hidden}
+  body .workspace.input-collapsed,body .workspace.input-collapsed[data-teaching=true]{grid-template-areas:"lesson board";grid-template-columns:minmax(260px,1fr) minmax(0,3fr)}
+  body .workspace>.controls,body .workspace>.inspect{height:100%;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain;box-sizing:border-box;grid-column:auto}
+  body .workspace>.board-shell{position:relative;top:0;height:100%;min-height:0;max-height:none;overflow:hidden;container-type:inline-size}
+  .unified-tool-content{width:min(520px,calc(100cqw - 24px));box-sizing:border-box;max-height:min(55dvh,400px)}
+  .inspect-grid{display:block}.canvas-wrap{min-height:140px}
+  .board-toolbar,#boardEngineStatus,.board-help,.legend{flex:none}
+  .board-shell .native-toolbar{max-height:150px;overflow:auto;flex-shrink:0}
+  body[data-single-board=true] .board-shell[data-renderer=geogebra] #geoGebraInlineSlot{flex:1;min-height:0;height:0;display:flex;flex-direction:column}
+  body[data-single-board=true] .dong-ggb-inline{flex:1;min-height:0;height:100%;max-height:100%}
+  body[data-single-board=true] .dong-ggb-host{min-height:120px}
+  body .footer,body.math-keyboard-open .footer{padding:3px 14px 6px;font-size:11px;line-height:1.4;margin:0;max-width:none}
+  @media(max-width:1050px){body .workspace,body .workspace[data-teaching=true]{grid-template-columns:220px 230px minmax(0,1fr);gap:6px;padding-inline:6px}.topbar .top-note{display:none}.controls,.inspect{padding-inline:10px}.board-toolbar{flex-wrap:wrap}}
+}
+@media print,(forced-colors:active){.controls>.panel-heading::after,.inspect>.panel-heading::after,.quick-conics::after{display:none}.topbar{background:Canvas}}
