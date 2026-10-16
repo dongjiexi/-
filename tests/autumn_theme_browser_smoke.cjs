@@ -1,9 +1,11 @@
 module.exports=async({page,assert,screenshot})=>{
   const response=await page.request.get(new URL('autumn-study.webp',page.url()).href);assert.equal(response.status(),200);assert((await response.body()).length<300000,'Painting is compressed for mobile loading');
   const style=await page.evaluate(()=>({art:getComputedStyle(document.body,'::before').backgroundImage,pointer:getComputedStyle(document.body,'::before').pointerEvents,accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()}));
-  assert(!style.art.includes('autumn-study.webp'),'No painting hidden beneath opaque panels');assert.equal(style.pointer,'none');assert.equal(style.accent,'#a34239');
-  assert.match(await page.locator('.topbar').evaluate(el=>getComputedStyle(el).backgroundImage),/autumn-study.webp/);
-  assert.match(await page.locator('.controls>.panel-heading').evaluate(el=>getComputedStyle(el,'::after').backgroundImage),/autumn-study.webp/);
+  assert.match(style.art,/autumn-study.webp/);assert.equal(style.pointer,'none');assert.equal(style.accent,'#a34239');
+  const panel=await page.locator('.controls').evaluate(el=>({background:getComputedStyle(el).backgroundColor,opacity:getComputedStyle(el).opacity}));
+  assert.match(panel.background,/0\.78\)/,'Paper reveals the continuous painting');assert.equal(panel.opacity,'1','Text itself must not be faded');
+  assert.match(await page.locator('#openQuestionBank').evaluate(el=>getComputedStyle(el).backgroundImage),/autumn-twig-frame.svg/);
+  assert.equal((await page.request.get(new URL('autumn-twig-frame.svg',page.url()).href)).status(),200);
   assert.equal(await page.locator('#openGeoGebraInline').isVisible(),false,'No second drawing destination');
   await page.locator('#sceneJson').evaluate(el=>{el.value=JSON.stringify({type:'ellipse',a:3,b:2,showDynamic:true,lineThrough:'center',theta:35});document.querySelector('#applyJson').click();});
   await screenshot('autumn-desktop.png',null);

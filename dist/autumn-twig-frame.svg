@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" preserveAspectRatio="none" fill="none">
+  <!-- Quiet ink-and-wash twigs follow the edge; the label's centre stays empty. -->
+  <g stroke="#865c3d" stroke-linecap="round" stroke-linejoin="round" opacity=".8">
+    <path d="M7 46C5 37 8 25 6 13Q5 7 14 7C36 9 52 5 76 7M126 7C145 6 165 9 183 6Q193 4 193 13L192 30M194 37Q196 49 185 49C159 46 145 51 122 49M9 49C31 47 49 51 72 48L100 49" stroke-width="1.4"/>
+    <path d="M8 33L3 26M6 19L12 14M28 8L21 3M49 7L56 3M166 8L174 3M192 22L197 17M179 49L172 53M39 49L32 54M10 47L15 40" stroke-width=".9"/>
+    <path d="M12 8C35 10 53 7 73 8M130 48L159 49" stroke="#c29a70" stroke-width=".65"/>
+  </g>
+  <g opacity=".78">
+    <path d="M20 4Q12-1 10 5Q15 10 20 4Z" fill="#b87946"/>
+    <path d="M174 4Q179-1 185 3Q181 9 174 4Z" fill="#a45238"/>
+    <path d="M173 52Q165 48 164 54Q169 57 173 52Z" fill="#b38d52"/>
+  </g>
+</svg>

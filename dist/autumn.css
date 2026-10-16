@@ -149,3 +149,26 @@ body::before{background-image:radial-gradient(ellipse at 20% 0%,#fff8e6,transpar
   @media(max-width:1050px){body .workspace,body .workspace[data-teaching=true]{grid-template-columns:220px 230px minmax(0,1fr);gap:6px;padding-inline:6px}.topbar .top-note{display:none}.controls,.inspect{padding-inline:10px}.board-toolbar{flex-wrap:wrap}}
 }
 @media print,(forced-colors:active){.controls>.panel-heading::after,.inspect>.panel-heading::after,.quick-conics::after{display:none}.topbar{background:Canvas}}
+
+/* Translucent paper reveals one continuous painting, without fading the text. */
+body::before{background-image:radial-gradient(ellipse 55% 44% at 100% 0%,#f6ecdc 10%,#f6ecdce6 35%,#f6ecdc00 100%),linear-gradient(#fff6e52b,#fff6e526),url('autumn-study.webp');background-size:cover;background-position:center top;opacity:1;filter:saturate(.72)}
+.topbar{background:linear-gradient(90deg,#fff6e6c9,#fff6e680 50%,#f7ead5e8 88%);border-bottom-color:#fff8e680}
+body .workspace>.controls,body .workspace>.inspect{background:rgba(255,249,236,.78);backdrop-filter:blur(3px) saturate(.8);border-color:#fff8e6b3;box-shadow:inset 0 1px 0 #fffaf0a6,1px 3px 9px #61422a18}
+.controls>.panel-heading,.inspect>.panel-heading{padding-right:16px;background:rgba(245,226,194,.78);backdrop-filter:blur(4px);border-bottom-color:#a9835b33}
+.controls>.panel-heading::after,.inspect>.panel-heading::after{display:none}
+#question{background:rgba(255,253,246,.92);box-shadow:inset 3px 0 0 #c9a67c66}
+.controls .help,.inspect .help{color:#644936}
+.part-body,.solution>.math-content,.learning-chat{background:rgba(255,252,244,.94)}
+.quick-conics{background:rgba(246,228,198,.65);border-color:#bb926450;box-shadow:inset 0 1px 0 #fff8e688}
+.quick-conics::after{display:none}.quick-conics-head{padding-right:0}
+.quick-conic,#openQuestionBank{background-image:url('autumn-twig-frame.svg'),linear-gradient(100deg,#fff9e9de,#fff7e5b8);background-size:100% 100%;background-repeat:no-repeat;border:0;border-radius:4px;box-shadow:none;color:#633c28;padding:13px 18px;font-weight:650}
+.topbar .top-actions #openQuestionBank{background-image:url('autumn-twig-frame.svg'),linear-gradient(100deg,#fff9e9e8,#fff7e5cf);background-size:100% 100%;border:0;box-shadow:none;border-radius:4px;padding:13px 20px;color:#633c28}
+.quick-conic:hover,.topbar .top-actions #openQuestionBank:hover{background-image:url('autumn-twig-frame.svg'),linear-gradient(#fff9e9,#fff2d8);color:#512e1d}
+.quick-conic:focus-visible,#openQuestionBank:focus-visible{outline:2px solid #874735;outline-offset:2px}
+#parseButton{background:linear-gradient(100deg,#fff7e5ed,#f0dfbed9);border:1px solid #bda27b;border-bottom:2px solid #a37d50;border-radius:2px 2px 11px 2px;box-shadow:2px 2px 0 #74533212}
+.footer{background:#fff8e6d9;color:#664c38}
+/* The diagram and open menus remain opaque working surfaces. */
+.board-shell,.canvas-wrap,.dong-ggb-host{background:#fff}
+.unified-tool-content,.dong-ggb-tools>div{background:#fffaf0}
+@media(prefers-reduced-transparency:reduce){body .workspace>.controls,body .workspace>.inspect{background:#fff9ec;backdrop-filter:none}.topbar{background:#fbf0dc}}
+@media print,(forced-colors:active){body::before{display:none}body .workspace>.controls,body .workspace>.inspect,.topbar,.footer,.quick-conic,.topbar .top-actions #openQuestionBank{background:Canvas;backdrop-filter:none;color:CanvasText}.quick-conic,#openQuestionBank{border:1px solid CanvasText}}

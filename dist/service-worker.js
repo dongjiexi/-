@@ -1,11 +1,12 @@
 'use strict';
 
-const VERSION = '0.67.1';
+const VERSION = '0.67.2';
 // Final release review refreshes connectivity-status fixes without losing drafts.
 const CACHE = `dongjiexi-app-${VERSION}`;
 const CORE = [
   './autumn.css', './autumn-background.svg',
   './unified-board.js', './autumn-study.webp',
+  './autumn-twig-frame.svg',
   './autumn-cocoa.svg', './autumn-leaves.svg', './autumn-scarf.svg',
   './question-parts.js', './parabola-focal-data.js', './goal-coverage.js',
   './circle-fold.js', './circle-fold-view.js', './circle-fold.css',
