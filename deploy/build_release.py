@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-STATIC_SUFFIXES = {'.html', '.js', '.mjs', '.css', '.json', '.webmanifest', '.svg', '.png', '.jpg', '.jpeg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.txt', '.md', '.map'}
+STATIC_SUFFIXES = {'.html', '.js', '.mjs', '.css', '.json', '.webmanifest', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.txt', '.md', '.map'}
 APP_FILES = {
     'deploy/cloudflare/worker.mjs', 'deploy/cloudflare/schema.sql', 'deploy/cloudflare/wrangler.jsonc', 'deploy/cloudflare/README.md',
     'deploy/cloudflare/health-probe.mjs', 'deploy/public-cloud-policy.json',

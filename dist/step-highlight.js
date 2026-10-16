@@ -36,11 +36,12 @@
   }
   function attach(api) {
     let selection=null;
-    function clear(){selection=null;}
+    function clear(){selection=null;window.DongUnifiedBoard?.highlight([]);}
     function valid(){if(!selection)return true;if(selection.model!==api.model()||(selection.part!=null&&api.part()!=null&&Number(selection.part)!==Number(api.part())))return false;const visible=new Set(api.entries().map(entry=>entry.id));return selection.ids.every(id=>visible.has(id));}
     function highlight({text,part,index}={}) {
       const result=select(String(text??''),api.entries());
       selection={ids:result.ids,part,index,model:api.model()};
+      window.DongUnifiedBoard?.highlight(result.ids);
       api.render();return {matched:result.matched,missing:result.missing};
     }
     function draw() {

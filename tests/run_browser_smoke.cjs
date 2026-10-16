@@ -13,7 +13,7 @@ fs.mkdirSync(output,{recursive:true});
 const suites=process.argv.slice(2);
 if(!suites.length)suites.push('question_bank','solve_progress_implicit','mobile_panels','orthogonal_chord','ellipse_focal_chord','hyperbola_focal_chord_condition','hyperbola_conditions','cloud_auth','cloud_outage','cloud_primary','cloud_primary_hyperbola','cloud_vision','latex_tangent','curve_edit_tangent','additive_conic_snap','focus_chord','derived_construction','one_stop_solver','desktop_layout','dependent_motion','named_points','reflected_chord','structured_input','conic_quick_tools','viewport_quick_draw','polygon_problem_sweep','ellipse_distance','parameter_selection','pwa','mobile_touch','solve_switch','photo_ocr','extreme_highlight','mathlive_input','point_hover');
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-if(process.argv.length===2)suites.push('geogebra_inline','geogebra_teaching','autumn_theme');
+if(process.argv.length===2)suites.push('geogebra_inline','geogebra_teaching','autumn_theme','unified_board');
 if(process.argv.length===2)suites.unshift('ellipse_distance_domain','startup_recovery','condition_expression','condition_models','symmetric_chord','inverse_locus','vertex_secant','solution_continuation','motion_domain','reference_upgrade','motion_protection','national_bank','circle_dot','public_cloud','deepseek_vision','circle_fold','cloud_mobile_health','answer_geometry','answer_dependency','cloud_only','draft_lifecycle','generic_goal_scope','parabola_focal_data','hyperbola_iteration','parabola_locus','proof_scope','label_layout','step_graph_link','scene_consistency','sourced_exam_sweep','external_ai','cloud_stream');
 async function port(){const probe=net.createServer();await new Promise((resolve,reject)=>probe.once('error',reject).listen(0,'127.0.0.1',resolve));const value=probe.address().port;await new Promise(resolve=>probe.close(resolve));return value;}
 async function run(){
@@ -45,6 +45,11 @@ async function run(){
         return route.fulfill({contentType:'application/javascript',body:worker.replace('const response = await fetch(request);',replacement)});
       });
       await context.addInitScript(({mode,native})=>{try{if(!localStorage.getItem('dongjiexi:solve-mode:v1'))localStorage.setItem('dongjiexi:solve-mode:v1',mode);if(native&&!localStorage.getItem('dongjiexi:local-workflow:v1'))localStorage.setItem('dongjiexi:local-workflow:v1','native');}catch{}},{mode:publicCloud?'cloud':'local',native:!publicCloud&&suite!=='external_ai'&&suite!=='external_ai_browser_smoke.cjs'});
+      // Legacy renderer tests deliberately exercise offline fallback. Separate
+      // unified suites exercise automatic selection with both fixture and real API.
+      const suiteName=suite.replace(/_browser_smoke\.cjs$/,'');
+      if(!['geogebra_real_path','unified_real'].includes(suiteName))await context.route('https://www.geogebra.org/**',route=>route.abort('failed'));
+      if(['geogebra_inline','geogebra_teaching','geogebra_real_path'].includes(suiteName))await context.route('**/unified-board.js*',route=>route.fulfill({contentType:'application/javascript',body:'window.DongUnifiedBoard={mount(){},sync(s){window.DongGeoGebra?.syncTeaching(s)},highlight(){}};'}));
       const page=await context.newPage(),errors=[];
       page.on('pageerror',error=>errors.push(error.stack||error.message));
       const screenshot=async(name='board.png',selector='.board-shell')=>{

@@ -34,6 +34,8 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},next);
   await page.waitForFunction(()=>window.DongGeoGebra.getAPI().exists('Z')&&!window.DongGeoGebra.getAPI().exists('U'));
   assert(await page.evaluate(()=>!!localStorage.getItem('dongjiexi:geogebra:v1:teaching:previous')),'Graph replacement keeps a backup');
+  const backupSignature=await page.evaluate(()=>JSON.parse(localStorage.getItem('dongjiexi:geogebra:v1:teaching:previous')).sceneSignature);
+  assert.equal(JSON.parse(backupSignature).type,'ellipse','Old board backup must not be associated with the new circle question');
   assert(await page.locator('.dong-ggb-close').isVisible());await screenshot('teaching-linked-desktop.png',null);
   await page.locator('.dong-ggb-close').click();assert(await page.locator('#canvas').isVisible());
 };

@@ -37,7 +37,10 @@
     if(source!=null){try{if(Math.abs(window.DongEquationBuilder.scalar(source)-x)<=16*Number.EPSILON*Math.max(1,Math.abs(x)))return String(source);}catch{}}
     return exact(x)?.text??String(x);
   }
-  const text=x=>Number.isFinite(x)?exact(x)?.text??`≈${Number(x.toPrecision(8))}`:'—';
-  const tex=x=>Number.isFinite(x)?exact(x)?.tex??`\\approx ${Number(x.toPrecision(8))}`:'\\text{未定义}';
+  // Presentation only: keep input()/model precision intact. Significant digits
+  // preserve very small non-zero measurements instead of rounding them to zero.
+  const approximate=x=>Number(x.toPrecision(4));
+  const text=x=>Number.isFinite(x)?exact(x)?.text??`≈${approximate(x)}`:'—';
+  const tex=x=>Number.isFinite(x)?exact(x)?.tex??`\\approx ${approximate(x)}`:'\\text{未定义}';
   window.DongNumber={rational,exact,input,text,tex};
 })();

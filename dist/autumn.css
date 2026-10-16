@@ -44,6 +44,68 @@ body .dong-ggb-head .dong-ggb-close{background:linear-gradient(120deg,#963d35,#a
 body .dong-ggb-note{background:#fbefdf;color:#775244}body .dong-ggb-note a{color:#873a30}body .dong-ggb-status{background:#fffaf4;color:#6f4b40}
 body .dong-ggb-tools>div{background:#fffaf4;box-shadow:0 6px 20px #69352824}
 /* Coordinate canvas and mathematical object colors deliberately remain unchanged. */
+/* Keep the recognition decision reachable even with long extracted models. */
+#scenePreviewDialog{scroll-padding-bottom:84px}
+#scenePreviewDialog>.dialog-actions{position:sticky;bottom:-1px;z-index:3;background:#fffcf8;border-top:1px solid var(--line);padding:12px 0;margin-bottom:0;box-shadow:0 -8px 18px #703a250b}
+#recognitionDialog{scroll-padding-bottom:72px}
+#confirmRecognition{position:sticky;bottom:0;z-index:3;box-shadow:0 -5px 16px #703a2520}
+.input-utilities{padding:8px 0;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.part-body>.verification-status.generated{display:block;margin:10px 0;padding:10px 12px;background:#fff3d9;border:1px solid #c99436;border-left-width:4px;color:#714600;font-size:14px;line-height:1.5}
+.part-body>.verification-status.generated::after{content:'。以下为待核验解答，请结合题设与推导检查；图形展示不等于数学证明。'}
+@media(max-width:760px){.mobile-panel-nav button{white-space:nowrap}.help,.board-help,.drag-hint{font-size:12px;line-height:1.6}.part-body{font-size:14px}#scenePreviewDialog{max-height:88dvh}}
+/* Older assets are retained for installed/offline versions, not repeated stickers. */
+.controls>.panel-heading,.inspect>.panel-heading{position:relative;padding-right:84px;isolation:isolate;min-height:78px}
+.controls>.panel-heading::after,.inspect>.panel-heading::after,.quick-conics::after,#solveButton::after{content:"";position:absolute;pointer-events:none;background-repeat:no-repeat;background-position:center;background-size:contain}
+.controls>.panel-heading::after{right:9px;top:3px;width:72px;height:72px;background-image:url('autumn-cocoa.svg');transform:rotate(7deg)}
+.inspect>.panel-heading::after{right:14px;top:12px;width:58px;height:58px;background-image:url('autumn-leaves.svg');transform:rotate(-18deg)}
+.controls>.panel-heading{background:radial-gradient(ellipse at 94% 60%,#efd2ad77,transparent 38%),linear-gradient(110deg,#fffdf8,#fcf2e9)}
+.inspect>.panel-heading{background:radial-gradient(ellipse at 96% 45%,#eed3bd88,transparent 40%),linear-gradient(110deg,#fffdf8,#fcf2e9)}
+.quick-conics{position:relative;background:radial-gradient(ellipse at 100% 0%,#f4dfc7aa,transparent 60%),#fff8ef}
+.quick-conics-head{padding-right:46px;min-height:35px}.quick-conics::after{right:5px;top:-4px;width:48px;height:55px;background-image:url('autumn-scarf.svg');transform:rotate(12deg)}
+#solveButton{position:relative;padding-left:35px;padding-right:12px}#solveButton::after{left:6px;top:50%;width:26px;height:30px;transform:translateY(-50%) rotate(-20deg);background-image:url('autumn-leaves.svg');filter:brightness(1.45) saturate(.7)}
+@media(max-width:760px){.controls>.panel-heading,.inspect>.panel-heading{padding-right:76px}.controls>.panel-heading::after{width:65px;height:65px;top:6px}.inspect>.panel-heading::after{width:52px;height:52px}}
+@media print, (forced-colors:active){.controls>.panel-heading::after,.inspect>.panel-heading::after,.quick-conics::after,#solveButton::after{display:none}}
 @media(max-width:760px){body::before{background-size:auto 100%;opacity:.65}.topbar{box-shadow:0 2px 10px #672d2914}.panel{box-shadow:0 3px 12px #703a250b}}
 @media print{body{background:white!important}body::before{display:none}.panel{background:white;box-shadow:none}.topbar{background:white;color:black}}
 @media(forced-colors:active){body::before{display:none}.button.primary,#solveButton,.topbar{background:Canvas;color:CanvasText}.panel{border:1px solid CanvasText}}
+
+/* One painted desk, paper work surfaces, and bookmark-like controls. */
+body::before{background-image:url('autumn-study.webp');background-position:center top;background-size:cover;opacity:1}
+.topbar{min-height:128px;align-items:flex-end;padding-top:34px;padding-bottom:20px;background:linear-gradient(90deg,#fff8e8ee,#fff8e8aa 38%,#fff8e800 72%);border:0;box-shadow:none;backdrop-filter:none}
+.topbar .brand,.topbar .brand-title,.topbar h1{color:#61372d}.topbar .top-note{color:#593a30;background:#fff8e8db;padding:5px 10px;border-radius:4px}
+.brand-mark{background:#8e3e32;color:#fff8e8;border:1px solid #71362e;box-shadow:2px 4px 0 #61372d22}
+.topbar .top-actions{align-items:center;gap:9px}.topbar .install-button{background:#fff8e8f2;color:#63392e;border-color:#be957b}
+.topbar .button.secondary{background:#fff6e7f5;box-shadow:2px 4px 0 #61372d1c;border-radius:3px 3px 11px 3px;border-color:#caa588}
+.workflow-strip{padding-top:0;padding-bottom:10px}.workflow-step{background:#fff8e9da;box-shadow:1px 3px 0 #66382012;border-radius:3px 12px 3px 3px}
+.panel{border-radius:5px 16px 6px 5px;background:linear-gradient(100deg,#fffcf3f7,#fffaf2f7);box-shadow:3px 5px 0 #6b3e2310,0 10px 26px #6b3e2312;border-color:#d8bda0}
+.controls>.panel-heading,.inspect>.panel-heading{min-height:68px;padding-right:16px;background:linear-gradient(90deg,#efe0c8,#fcf4e6);border-radius:4px 14px 0 0;backdrop-filter:none}
+.controls>.panel-heading::after,.inspect>.panel-heading::after,.quick-conics::after,#solveButton::after{display:none}
+.panel-heading .step-badge{border-radius:2px 2px 10px 2px;background:#9a4c3c;color:#fff6e9;box-shadow:2px 3px 0 #733e2920}
+.panel-heading p{font-size:12px;color:#715848}.quick-conics-head{padding-right:0}.quick-conics{background:#fbefdbb0;border-radius:3px 10px 3px 3px}
+.quick-conic,.button.secondary{border-radius:4px 9px 4px 4px}.quick-conic{box-shadow:0 2px 0 #ad79522b}
+#solveButton{padding-left:16px;border-radius:3px 0 0 9px;background:linear-gradient(110deg,#873d32,#b06447);box-shadow:0 3px 0 #61372d26}
+#question{background:linear-gradient(120deg,#fffdf8,#fff9ec);box-shadow:inset 3px 0 0 #dbc3a7;border-radius:3px 9px 3px 3px}
+.board-shell{position:sticky;top:12px;background:#fff;border-radius:5px 14px 5px 5px}
+.topbar .version-button{color:#704332;border-color:#b48a6c;background:#fff8e8e6}
+body[data-single-board=true] #openGeoGebraInline,body[data-single-board=true] .native-compat{display:none!important}
+body[data-single-board=true] .board-shell[data-ggb-active=true]>.board-toolbar{display:flex!important}
+body[data-single-board=true] .board-shell[data-ggb-active=true]>#boardEngineStatus{display:flex!important}
+#boardEngineStatus{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;font-size:12px;line-height:1.5;color:#78543f;background:#fff9ef;border-bottom:1px solid #e9d9c4}
+#boardEngineStatus button{flex-shrink:0;border:1px solid #c99b7f;background:#fff9ef;color:#714735;border-radius:5px;padding:5px 8px;font:inherit}
+body[data-single-board=true] .board-shell[data-renderer=native] #geoGebraInlineSlot{position:absolute;top:0;left:0;width:100%;height:620px;visibility:hidden;pointer-events:none;overflow:hidden}
+body[data-single-board=true] .board-shell[data-renderer=geogebra] #geoGebraInlineSlot{position:relative;visibility:visible;order:2}
+body[data-single-board=true] .dong-ggb-title,body[data-single-board=true] .dong-ggb-close,body[data-single-board=true] .dong-ggb-status{display:none!important}
+body[data-single-board=true] .dong-ggb-inline{height:70dvh;min-height:480px}
+body[data-single-board=true] .dong-ggb-head{position:relative;gap:6px;padding:8px 10px;flex-wrap:wrap}
+body[data-single-board=true] .dong-ggb-note{order:3;font-size:12px;padding:5px 10px;background:#fffaf3}
+body[data-single-board=true] .dong-ggb-note details{display:none}
+body[data-single-board=true] .board-shell[data-ggb-active=true] #guideToggle{display:none}
+body[data-single-board=true] .board-shell[data-ggb-active=true] #toolboxToggle{display:none}
+body[data-single-board=true] .board-shell[data-ggb-active=true] label:has(#guideToggle){display:none}
+.unified-tools{position:relative;margin-right:auto}.unified-tools summary{cursor:pointer;border:1px solid #c79e81;padding:7px 10px;border-radius:3px 8px 3px 3px;font-size:13px;background:#f5e7d4;color:#694231}
+.unified-tool-content{position:absolute;top:calc(100% + 6px);left:0;width:min(520px,calc(100vw - 52px));max-height:55dvh;overflow:auto;padding:10px;z-index:20;background:#fffaf0;border:1px solid #cda98a;box-shadow:0 8px 28px #5c352833;border-radius:5px 12px 5px 5px}
+.unified-tool-content fieldset{border:0;border-top:1px solid #e4cfb8;margin:8px 0;padding:6px 0;display:flex;gap:6px;flex-wrap:wrap}.unified-tool-content legend{font-size:12px;color:#7e5943;padding:0 6px 0 0}
+.unified-tool-content>button:first-child{position:sticky;top:0;z-index:1;background:#9a4c3c;color:#fff;display:block;margin-left:auto}
+@media(min-width:1280px){body .workspace,body .workspace[data-teaching=true]{grid-template-columns:minmax(270px,.9fr) minmax(300px,1fr) minmax(0,2.5fr);gap:14px;padding:8px 20px 24px}body .workspace.input-collapsed,body .workspace.input-collapsed[data-teaching=true]{grid-template-columns:minmax(300px,1fr) minmax(0,3fr)}}
+@media(max-width:760px){.topbar{min-height:110px;padding-top:18px;padding-bottom:12px;background:linear-gradient(90deg,#fff7e6f2,#fff7e6aa 65%,transparent)}body::before{background-size:auto 100vh;background-position:62% top;opacity:1}.topbar .top-actions{gap:6px}.panel-heading p{font-size:12px}.mobile-panel-nav{background:#fbefdde8;border-radius:4px;padding:4px}.mobile-panel-nav button{border-radius:3px 8px 3px 3px;font-size:14px}body[data-single-board=true] .dong-ggb-inline{height:68dvh;min-height:400px}.unified-tool-content{max-height:46dvh}.top-note{display:none!important}}
+@media print,(forced-colors:active){body::before{display:none}.topbar,.panel{background:Canvas;box-shadow:none}.unified-tool-content{background:Canvas;color:CanvasText}}

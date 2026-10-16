@@ -1,0 +1,35 @@
+// Opt-in integration: the actual official GeoGebra app.
+module.exports=async({page,assert,screenshot})=>{
+  const scene={type:'ellipse',a:3,b:2,showDynamic:false,objects:[{id:'u',kind:'construction',op:'point_on',refs:['$conic'],label:'U',t:.5},{id:'t',kind:'construction',op:'tangent',refs:['u','$conic'],label:'t'}]};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},scene);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('t'),null,{timeout:100000});
+  assert.equal(await page.locator('#openGeoGebraInline').isVisible(),false);
+  assert.equal(await page.locator('.dong-ggb-close').isVisible(),false);
+  await page.evaluate(()=>{const api=window.DongGeoGebra.getAPI();api.evalCommand('Manual=(7,8)');api.evalCommand('ManualLine=Line(U,Manual)');});
+  await page.locator('#sceneJson').evaluate(el=>{const s=JSON.parse(el.value);s.a=4;el.value=JSON.stringify(s);document.querySelector('#applyJson').click();});
+  await page.waitForFunction(()=>window.DongGeoGebra.getAPI().getValue('a')===4);
+  assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().isDefined('ManualLine')));
+  await page.locator('#sceneJson').evaluate(el=>{const s=JSON.parse(el.value);s.objects.push({id:'extra',kind:'conic',conicType:'ellipse',label:'E2',h:1,k:-2,a:4,b:2,orientation:'vertical'});el.value=JSON.stringify(s);document.querySelector('#applyJson').click();});
+  await page.waitForFunction(()=>window.DongGeoGebra.getAPI().exists('E2'));
+  assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().isDefined('ManualLine')),'Adding a curve preserves auxiliary dependency commands');
+  const residual=await page.evaluate(()=>{const api=window.DongGeoGebra.getAPI();api.evalCommand('CheckDistance=Distance(U,t)');return api.getValue('CheckDistance');});
+  assert(Math.abs(residual)<1e-7,'Tangent remains incident on source point');
+  await page.evaluate(()=>window.DongGeoGebra.save());
+  await page.reload();await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.isDefined('ManualLine'),null,{timeout:100000});
+  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'保存完整图稿',exact:true}).click();
+  const downloaded=await downloadPromise,file=await downloaded.path();
+  const saved=JSON.parse(require('node:fs').readFileSync(file,'utf8'));assert.equal(saved.format,'dongjiexi-board');assert(saved.boardDraft.base64);
+  await page.locator('#sceneJson').evaluate(el=>{el.value=JSON.stringify({type:'circle',r:2,showDynamic:false,objects:[]});document.querySelector('#applyJson').click();});
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&!window.DongGeoGebra.getAPI().exists('Manual'));
+  await page.locator('.dong-ggb-head input[type="file"]').last().setInputFiles(file);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI().isDefined('ManualLine'),null,{timeout:15000});
+  assert.equal(JSON.parse(await page.locator('#sceneJson').inputValue()).type,'ellipse');
+  await screenshot('unified-real-desktop.png',null);
+  await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="board"]').click();
+  await page.locator('.unified-tools summary').click();assert(await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).isVisible());
+  await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).click();
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot('unified-real-mobile.png',null);
+  await page.locator('#sceneJson').evaluate(el=>{el.value=JSON.stringify({type:'parabola',h:2,k:1,p:1,showDynamic:false,showFeatures:false,points:{N:[4,3]},objects:[]});document.querySelector('#applyJson').click();});
+  await page.waitForFunction(()=>window.DongGeoGebra.getAPI().exists('N'));
+  assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return a.getVisible('N')&&a.getXcoord('O')===0&&a.getYcoord('O')===0&&a.getXcoord('V')===2;}),'Named problem points and translated parabola origin retain their meaning');
+};

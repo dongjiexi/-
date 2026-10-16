@@ -63,7 +63,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   transport='network';await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
   await page.setViewportSize({width:390,height:844});
   await page.locator('[data-mobile-panel="board"]').click();
-  assert.match(await page.locator('[data-mobile-panel="input"]').textContent(),/云端异常/,'Other mobile panels must still indicate the outage');
+  assert.equal(await page.locator('[data-mobile-panel="input"]').textContent(),'题目','Navigation stays stable; connection state has a dedicated live region');
   await page.locator('[data-mobile-panel="input"]').click();
   assert(await page.locator('#useLocalSolver').isVisible());
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));

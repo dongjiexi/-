@@ -9,7 +9,7 @@ module.exports=async({page,assert,screenshot})=>{
   assert.deepEqual(scene.polygons[0]?.labels,['A','B','D']);
   assert.match(await page.locator('#solution').innerText(),/面积为 6/);
   assert.match(await page.locator('#metrics').innerText(),/△ABD · 面积\s*6/);
-  assert.match(await page.locator('#metrics').innerText(),/∠B（△ABD）\s*≈112\.619/);
+  assert.match(await page.locator('#metrics').innerText(),/∠B（△ABD）\s*≈112\.6°/);
   assert.match(await page.locator('#layers').innerText(),/△ABD · 高亮/);
   await page.locator('[data-inspector-view="geometry"]').click();
   await page.locator('#layers .layer-row').filter({hasText:'△ABD · 高亮'}).locator('input').uncheck();

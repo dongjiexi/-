@@ -11,6 +11,11 @@ module.exports=async({page,context,baseURL,assert,screenshot})=>{
   await page.reload();
   const fixture={type:'circle',r:3,isFreeBoard:true,showDynamic:false,showFeatures:false,points:{},lines:[],objects:[
     {id:'mid',kind:'construction',op:'midpoint',refs:['u','v'],label:'M'},
+    {id:'ellipse2',kind:'conic',conicType:'ellipse',label:'E2',h:1,k:-2,a:4,b:2,orientation:'vertical'},
+    {id:'hyperbola2',kind:'conic',conicType:'hyperbola',label:'H2',h:0,k:0,a:3,b:2},
+    {id:'parabola2',kind:'conic',conicType:'parabola',label:'P2',h:-1,k:2,p:2,direction:-1,orientation:'vertical'},
+    {id:'ellipsePoint',kind:'construction',op:'point_on',refs:['ellipse2'],label:'EP',t:0.5},
+    {id:'extraTangent',kind:'construction',op:'tangent',refs:['ellipsePoint','ellipse2'],label:'ET'},
     {id:'u',kind:'point',label:'U',x:-2,y:0},{id:'v',kind:'point',label:'V',x:2,y:0},{id:'w',kind:'point',label:'W',x:0,y:2},
     {id:'circle',kind:'construction',op:'circumcircle',refs:['u','v','w'],label:'c'},
     {id:'bis',kind:'construction',op:'perp_bisector',refs:['u','v'],label:'b'},
@@ -29,6 +34,11 @@ module.exports=async({page,context,baseURL,assert,screenshot})=>{
   for(const name of ['Midpoint(U,V)','Circle(U,V,W)','PerpendicularBisector(U,V)','Polygon(U,V,W)'])assert(calls.includes(name),name);
   assert(!calls.includes('调半径'),'Free board must not synthesize a primary curve');
   assert(calls.includes('T=Point(c)'),'Unrestricted path point remains attached');
+  assert(calls.includes('E2:(y-(-2))^2/(4^2)+(x-(1))^2/(2^2)=1'),'Additional vertical ellipse retains its own axes and centre');
+  assert(calls.includes('H2:(x-(0))^2/(3^2)-(y-(0))^2/(2^2)=1'),'Additional hyperbola');
+  assert(calls.includes('P2:(x-(-1))^2=-8*(y-(2))'),'Additional downwards parabola');
+  assert(calls.includes('EP=Point(E2)'),'Additional ellipse supports attached motion');
+  assert(calls.includes('ET=Tangent(EP,E2)'),'Auxiliary tangent uses the added curve, not the main conic');
   assert(calls.includes('Curve(x(Center(c))+Radius(c)*cos(tt),y(Center(c))+Radius(c)*sin(tt),tt,0,1)'),'Closed range becomes a bounded path');
   assert.match(await page.locator('.dong-ggb-status').innerText(),/受限点.*依赖受限点/);
   assert.equal(await page.locator('#sceneJson').inputValue(),original,'Import does not rewrite native graph');

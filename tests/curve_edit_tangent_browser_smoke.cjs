@@ -107,7 +107,10 @@ module.exports=async({page,context,assert,screenshot})=>{
   const derived={...model,points:{P:[0,0]},lines:[{id:'answer',kind:'slope',m:0,b:2,role:'tangent',source:'derived',label:'P 点切线',refs:['feature:P','$conic']}],objects:[]};
   await install(derived);assert.match(await page.locator('#undefinedObjects').innerText(),/P 点切线.*不在曲线上/);
   await install({...derived,points:{P:[0,2]}});assert.equal(await page.locator('#undefinedObjects').innerText(),'','源点恢复到曲线后警告应消失');
-  const bad={...model,points:{P:[0,0]}};await install(bad);await page.locator('[data-construct="tangent"]').click();await click(-3,0);await click(0,0);
+  const bad={...model,points:{P:[0,0]}};await install(bad);
+  // Dialogs and full-page screenshots can scroll the page; refresh viewport coordinates.
+  await page.locator('#canvas').scrollIntoViewIfNeeded();box=await page.locator('#canvas').boundingBox();scale=Math.max(10.5/box.width,7.6/box.height);
+  await page.locator('[data-construct="tangent"]').click();box=await page.locator('#canvas').boundingBox();await click(-3,0);await click(0,0);
   assert.equal((await constructed('tangent')).length,0);assert.match(await page.locator('#dragHint').innerText(),/不在所选曲线上/);
   await install(edited);await page.reload();await page.waitForFunction(()=>JSON.parse(document.querySelector('#sceneJson').value).objects?.some(o=>o.id==='c'));
   assert.equal((await scene()).objects.find(o=>o.id==='c').equation,'(x−(1/2))²+y²=4');

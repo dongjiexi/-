@@ -26,6 +26,10 @@
   function attach(api) {
     const foldView=window.DongCircleFoldView?.attach(api);
     const find = selector => document.querySelector(selector);
+    // Import controls belong to the question, not below network diagnostics.
+    // Move existing nodes so file selections and registered listeners survive.
+    const inputUtilities=find('.input-utilities');
+    if(inputUtilities)api.question.after(inputUtilities);
     const runtime = window.DongRuntime;
     // The public release has one solving entry. Retain the underlying local
     // engines without exposing their controls or silently switching to them.
@@ -75,7 +79,8 @@
       const visible=cloudUnavailable&&solveMode==='cloud';
       find('#cloudOutageShortcut').hidden=!visible;
       if(cloudOnly)find('#cloudOutageShortcut').textContent=cloudFailureKind==='rate_limited'?'额度限制 · 查看详情':'云端异常 · 重试连接';
-      mobileNav.querySelector('[data-mobile-panel="input"]').textContent=visible?(cloudFailureKind==='rate_limited'?'题目 · 额度限制':'题目 · 云端异常'):'题目';
+      // Connection state has its own live region; keep navigation stable on phones.
+      mobileNav.querySelector('[data-mobile-panel="input"]').textContent='题目';
     }
     function cloudFailure(error){
       if(solveMode!=='cloud')return;
@@ -488,7 +493,7 @@
       finally{streamController=null;activeJob=null;busy(false);if(!rateLimited)refreshEngine();}
     }
     function snapshot() {
-      return {format:'dongjiexi-lesson',version:1,id:crypto.randomUUID(),savedAt:new Date().toISOString(),title:api.state.solution?.title||api.question.value.slice(0,32)||'未命名图稿',question:api.question.value,scene:api.state.model?api.sceneData():null,original:api.state.original||null,solution:api.state.solution||null,activePart:api.state.activePart,exploring:!!api.state.exploring};
+      return {format:'dongjiexi-lesson',version:1,id:crypto.randomUUID(),savedAt:new Date().toISOString(),title:api.state.solution?.title||api.question.value.slice(0,32)||'未命名图稿',question:api.question.value,scene:api.state.model?api.sceneData():null,boardDraft:window.DongUnifiedBoard?.snapshot?.()||null,original:api.state.original||null,solution:api.state.solution||null,activePart:api.state.activePart,exploring:!!api.state.exploring};
     }
     function readNotebook(){try{const entries=JSON.parse(localStorage.getItem(notebookKey)||'[]');return Array.isArray(entries)?entries:[];}catch{return [];}}
     function readBackups(){const entries=JSON.parse(localStorage.getItem(backupKey)||'[]');if(!Array.isArray(entries))throw new Error('旧稿备份记录无法读取，已保留原数据。');return entries;}
@@ -569,6 +574,7 @@
       if(record.scene?.objects?.length>500)throw new Error('图稿对象超过 500 个。');
       const parsedScene=record.scene?api.modelFromJson(JSON.stringify(record.scene)):null;
       const original=record.original?.model&&record.original?.values?api.modelFromJson(JSON.stringify({...record.original.model,...record.original.values})):null;
+      window.DongUnifiedBoard?.stageDraft?.(record.boardDraft);
       clearStepHighlight();
       api.clear();api.question.value=record.question;
       api.state.solution=record.solution;api.state.activePart=record.activePart??null;
@@ -587,7 +593,7 @@
       if(!api.state.solution)throw new Error('请先生成解析。');
       const target=find('#printLesson');
       target.innerHTML='<h1>董解析 · 学习题稿</h1>'+textBlock(api.state.solution.restatement)+'<section class="solution">'+markup(api.state.solution,true)+'</section>';
-      if(api.state.model){const image=document.createElement('img');image.src=api.canvas.toDataURL('image/png');image.alt='当前图形';target.append(image);if(api.state.exploring)target.insertAdjacentHTML('beforeend','<p>此图已调整参数；解析仍对应原题。</p>');}
+      if(api.state.model){const image=document.createElement('img');image.src=window.DongUnifiedBoard?.image?.()||api.canvas.toDataURL('image/png');image.alt='当前图形';target.append(image);if(api.state.exploring)target.insertAdjacentHTML('beforeend','<p>此图已调整参数；解析仍对应原题。</p>');}
       typeset(target);window.print();
     }
     function acceptSolution(result,original,{installGraph=true}={}){
@@ -919,10 +925,10 @@
     find('#confirmRecognition').addEventListener('click',()=>{const recognized=find('#recognizedText').value.trim();if(!recognized||recognized.length>18000){rejectRecognition('请填写核对后的题目，长度须在 18000 字以内。');return;}if(hasUncertainty(recognized)){rejectRecognition('识别结果仍含“[看不清]”或其它未确认字段。请在此窗口补正后再确认。');return;}if(!find('#recognitionReview').hidden&&!find('#recognitionReviewed').checked){rejectRecognition('请对照原图补正模糊位置，并勾选“已核对上述位置”。');return;}clearStepHighlight();api.question.value=recognized;api.question.dispatchEvent(new Event('input',{bubbles:true}));find('#recognitionDialog').close();api.remember();api.setStatus('题面已确认，可以开始解题。');});
     document.querySelectorAll('[data-close-dialog]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
     find('#openNotebook').addEventListener('click',()=>{try{renderNotebook();find('#notebookDialog').showModal();}catch(error){report(error);}});
-    find('#saveLesson').addEventListener('click',()=>{try{saveLesson();}catch(error){report(error);}});
+    find('#saveLesson').addEventListener('click',async()=>{try{if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();saveLesson();}catch(error){report(error);}});
     find('#notebookSearch').addEventListener('input',renderNotebook);
     const reviewFilter=document.createElement('select');reviewFilter.id='reviewFilter';reviewFilter.setAttribute('aria-label','题本掌握情况筛选');reviewFilter.innerHTML='<option value="all">全部题目</option><option value="review">错题 · 需要复习</option><option value="mastered">已掌握</option>';find('#notebookSearch').after(reviewFilter);reviewFilter.addEventListener('change',renderNotebook);
-    find('#exportLesson').addEventListener('click',()=>{const record=snapshot();api.download('董解析-题稿.json',new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));});
+    find('#exportLesson').addEventListener('click',async()=>{try{if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();const record=snapshot();api.download('董解析-题稿.json',new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));}catch(error){report(error);}});
     find('#importLesson').addEventListener('change',async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>5*1024*1024)throw new Error('题稿超过 5 MB。');restoreLesson(JSON.parse(await file.text()));find('#notebookDialog').close();}catch(error){report(error);}finally{event.target.value='';}});
     find('#sendFollowup').addEventListener('click',followup);
     document.querySelectorAll('[data-followup]').forEach(button=>button.addEventListener('click',()=>{find('#followupInput').value=button.dataset.followup;find('#followupInput').focus();}));

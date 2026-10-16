@@ -211,6 +211,9 @@
       try {
         const result = read();
         preview.textContent = result.equation;
+        // Render before the next pointer event. Deferred global typesetting can
+        // otherwise move the Add button between pointerdown and pointerup.
+        window.DongMathInput?.formula(preview,result.equation);
         preview.classList.remove('invalid');
         error.textContent = '';
       } catch (problem) {

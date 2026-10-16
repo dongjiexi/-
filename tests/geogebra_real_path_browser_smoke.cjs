@@ -1,6 +1,9 @@
 // Opt-in network integration: actual official app, never a simulated algebra API.
 module.exports=async({page,assert,screenshot})=>{
   const scene={type:'ellipse',a:3,b:2,h:0,k:0,showDynamic:false,objects:[
+    {id:'extra',kind:'conic',conicType:'ellipse',label:'E2',h:1,k:-2,a:4,b:2,orientation:'vertical'},
+    {id:'extraPoint',kind:'construction',op:'point_on',refs:['extra'],label:'EP',t:.5},
+    {id:'extraTangent',kind:'construction',op:'tangent',refs:['extraPoint','extra'],label:'ET'},
     {id:'moving',kind:'construction',op:'point_on',refs:['$conic'],t:.5,label:'U'},
     {id:'bounded',kind:'construction',op:'point_on',refs:['$conic'],t:.5,label:'S',motionDomain:{parameter:{min:0,max:1}}},
     {id:'mid',kind:'construction',op:'midpoint',refs:['moving','bounded'],label:'M'}
@@ -25,6 +28,14 @@ module.exports=async({page,assert,screenshot})=>{
   assert(result.s[0]>=3*Math.cos(1)-1e-6&&result.s[1]>=-1e-6,'Bounded point cannot leave its arc');
   assert(Math.abs(result.m[0]-(result.u[0]+result.s[0])/2)<1e-7);
   assert(Math.abs(result.resized[0]**2/16+result.resized[1]**2/4-1)<1e-6,'Bounded path follows changed ellipse parameters');
+  const extra=await page.evaluate(()=>{
+    const api=window.DongGeoGebra.getAPI();api.setCoords('EP',9,7);
+    const x=api.getXcoord('EP'),y=api.getYcoord('EP');
+    api.evalCommand('ExtraDistance=Distance(EP,ET)');
+    return {x,y,defined:api.isDefined('ET'),distance:api.getValue('ExtraDistance')};
+  });
+  assert(Math.abs((extra.x-1)**2/4+(extra.y+2)**2/16-1)<1e-6,'Additional curve keeps the point on its own path');
+  assert(extra.defined&&Math.abs(extra.distance)<1e-7,'Real tangent passes through the moving point');
   await page.evaluate(()=>window.DongGeoGebra.getAPI().evalCommand('Manual=(7,8)'));
   await page.locator('#params input[data-key="a"][data-param-expression]').fill('5');
   await page.waitForFunction(()=>window.DongGeoGebra.getAPI().getValue('a')===5);
