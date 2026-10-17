@@ -585,7 +585,7 @@
       window.DongUnifiedBoard?.stageDraft?.(record.boardDraft);
       clearStepHighlight();
       api.clear();api.question.value=record.question;
-      api.state.solution=record.solution;api.state.activePart=record.activePart??null;
+      api.state.solution=window.DongSolutionReview?.restoreReferenceScene(record.solution,parsedScene?record.scene:null,record.question)??record.solution;api.state.activePart=record.activePart??null;
       if(parsedScene)api.installScene(parsedScene,'题本',{original,exploring:!!record.exploring});
       api.state.exploring=!window.DongMotion.protectedScene(api.state.model)&&!!record.exploring;find('#exploreNotice').hidden=!api.state.exploring;
       renderSolution();api.refreshLayers();api.render();api.remember();api.setStatus('题目、解析、图形与追问已恢复。');

@@ -4,6 +4,14 @@
   'use strict';
   const complete=p=>!!(p?.status==='answered'&&typeof p.answer==='string'&&p.answer.trim()&&Array.isArray(p.steps)&&p.steps.some(s=>typeof s==='string'&&s.trim())&&!(p.derivation?.proof_obligations||[]).some(s=>typeof s==='string'&&s.trim()));
   const clone=x=>JSON.parse(JSON.stringify(x));
+  function restoreReferenceScene(solution,scene,question){
+    // Older notebook records kept reference diagrams only at record.scene.
+    // Recover display presence, not proof trust or stale diagram audits.
+    if(!solution||solution.scene||!scene||solution.mode!=='reference-lesson'||solution.restatement!==question)return solution;
+    const restored={...solution,scene:clone(scene)};
+    delete restored.sceneAudit;
+    return restored;
+  }
   function algebraConflicts(part){
     if(!root.DongMathInput||!root.DongEquationBuilder)return [];
     const plain=s=>root.DongMathInput.toPlain(s).replace(/\s|\$/g,'').replace(/[−–]/g,'-');
@@ -77,5 +85,5 @@
     }
     return result;
   }
-  root.DongSolutionReview=Object.freeze({complete,inspect,request,merge,algebraConflicts});
+  root.DongSolutionReview=Object.freeze({complete,inspect,request,merge,algebraConflicts,restoreReferenceScene});
 })(typeof window==='object'?window:globalThis);

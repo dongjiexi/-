@@ -1,6 +1,6 @@
 {
   "schema": "dongjiexi-question-bank/v1",
-  "updated": "2026-10-17",
+  "updated": "2026-10-18",
   "coverage": "2022—2026 年解析几何精选，含全国一卷、二卷与北京卷，非全量试卷。保留原卷名；小问节选与省略选项均单独标记。",
   "rights": "题面权利归原命题单位；来源链接供核对。讲解由董解析重新推导，不搬运第三方答案册。",
   "items": [
@@ -34,11 +34,11 @@
       "scene": {"type": "hyperbola", "a": 1.4142135623730951, "b": 1.4142135623730951, "showDynamic": false, "points": {"F": [2,0]}, "lines": [{"id": "asym1", "label": "y=x", "a": 1, "b": -1, "c": 0}, {"id": "asym2", "label": "y=-x", "a": 1, "b": 1, "c": 0}]}
     },
     {
-      "id": "2022-beijing-19-1", "kind": "gaokao", "year": 2022, "paper": "北京卷", "number": "19（Ⅰ）", "scope": "第（Ⅰ）问节选", "title": "顶点与焦距确定椭圆", "curve": "椭圆", "tags": ["标准方程", "焦距"], "knowledge": [{"name":"顶点与焦距","description":"区分短轴顶点、半焦距和两焦点之间的距离。"},{"name":"椭圆标准方程","description":"由短半轴与半焦距求长半轴，建立曲线模型。"}], "level": "基础",
-      "question": "已知椭圆 $E:\\dfrac{x^2}{a^2}+\\dfrac{y^2}{b^2}=1\\ (a>b>0)$ 的一个顶点为 $A(0,1)$，焦距为 $2\\sqrt3$。求椭圆 $E$ 的方程。（选取原题第（Ⅰ）问。）",
+      "id": "2022-beijing-19-1", "kind": "gaokao", "year": 2022, "paper": "北京卷", "number": "19", "scope": "完整题目", "title": "椭圆方程与过定点弦的截距", "curve": "椭圆", "tags": ["标准方程", "焦距", "韦达定理", "截距"], "knowledge": [{"name":"顶点与焦距","description":"区分短轴顶点、半焦距和两焦点之间的距离。"},{"name":"截距与韦达定理","description":"把两条连线在横轴上的截距差转化为弦端点的根与系数关系。"}], "level": "综合", "solver": "axis-intercept-chord",
+      "question": "已知椭圆 E：x²/a²+y²/b²=1（a>b>0）的一个顶点为 A(0,1)，焦距为 2√3。\n（1）求椭圆 E 的方程；\n（2）过点 P(-2,1) 作斜率为 k 的直线与椭圆 E 交于不同的两点 B，C，直线 AB，AC 分别与 x 轴交于点 M，N，当 |MN|=2 时，求 k 的值。",
       "sources": [{"title": "2022 北京卷原卷 PDF", "url": "https://m.shsbnu.net/pluginfile.php/54461/mod_folder/content/0/2022%E5%B9%B4%E6%96%B0%E9%AB%98%E8%80%83%E5%8C%97%E4%BA%AC%E6%95%B0%E5%AD%A6%E9%AB%98%E8%80%83%E7%9C%9F%E9%A2%98%E6%96%87%E6%A1%A3%E7%89%88%EF%BC%88%E5%8E%9F%E5%8D%B7%EF%BC%89.pdf"}],
       "pitfall": "焦距是 2c，不是 c。部分转载的纯文本漏掉根号，必须核对原卷。",
-      "parts": [{"index": 1, "label": "标准方程", "answer": "$\\dfrac{x^2}{4}+y^2=1$。", "steps": ["短轴顶点 $A(0,1)$ 给出 $b=1$。", "焦距 $2c=2\\sqrt3$，所以 $c^2=3$。", "椭圆满足 $a^2=b^2+c^2=4$，故 $\\dfrac{x^2}{4}+y^2=1$。"]}],
+      "parts": [{"index": 1, "label": "标准方程", "answer": "$\\dfrac{x^2}{4}+y^2=1$。", "steps": ["短轴顶点 $A(0,1)$ 给出 $b=1$。", "焦距 $2c=2\\sqrt3$，所以 $c^2=3$。", "椭圆满足 $a^2=b^2+c^2=4$，故 $\\dfrac{x^2}{4}+y^2=1$。"]},{"index":2,"label":"由截距差求斜率","answer":"$k=-4$。","steps":["设弦直线为 $y=k(x+2)+1$，代入椭圆得 $(k^2+1/4)x^2+2k(2k+1)x+4k^2+4k=0$。判别式为 $-4k$，两不同交点要求 $k<0$。","从 $A(0,1)$ 连向弦端点 $(x_i,y_i)$，横轴截距为 $X_i=-x_i/[k(x_i+2)]$。由韦达定理化简得 $(X_1-X_2)^2=-16/k$。","由 $|MN|=2$ 得 $-16/k=4$，故 $k=-4$。回代判别式为 $16>0$，截距差平方为 $4$，符合题意。"]}],
       "scene": {"type": "ellipse", "a": 2, "b": 1, "showDynamic": false, "points": {"A": [0,1]}}
     },
     {

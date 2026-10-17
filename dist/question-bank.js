@@ -44,8 +44,10 @@
     const parts = JSON.parse(JSON.stringify(exact?.parts || item.parts)).map(part => ({
       ...part, status: 'answered', verification: {status: 'reference-reviewed', message: '题库参考推导'}
     }));
+    const scene = exact?.scene || sceneFor(item);
     const solution = {
       ...exact, mode: 'reference-lesson', title: item.title + ' · 题库参考讲解',
+      scene: scene ? JSON.parse(JSON.stringify(scene)) : null,
       restatement: item.question, model: '题库参考讲解（非 AI 现场生成）',
       parts, completion: {answered: parts.length, total: parts.length},
       answer: parts.map(part => part.answer).join('\n'),
@@ -57,7 +59,7 @@
       study: {mode: style === 'full' ? 'full' : 'step', counts: {}, answers: {}, notes: '', review: 'new'}
     };
     return {format: 'dongjiexi-lesson', version: 1, question: item.question, solution,
-      scene: exact?.scene || sceneFor(item), activePart: parts[0].index, exploring: false};
+      scene, activePart: parts[0].index, exploring: false};
   }
   // Upgrade ONLY an explicitly sourced reference lesson. Never match free-input
   // questions to stored answers, and never replace an unbacked-up user draft.

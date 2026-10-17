@@ -25,6 +25,8 @@ for(const item of data.items){
   assert.equal(record.solution.verification.status,'reference-reviewed');
   assert.equal(record.solution.lessonSource.id,item.id);
   assert(record.scene);
+  assert.deepEqual(record.solution.scene,JSON.parse(JSON.stringify(record.scene)),'Diagram status receives the serialized reference scene');
+  assert.notEqual(record.solution.scene,record.scene,'Working graph must not mutate the answer snapshot');
   for(const line of record.scene.lines)assert(['slope','vertical'].includes(line.kind));
 }
 assert.throws(()=>bank.lesson(data.items.find(i=>i.solver),'full',()=>null),/联动图形/);

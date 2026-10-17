@@ -1,6 +1,14 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const box={window:{}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/solution-review.js'),'utf8'),box);
 const review=box.window.DongSolutionReview,copy=x=>JSON.parse(JSON.stringify(x));
+const legacy={mode:'reference-lesson',restatement:'旧题',parts:[],sceneAudit:{checks:[]},verification:{status:'reference-reviewed'}};
+const workingScene={type:'ellipse',a:2,b:1};
+const restored=review.restoreReferenceScene(legacy,workingScene,'旧题');
+assert.equal(review.inspect(restored).diagram,'unchecked');
+assert.equal(restored.verification.status,'reference-reviewed');
+assert.equal(legacy.scene,undefined);
+assert.notEqual(restored.scene,workingScene);
+for(const [solution,scene,question] of [[legacy,null,'旧题'],[legacy,workingScene,'新题'],[{...legacy,mode:'cloud-ai'},workingScene,'旧题'],[{...legacy,scene:workingScene},workingScene,'旧题']])assert.equal(review.restoreReferenceScene(solution,scene,question),solution);
 const p=(index,status='answered')=>({index,status,answer:'协议占位结论',steps:['协议占位推导'],derivation:{proof_obligations:[]}});
 let n=0;const check=fn=>{fn();n++;};
 const previous={mode:'cloud-ai',restatement:'原题',parts:[p(1),p(2,'partial')],scene:{type:'circle',r:2},study:{notes:'保留笔记'},conversation:[{role:'user',content:'保留追问'}],sceneAudit:{missing:['N'],checks:[{label:'切线',passed:false}]}};

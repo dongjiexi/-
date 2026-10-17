@@ -5,10 +5,21 @@ module.exports=async({page,assert,screenshot})=>{
     assert.equal(await page.locator('#bankDetail .katex-error').count(),0);
     await page.locator('[data-bank-action="full"]').click();
     assert.match(await page.locator('#solution').innerText(),/题库参考讲解/);
+    assert.doesNotMatch(await page.locator('#solution .solve-review').innerText(),/尚未生成/);
     assert.equal(await page.locator('#solution .katex-error').count(),0);
     assert(JSON.parse(await page.locator('#sceneJson').inputValue()).referenceScene);
     await page.locator('#openQuestionBank').click();
   }
+  await page.locator('[data-bank-id="2022-beijing-19-1"]').click();
+  assert.match(await page.locator('#bankDetail').innerText(),/完整题目/);
+  await page.locator('[data-bank-action="full"]').click();
+  assert.match(await page.locator('#solution .solve-review').innerText(),/2\/2/);
+  await page.locator('[data-study-part="2"]').click();
+  assert.match((await page.locator('#solution').innerText()).replace(/\s/g,''),/k=-4|k=−4/);
+  const completeScene=JSON.parse(await page.locator('#sceneJson').inputValue());
+  for(const label of ['M','N'])assert(completeScene.objects.some(o=>o.label===label&&o.op==='intersection'));
+  assert.equal(await page.locator('#solution .katex-error').count(),0);
+  await page.locator('#openQuestionBank').click();
   await page.locator('[data-bank-id="2023-ii-5"]').click();await page.locator('[data-bank-action="full"]').click();
   const original=await page.locator('#sceneJson').inputValue();
   const normal=(await page.locator('.inspect').boundingBox()).width;
