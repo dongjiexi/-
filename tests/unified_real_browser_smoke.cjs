@@ -50,4 +50,9 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#sceneJson').evaluate(el=>{el.value=JSON.stringify({type:'parabola',h:2,k:1,p:1,showDynamic:false,showFeatures:false,points:{N:[4,3]},objects:[]});document.querySelector('#applyJson').click();});
   await page.waitForFunction(()=>window.DongGeoGebra.getAPI().exists('N'));
   assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return a.getVisible('N')&&a.getXcoord('O')===0&&a.getYcoord('O')===0&&a.getXcoord('V')===2;}),'Named problem points and translated parabola origin retain their meaning');
+  await page.locator('#sceneJson').evaluate(el=>{el.value=JSON.stringify({type:'ellipse',a:3,b:2,showDynamic:false,showFeatures:false,points:{F:[Math.sqrt(5),0]},pointBindings:{F:'focus2'},objects:[]});document.querySelector('#applyJson').click();});
+  await page.waitForFunction(()=>window.DongGeoGebra.getAPI()?.exists('F')&&window.DongGeoGebra.getAPI().getVisible('F'));
+  assert(await page.evaluate(()=>Math.abs(window.DongGeoGebra.getAPI().getXcoord('F')-Math.sqrt(5))<1e-8),'Named focus is visible even when generic features are hidden');
+  await page.evaluate(()=>window.DongGeoGebra.getAPI().setValue('a',4));
+  assert(await page.evaluate(()=>Math.abs(window.DongGeoGebra.getAPI().getXcoord('F')-Math.sqrt(12))<1e-8),'Named focus follows the actual conic rather than a frozen coordinate');
 };

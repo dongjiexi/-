@@ -74,5 +74,36 @@
     {id:'ellipse-focal-area-ratio',label:'面积比与斜率',status:'verified',detail:`由题设面积比解得 cosθ=${context.exact.cosine}、k=${context.exact.slope}；这是满足条件的特定位置，不代表任意拖动位置仍满足面积比。`,formula:`2(PF+QF)/PF=${tex(context.ratio)}`,category:'answer',part:context.parts.area},
     {id:'ellipse-focal-angle-minimum',label:'tan∠PQR 最小值',status:'verified',detail:`用 kk'=-${tex(context.b2/context.a2)} 和基本不等式复算，等号位置合法。`,formula:`tan∠PQR≥${context.exact.minimum}`,category:'answer',part:context.parts.angle}
   ];}
-  window.DongEllipseFocusChord={install,solvePart,checks};
+  // A complete, deliberately bounded premise grammar: extra slope/quadrant
+  // restrictions must not inherit the unrestricted closed interval.
+  function rangeModel(raw){
+    const s=(window.DongMathInput?.toPlain(raw)??raw).replace(/²/g,'^2').replace(/[\s$()（）{}]/g,'').replace(/＋/g,'+').replace(/＝/g,'=');
+    const m=s.match(/^(?:已知)?椭圆([A-Z])[:：]?x\^2(?:\/(\d+(?:\.\d+)?))?\+y\^2(?:\/(\d+(?:\.\d+)?))?=1[，,。；;]*过(?:其)?([左右上下])焦点([A-Z])的(?:任意一条|任意|一条|动)?直线([a-z])与(?:椭圆)?([A-Z])交于([A-Z])[、,，]([A-Z])两点[，,。；;]*求(?:弦长)?\|?([A-Z]{2})\|?的?(?:取值范围|范围)[。？！?!]*$/);
+    if(!m||m[1]!==m[7]||m[8]+m[9]!==m[10]||new Set([m[1],m[5],m[8],m[9]]).size!==4)return null;
+    const x2=Number(m[2]||1),y2=Number(m[3]||1),a2=Math.max(x2,y2),b2=Math.min(x2,y2),vertical=y2>x2;
+    if(!(b2>0&&a2>b2&&a2<=1e8)||vertical!==/[上下]/.test(m[4]))return null;
+    const a=Math.sqrt(a2),b=Math.sqrt(b2),c=Math.sqrt(a2-b2),sign=/[右上]/.test(m[4])?1:-1;
+    return {a2,b2,a,b,c,vertical,sign,focus:m[5],line:m[6],labels:[m[8],m[9]],minimum:2*b2/a,maximum:2*a};
+  }
+  function solveRange(scene,raw,part){
+    const r=rangeModel(raw),m=scene?.model,v=scene?.values;
+    if(!r||m?.type!=='ellipse'||!near(v?.a,r.a)||!near(v?.b,r.b)||!near(v?.h??0,0)||!near(v?.k??0,0)||(m.orientation==='vertical')!==r.vertical)return null;
+    const focus=r.vertical?[0,r.sign*r.c]:[r.sign*r.c,0],binding=r.sign>0?'focus2':'focus1';
+    if(m.pointBindings?.[r.focus]&&m.pointBindings[r.focus]!==binding)return null;
+    if(m.points?.[r.focus]&&!m.points[r.focus].every((n,i)=>near(n,focus[i])))return null;
+    if(r.labels.some(n=>Object.hasOwn(m.points||{},n))||(m.objects||[]).some(o=>[r.focus,...r.labels].includes(o.label)))return null;
+    m.points||={};m.points[r.focus]=focus;m.pointBindings||={};m.pointBindings[r.focus]=binding;
+    m.showFeatures=false;m.showDynamic=true;m.lineThrough=binding;m.dynamicLineLabel=r.line;m.dynamicIntersectionLabels=r.labels;v.theta=r.vertical?45:35;
+    const length=r.labels.join(''),low=tex(r.minimum),high=tex(r.maximum);
+    const proof=[
+      `记长、短半轴为 $a=${tex(r.a)},b=${tex(r.b)}$，焦距参数满足 $c^2=a^2-b^2=${tex(r.a2-r.b2)}$。`,
+      `以长轴正方向为基准，直线方向角为 $\\theta$，以焦点为起点写直线参数 $t$。代入椭圆得 $Dt^2+2\\varepsilon c\\cos\\theta\\,t/a^2-b^2/a^2=0$，其中 $D=\\cos^2\\theta/a^2+\\sin^2\\theta/b^2$，$\\varepsilon=\\pm1$ 表示所选焦点。`,
+      `二次方程判别式恒为 $4/a^2>0$，两交点始终不同；方向向量为单位向量，故 $|${length}|=|t_1-t_2|=\\dfrac{2ab^2}{b^2\\cos^2\\theta+a^2\\sin^2\\theta}$。`,
+      `由 $0\\le\\sin^2\\theta\\le1$，分母取遍 $[b^2,a^2]$，所以 $\\dfrac{2b^2}{a}\\le|${length}|\\le2a$。`,
+      `直线垂直于长轴时取得最小值 $${low}$，与长轴重合时取得最大值 $${high}$。题设没有排除这两个方向，且弦长连续，故两端及中间各值均可取得。`
+    ];
+    const checks=[{id:'focal-range-discriminant',part:part.index,status:'verified',label:'焦点弦长恒等式',category:'answer',detail:'由题面半轴重新建立直线参数二次方程，判别式恒正；不是用当前画面单个弦长代替范围。',formula:'L=2ab^2/(b^2\\cos^2\\theta+a^2\\sin^2\\theta)'},{id:'focal-range-endpoints',part:part.index,status:'verified',label:'范围与端点可达性',category:'answer',detail:'完整题面未附加方向限制；垂直长轴与重合长轴均合法，连续性保证区间无缺值。',formula:`L\\in[${low},${high}]`}];
+    return {status:'answered',answer:`$|${length}|\\in[${low},${high}]$。`,steps:proof,checks,verification:{status:'locally-verified',message:'焦点弦范围及端点可达性由题面独立复算；不表示核验了所有 AI 推导。'}};
+  }
+  window.DongEllipseFocusChord={install,solvePart,checks,rangeModel,solveRange};
 })();

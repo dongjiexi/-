@@ -52,6 +52,7 @@ jobs:
           node tests/ellipse_distance_domain_tests.cjs
           node tests/circle_dot_tests.cjs
           node tests/orthogonal_chord_tests.cjs
+          node tests/focal_range_tests.cjs
           node tests/number_display_tests.cjs
           node tests/browser_contract_tests.cjs
           node tests/math_input_tangent_tests.cjs

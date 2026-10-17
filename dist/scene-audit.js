@@ -42,7 +42,11 @@
         for(const [name,d,kind] of [['F₁',-c,'focus'],['F₂',c,'focus'],['A₁',-scene.a,'vertex'],['A₂',scene.a,'vertex']])add(name,h+(v?0:d),k+(v?d:0),kind);
       }
     }
-    for(const [name,p] of Object.entries(scene.points||{}))if(!scene.pointBindings?.[name])add(name,p[0],p[1]);
+    const baseFeatures=fs.slice();
+    for(const [name,p] of Object.entries(scene.points||{})){
+      const binding=scene.pointBindings?.[name],source=binding==='center'?{x:h,y:k}:baseFeatures.find(f=>f.name===({focus1:scene.type==='parabola'?'F':'F₁',focus2:scene.type==='parabola'?'F':'F₂',vertex:'V'}[binding]));
+      if(!binding||source)add(name,source?.x??p[0],source?.y??p[1]);
+    }
     let origin={x:h,y:k};
     if(scene.lineThrough?.startsWith('point:'))origin=fs.find(p=>p.name===scene.lineThrough.slice(6))||origin;
     else if(scene.lineThrough==='focus1'||scene.lineThrough==='focus2')origin=fs.find(p=>p.name===(scene.lineThrough==='focus1'?'F₁':'F₂'))||fs.find(p=>p.name==='F')||origin;

@@ -392,7 +392,11 @@
       }
       for (const [name, coordinates] of Object.entries(scene.points || {})) {
         if (!Array.isArray(coordinates) || coordinates.length < 2) continue;
-        if (scene.pointBindings?.[name] && anchors[scene.pointBindings[name]]) { labels.set(name, anchors[scene.pointBindings[name]]); continue; }
+        if (scene.pointBindings?.[name] && anchors[scene.pointBindings[name]]) {
+          const item={parts:scene.pointParts?.[name]},anchor=anchors[scene.pointBindings[name]],label=anchor===name?anchor:object(anchor,name,[63,120,216],visible(item));
+          if(label===anchor)api.setVisible(label,visible(item));
+          visibility.push({label,item});labels.set(name,label);continue;
+        }
         const previous=labels.get(name);if(previous)api.setVisible(previous,false);
         const item={parts:scene.pointParts?.[name]};
         const label = point(coordinates[0], coordinates[1], name, visible(item));

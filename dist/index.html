@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.67.3">
+  <meta name="dongjiexi-version" content="0.67.4">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.67.3">
-  <link rel="stylesheet" href="classroom.css?v=0.67.3">
-  <link rel="stylesheet" href="question-bank.css?v=0.67.3">
+  <link rel="stylesheet" href="learning-ui.css?v=0.67.4">
+  <link rel="stylesheet" href="classroom.css?v=0.67.4">
+  <link rel="stylesheet" href="question-bank.css?v=0.67.4">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -418,13 +418,13 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.67.3">
-  <link rel="stylesheet" href="autumn.css?v=0.67.3">
+  <link rel="stylesheet" href="theme.css?v=0.67.4">
+  <link rel="stylesheet" href="autumn.css?v=0.67.4">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.67.3 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.67.4 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -628,51 +628,51 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.67.3"></script>
+  <script src="runtime.js?v=0.67.4"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.67.3"></script>
-  <script src="number-display.js?v=0.67.3"></script>
-  <script src="label-layout.js?v=0.67.3"></script>
-  <script src="step-highlight.js?v=0.67.3"></script>
-  <script src="scene-audit.js?v=0.67.3"></script>
-  <script src="answer-geometry.js?v=0.67.3"></script>
-  <script src="scene-merge.js?v=0.67.3"></script>
-  <script src="tangent-solver.js?v=0.67.3"></script>
-  <script src="ellipse-distance.js?v=0.67.3"></script>
-  <script src="circle-dot.js?v=0.67.3"></script>
-  <script src="orthogonal-chord.js?v=0.67.3"></script>
-  <script src="axis-intercept-chord.js?v=0.67.3"></script>
-  <script src="conic-area.js?v=0.67.3"></script>
-  <script src="basic-conditions.js?v=0.67.3"></script>
-  <script src="ellipse-area-chord.js?v=0.67.3"></script>
-  <script src="vertex-secant.js?v=0.67.3"></script>
-  <script src="inverse-locus.js?v=0.67.3"></script>
-  <script src="symmetric-chord.js?v=0.67.3"></script>
-  <script src="parabola-locus.js?v=0.67.3"></script>
-  <script src="question-parts.js?v=0.67.3"></script>
-  <script src="goal-coverage.js?v=0.67.3"></script>
-  <script src="solution-review.js?v=0.67.3"></script>
-  <script src="parabola-focal-data.js?v=0.67.3"></script>
-  <script src="circle-fold.js?v=0.67.3"></script>
-  <script src="circle-fold-view.js?v=0.67.3"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.67.3">
-  <script src="hyperbola-iteration.js?v=0.67.3"></script>
-  <script src="conic-parameter.js?v=0.67.3"></script>
-  <script src="ellipse-focal-chord.js?v=0.67.3"></script>
-  <script src="external-ai.js?v=0.67.3"></script>
-  <script src="learning-ui.js?v=0.67.3"></script>
-  <script src="classroom.js?v=0.67.3"></script>
-  <script src="question-bank.js?v=0.67.3"></script>
-  <script src="construction-board.js?v=0.67.3"></script>
-  <script src="motion-domain.js?v=0.67.3"></script>
-  <script src="motion-protection.js?v=0.67.3"></script>
-  <script src="drag-board.js?v=0.67.3"></script>
-  <script src="equation-builder.js?v=0.67.3"></script>
-  <script src="math-keyboard.js?v=0.67.3"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.67.3"></script>
-  <script src="geogebra-bridge.js?v=0.67.3"></script>
-  <script src="unified-board.js?v=0.67.3"></script>
+  <script src="math-input.js?v=0.67.4"></script>
+  <script src="number-display.js?v=0.67.4"></script>
+  <script src="label-layout.js?v=0.67.4"></script>
+  <script src="step-highlight.js?v=0.67.4"></script>
+  <script src="scene-audit.js?v=0.67.4"></script>
+  <script src="answer-geometry.js?v=0.67.4"></script>
+  <script src="scene-merge.js?v=0.67.4"></script>
+  <script src="tangent-solver.js?v=0.67.4"></script>
+  <script src="ellipse-distance.js?v=0.67.4"></script>
+  <script src="circle-dot.js?v=0.67.4"></script>
+  <script src="orthogonal-chord.js?v=0.67.4"></script>
+  <script src="axis-intercept-chord.js?v=0.67.4"></script>
+  <script src="conic-area.js?v=0.67.4"></script>
+  <script src="basic-conditions.js?v=0.67.4"></script>
+  <script src="ellipse-area-chord.js?v=0.67.4"></script>
+  <script src="vertex-secant.js?v=0.67.4"></script>
+  <script src="inverse-locus.js?v=0.67.4"></script>
+  <script src="symmetric-chord.js?v=0.67.4"></script>
+  <script src="parabola-locus.js?v=0.67.4"></script>
+  <script src="question-parts.js?v=0.67.4"></script>
+  <script src="goal-coverage.js?v=0.67.4"></script>
+  <script src="solution-review.js?v=0.67.4"></script>
+  <script src="parabola-focal-data.js?v=0.67.4"></script>
+  <script src="circle-fold.js?v=0.67.4"></script>
+  <script src="circle-fold-view.js?v=0.67.4"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.67.4">
+  <script src="hyperbola-iteration.js?v=0.67.4"></script>
+  <script src="conic-parameter.js?v=0.67.4"></script>
+  <script src="ellipse-focal-chord.js?v=0.67.4"></script>
+  <script src="external-ai.js?v=0.67.4"></script>
+  <script src="learning-ui.js?v=0.67.4"></script>
+  <script src="classroom.js?v=0.67.4"></script>
+  <script src="question-bank.js?v=0.67.4"></script>
+  <script src="construction-board.js?v=0.67.4"></script>
+  <script src="motion-domain.js?v=0.67.4"></script>
+  <script src="motion-protection.js?v=0.67.4"></script>
+  <script src="drag-board.js?v=0.67.4"></script>
+  <script src="equation-builder.js?v=0.67.4"></script>
+  <script src="math-keyboard.js?v=0.67.4"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.67.4"></script>
+  <script src="geogebra-bridge.js?v=0.67.4"></script>
+  <script src="unified-board.js?v=0.67.4"></script>
   <script>
   (() => {
     'use strict';
@@ -1244,7 +1244,7 @@
       if (t==='hyperbola') { const f=Math.sqrt(P('a')**2+P('b')**2),v=state.model.orientation==='vertical';items.push({name:'O',x:h,y:k,kind:'center'});for(const [name,value,kind] of [['F₁',-f,'focus'],['F₂',f,'focus'],['A₁',-P('a'),'vertex'],['A₂',P('a'),'vertex']])items.push({name,x:h+(v?0:value),y:k+(v?value:0),kind}); }
       if (t==='parabola') { const d=P('direction')||1; const f=state.model.orientation==='vertical'?{x:h,y:k+d*P('p')}:{x:h+d*P('p'),y:k}; items.push({name:'F',...f,kind:'focus'},{name:'V',x:h,y:k,kind:'vertex'},{name:'O',x:0,y:0,kind:'point'}); }
       const byName=new Map(items.map(item=>[item.name,item]));
-      Object.entries(state.model.points||{}).forEach(([name,coords])=>{if(!state.model.pointBindings?.[name])byName.set(name,{name,x:+coords[0],y:+coords[1],kind:'point'});});
+      Object.entries(state.model.points||{}).forEach(([name,coords])=>{const binding=state.model.pointBindings?.[name],source=binding==='center'?{x:h,y:k}:items.find(p=>p.name===({focus1:t==='parabola'?'F':'F₁',focus2:t==='parabola'?'F':'F₂',vertex:'V'}[binding]));if(!binding||source)byName.set(name,{name,x:source?.x??+coords[0],y:source?.y??+coords[1],kind:'point'});});
       return [...byName.values()].map(feature=>({...feature,...window.DongMotion.overridden(state.model,'feature:'+feature.name,{x:feature.x,y:feature.y})}));
     }
     function lineOrigin(theta=P('theta')) {
@@ -1831,6 +1831,7 @@
       const vertexContext=window.DongVertexSecant?.install(scene,plain,rawParts);
       const parts=rawParts.map(part=>{
         const body=part.body||part.question;
+        const focalRange=rawParts.length===1&&window.DongEllipseFocusChord?.solveRange(scene,raw,part);if(focalRange){distanceChecks.push(...focalRange.checks);return{...part,...focalRange};}
         const vertexAnswer=window.DongVertexSecant?.solvePart(part,vertexContext);if(vertexAnswer){distanceChecks.push(...vertexAnswer.checks);return{...part,...vertexAnswer};}
         if(focalDataPending)return{...part,status:'partial',answer:'本题包含焦点弦长与中点的共同约束，当前内置规则尚未完成全部条件核验；不能仅重复已给方程就把整问标为已解答。',steps:['题面和前问引用均已保留。','需检查弦长、中点、原方程和后问角度是否同时成立；未覆盖的附加条件或复合目标交由后续推理。']};
         const focalDataAnswer=window.DongParabolaFocalData?.solvePart(part,focalDataContext);if(focalDataAnswer)return{...part,...focalDataAnswer};if(focalDataContext)return{...part,status:'partial',answer:'焦点弦的这一问尚未完成：需同时满足前问约束、指定角度及本问目标，不能用单条参考线的交点计算代替完整解答。',steps:['前问引用和附加条件已保留。','请检查条件是否相容；未覆盖的角度、附加条件或复合目标仍待推导，不等于原题条件不足。']};const iterationAnswer=window.DongHyperbolaIteration?.solvePart(part,iterationContext);if(iterationAnswer)return{...part,...iterationAnswer};const parabolaAnswer=window.DongParabolaLocus?.solvePart(part,parabolaContext);if(parabolaAnswer)return{...part,...parabolaAnswer};const parameterAnswer=window.DongConicParameter?.solvePart(part,scene.model.parameterSolution);if(parameterAnswer)return{...part,...parameterAnswer};
@@ -1876,7 +1877,7 @@
         if(!/定圆|相切|证明|面积|周长|最大|最小|轨迹/.test(body)&&(/标准方程/.test(body)||/(?:求|写出|确定|建立)[^。；]{0,35}(?<!准线)(?<!渐近线)(?<!切线)(?<!法线)方程/.test(body)||(rawParts.length===1&&raw.includes('=')&&!/求|写出|确定|计算|给出|证明|证实|验证|定值|定点|最值|最大|最小|范围|轨迹|切线|法线|垂足|面积|距离|周长|长度|是否/.test(body)))){const result={answer:`曲线方程为 ${equation}。`,steps:baseSteps};return covered(body,'equation')||!/(?:求|写出|确定|计算|给出|证明|证实|验证)/.test(body)?{...part,status:'answered',...result}:pending(part,result);}
         return{...part,status:'partial',answer:'内置浏览器引擎已建立曲线，但这一问还需要继续完成符号推理。',steps:[...baseSteps,'当前不会用未经验证的猜测补齐证明、定值或最值结论。']};
       }),answered=parts.filter(part=>part.status==='answered').length,data={schemaVersion:2,...scene.model,...scene.values},summary=parts.length===1&&parts[0].status==='answered'?parts[0].answer:`已建立 ${equation}。`,derivedChecks=browserDerivedConstructionChecks(scene,rawParts),checks=[{id:'browser-scene',status:'verified',label:'图形参数一致性',detail:'解析与画板使用同一场景参数。',category:'curve'},...derivedChecks,...(window.DongConicParameter?.checks(scene.model.parameterSolution)||[]),...(window.DongEllipseFocusChord?.checks(ellipseFocalContext)||[]),...(orthogonal?.checks||[]),...distanceChecks,...(window.DongAxisInterceptChord?.checks(axisIntercept)||[]),...(external?.checks||[]),...(window.DongParabolaLocus?.checks(parabolaContext)||[]),...(window.DongHyperbolaIteration?.checks(iterationContext)||[]),...(window.DongParabolaFocalData?.checks(focalDataContext)||[])],contradicted=checks.filter(item=>item.status==='contradicted').length,unresolvedChecks=checks.filter(item=>item.status==='unresolved').length,verifiedChecks=checks.filter(item=>item.status==='verified').length;
-      return{engineExtensions:[...(scene.model.parameterSolution?['conic-parameter']:[]),...(scene.model.normalizedImplicit?['implicit-quadratic']:[]),...(ellipseFocalContext?['ellipse-focal-chord']:[]),...(axisIntercept?['axis-intercept-chord']:[]),...(parabolaContext?['parabola-locus']:[]),...(iterationContext?['hyperbola-iteration']:[]),...(focalDataContext?['parabola-focal-data']:[]),...(orthogonal?['orthogonal-chord']:[]),...(scene.model.distanceExtrema?.length?['ellipse-distance']:[]),...(external?['external-tangent']:[]),...(plain!==raw?['latex-input']:[]),...(scene.model.polygons?.length?['polygon-scene']:[])],mode:'symbolic-fallback',title:'董解析浏览器内置解答',restatement:raw,answer:summary,strategy:'先确定曲线模型，再让解析、特殊点与画板共用同一组参数。',parts,completion:{answered,total:parts.length},scene:data,verification:{status:contradicted?'contradicted':'locally-verified',message:contradicted?'答案派生图形存在确定性冲突。':'方程、答案派生对象和画板来自同一确定性模型。',counts:{verified:verifiedChecks,contradicted,unresolved:unresolvedChecks+parts.length-answered},checks}};
+      return{engineExtensions:[...(distanceChecks.some(c=>c.id==='focal-range-endpoints')?['ellipse-focal-range']:[]),...(scene.model.parameterSolution?['conic-parameter']:[]),...(scene.model.normalizedImplicit?['implicit-quadratic']:[]),...(ellipseFocalContext?['ellipse-focal-chord']:[]),...(axisIntercept?['axis-intercept-chord']:[]),...(parabolaContext?['parabola-locus']:[]),...(iterationContext?['hyperbola-iteration']:[]),...(focalDataContext?['parabola-focal-data']:[]),...(orthogonal?['orthogonal-chord']:[]),...(scene.model.distanceExtrema?.length?['ellipse-distance']:[]),...(external?['external-tangent']:[]),...(plain!==raw?['latex-input']:[]),...(scene.model.polygons?.length?['polygon-scene']:[])],mode:'symbolic-fallback',title:'董解析浏览器内置解答',restatement:raw,answer:summary,strategy:'先确定曲线模型，再让解析、特殊点与画板共用同一组参数。',parts,completion:{answered,total:parts.length},scene:data,verification:{status:contradicted?'contradicted':'locally-verified',message:contradicted?'答案派生图形存在确定性冲突。':'方程、答案派生对象和画板来自同一确定性模型。',counts:{verified:verifiedChecks,contradicted,unresolved:unresolvedChecks+parts.length-answered},checks}};
     }
     function browserTangentProofPending(raw,body,count){
       if(count>2)return '三个及以上切点的完整结论尚待推导。';
@@ -1990,6 +1991,6 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.67.3"></script>
+  <script src="pwa.js?v=0.67.4"></script>
 </body>
 </html>

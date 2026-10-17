@@ -640,8 +640,8 @@
             result.quality_notice='已覆盖的小问由内置数学引擎独立复算，最终结论以该小问的核验结果为准。';
           }
         }
-        if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(exactScene.distanceExtrema?.length||exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.basicConditions||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
-          if((exactScene.distanceExtrema?.length||exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.basicConditions)&&result.scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
+        if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(exactSolution.engineExtensions?.includes('ellipse-focal-range')||exactScene.distanceExtrema?.length||exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.basicConditions||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
+          if((exactSolution.engineExtensions?.includes('ellipse-focal-range')||exactScene.distanceExtrema?.length||exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.basicConditions)&&result.scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
           result.scene=exactScene;
           result.scene_notice='已核对题目与答案；已覆盖部分由独立符号模型对齐答案与画板。';
           if(exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.basicConditions){result.model_answer=result.model_answer||result.answer;result.answer=exactSolution.answer;}
