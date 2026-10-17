@@ -4,6 +4,7 @@ module.exports=async({page,assert,screenshot})=>{
   await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled);
   const data=async()=>JSON.parse(await page.locator('#sceneJson').inputValue());
   assert.equal(await page.locator('#parameterTarget').inputValue(),'');
+  assert.match(await page.locator('#parameterTarget option').first().textContent(),/已载入 .* 个可调对象/);
   assert.equal(await page.locator('#params input').count(),0,'未选择方程时不应直接展开主曲线参数');
   await page.locator('[data-inspector-view="geometry"]').click();
   await page.locator('#parameterTarget').selectOption('$conic');

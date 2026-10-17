@@ -152,6 +152,17 @@ body::before{background-image:radial-gradient(ellipse at 20% 0%,#fff8e6,transpar
 
 /* Translucent paper reveals one continuous painting, without fading the text. */
 /* Dropdowns must escape the shared details-card clipping and cover the canvas. */
+#readingLayoutToggle{font-size:12px;padding:5px 9px;margin-top:6px}
+@media screen and (min-width:761px){
+  body .workspace[data-reading-priority=true],body .workspace.input-collapsed[data-reading-priority=true]{grid-template-areas:"lesson board";grid-template-columns:minmax(360px,1.15fr) minmax(0,1fr)}
+  .workspace[data-reading-priority=true]>.controls{display:none}
+  .workspace[data-reading-priority=true]>.inspect{background:#fffaf5}
+  .workspace[data-reading-priority=true] .inspect-heading{position:sticky;top:-1px;z-index:12;background:#fffaf5;padding-bottom:8px}
+  .workspace[data-reading-priority=true] .inspector-switch{position:static}
+  .workspace[data-reading-priority=true] .solution{font-size:15px;line-height:1.85;background:#fffdf9}
+  .workspace[data-reading-priority=true] .board-help,.workspace[data-reading-priority=true] .legend{display:none}
+}
+@media(max-width:760px){#readingLayoutToggle{display:none}}
 body[data-single-board=true] .dong-ggb-head{z-index:30;flex-shrink:0;overflow:visible}
 .unified-tools,.dong-ggb-tools{overflow:visible;margin-top:0;border:0;border-radius:0}
 body[data-single-board=true] .dong-ggb-host{position:relative;z-index:0}

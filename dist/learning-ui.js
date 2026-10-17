@@ -285,6 +285,14 @@
       switcher.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.inspectorView===view)));
     }
     switcher.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>setInspectorView(button.dataset.inspectorView)));
+    const readingLayout=document.createElement('button');readingLayout.type='button';readingLayout.id='readingLayoutToggle';readingLayout.className='button secondary';readingLayout.textContent='阅读优先';readingLayout.setAttribute('aria-pressed','false');
+    inspectorHeading?.append(readingLayout);
+    readingLayout.addEventListener('click',()=>{
+      const enabled=workspace.dataset.readingPriority!=='true';workspace.dataset.readingPriority=String(enabled);
+      readingLayout.setAttribute('aria-pressed',String(enabled));readingLayout.textContent=enabled?'恢复布局':'阅读优先';
+      if(enabled&&api.state.solution)setInspectorView('lesson');
+      requestAnimationFrame(()=>{api.render();window.dispatchEvent(new Event('resize'));});
+    });
     const request = (url, body) => runtime.request(url, body);
     const report = error => api.setStatus(error.message||String(error),true);
     function renderChat() {
