@@ -1,0 +1,28 @@
+const bank=require('../dist/question-bank.json');
+module.exports=async({page,context,assert,screenshot})=>{
+  const q=bank.items.find(x=>x.id==='2023-ii-10').question;
+  await page.locator('#question').fill(q);await page.locator('#solveButton').click();
+  await page.waitForFunction(()=>document.querySelector('#solveProgress').dataset.state==='complete');
+  const r=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution);
+  assert.equal(r.answer,'正确选项为 A、C。');assert.equal(r.scene.p,1);
+  assert.equal(await page.locator('#solution .katex-error').count(),0);
+  const scene=JSON.parse(await page.locator('#sceneJson').inputValue());
+  for(const label of ['M','N'])assert(scene.objects.some(o=>o.label===label&&o.op==='intersection'));
+  assert(scene.objects.some(o=>o.op==='circle'&&o.refs.includes('focal-choice-mid')));
+  assert(scene.objects.some(o=>o.label==='l'&&o.op==='perpendicular'));
+  assert(scene.polygons.some(o=>o.labels.join('')==='OMN'));
+  assert(!r.sceneAudit?.invalid?.length,JSON.stringify(r.sceneAudit));
+  const issues=await page.evaluate(s=>window.DongSolutionReview.inspect(s).issues,r);
+  assert.equal(issues.length,0,JSON.stringify(r.sceneAudit));
+  await screenshot('focal-choice.png',null);
+  await context.route('**/runtime-config.js',route=>route.fulfill({contentType:'application/javascript',body:'window.DONGJIEXI_CONFIG={deployment:"web",apiEnabled:true,requiresAuth:false};'}));
+  await context.route('**/api/health',route=>route.fulfill({json:{app:'董解析',engine:{available:true,installed:true,remote:true,models:['deepseek-flash']},default_model:'deepseek-flash'}}));
+  let calls=0;
+  await context.route('**/api/jobs',route=>{calls++;return route.fulfill({json:{id:'focal-choice-cloud',status:'completed',result:{mode:'cloud-ai',title:'云端选项判断',restatement:q,parts:[{index:0,label:'选项分析',status:'answered',answer:'错误选项占位',steps:['错误推导占位']}],completion:{answered:1,total:1},scene:{type:'parabola',p:3,showDynamic:false,points:{},lines:[{id:'wrong-line',kind:'vertical',x:9}],objects:[]}}}});});
+  await page.evaluate(()=>localStorage.setItem('dongjiexi:solve-mode:v1','cloud'));
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('#modelName').value==='deepseek-flash');
+  await page.locator('#question').fill(q);await page.locator('#solveButton').click();
+  await page.waitForFunction(()=>document.querySelector('#solution').textContent.includes('云端选项判断'));
+  const repaired=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution);
+  assert(calls>0);assert.equal(repaired.answer,'正确选项为 A、C。');assert.equal(repaired.scene.p,1);assert(repaired.scene.objects.some(o=>o.op==='circle'));assert.equal(repaired.model_scene.p,3);
+};

@@ -55,4 +55,12 @@ module.exports=async({page,assert,screenshot})=>{
   assert(await page.evaluate(()=>Math.abs(window.DongGeoGebra.getAPI().getXcoord('F')-Math.sqrt(5))<1e-8),'Named focus is visible even when generic features are hidden');
   await page.evaluate(()=>window.DongGeoGebra.getAPI().setValue('a',4));
   assert(await page.evaluate(()=>Math.abs(window.DongGeoGebra.getAPI().getXcoord('F')-Math.sqrt(12))<1e-8),'Named focus follows the actual conic rather than a frozen coordinate');
+  const focalQuestion=require('../dist/question-bank.json').items.find(q=>q.id==='2023-ii-10').question;
+  await page.locator('#sceneJson').evaluate((el,q)=>{el.value=JSON.stringify(window.DongParabolaFocalChoice.solve(q).scene);document.querySelector('#applyJson').click();},focalQuestion);
+  try{await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.isDefined('M')&&window.DongGeoGebra.getAPI()?.isDefined('N'));}catch(error){console.log('Focal bridge diagnostic',await page.evaluate(()=>({report:window.DongGeoGebra.getReport(),objects:window.DongGeoGebra.getAPI().getAllObjectNames().map(n=>[n,window.DongGeoGebra.getAPI().getDefinitionString(n)])})));throw error;}
+  const circle=await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return a.getAllObjectNames().find(n=>a.getCaption(n)==='直径圆'&&a.isDefined(n))||null;});
+  assert(circle,'Actual GeoGebra must contain the dependent diameter circle');
+  assert(await page.evaluate(n=>{const a=window.DongGeoGebra.getAPI();a.evalCommand('RadiusCheck=Radius('+n+')');return Math.abs(a.getValue('RadiusCheck')-8/3)<1e-7;},circle));
+  await page.evaluate(()=>window.DongGeoGebra.getAPI().setValue('p',2));
+  assert(await page.evaluate(n=>{const a=window.DongGeoGebra.getAPI();a.evalCommand('RadiusCheck=Radius('+n+')');return Math.abs(a.getValue('RadiusCheck')-16/3)<1e-7;},circle),'Circle must follow source conic rather than frozen coordinates');
 };

@@ -126,7 +126,7 @@
     report.missing=expected.filter(n=>!labels.has(n));
     report.answerMissing=declared(answerText).filter(n=>!labels.has(n)&&!expected.includes(n));
     const all=[...(scene.objects||[]),...(scene.lines||[])],qs=plain(question);
-    const endpoint='[A-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?',lineNames=[...qs.matchAll(new RegExp('直线('+endpoint+endpoint+'|[a-zA-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?)(?![a-zA-Z0-9₀₁₂₃₄₅₆₇₈₉])','g'))].map(m=>canonical(m[1]));
+    const endpoint='[A-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?',lineNames=[...qs.matchAll(new RegExp('直线('+endpoint+endpoint+'|[a-zA-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?)(?![a-zA-Z0-9₀₁₂₃₄₅₆₇₈₉])','g'))].filter(m=>!(/^[xy]$/.test(m[1])&&/^[=+*/^\-轴]/.test(qs.slice(m.index+m[0].length)))).map(m=>canonical(m[1]));
     const present=new Set(all.filter(n=>['line','slope','vertical','through_points'].includes(n.kind)||['line','segment','ray','tangent','normal','parallel','perpendicular','line_angle'].includes(n.op)).flatMap(n=>[n.label,...(Array.isArray(n.aliases)?n.aliases.slice(0,12):[])].map(label=>canonical(label).replace(/^(直线|线段|连接)/,''))));
     if(scene.showDynamic===true){present.add(canonical(scene.dynamicLineLabel||'l'));const pair=scene.dynamicIntersectionLabels||['A','B'];present.add(canonical(pair.join('')));present.add(canonical([...pair].reverse().join('')));}
     for(const n of all)if(n.kind==='through_points'){present.add(canonical(n.a+n.b));present.add(canonical(n.b+n.a));}

@@ -44,7 +44,7 @@
     const parts = JSON.parse(JSON.stringify(exact?.parts || item.parts)).map(part => ({
       ...part, status: 'answered', verification: {status: 'reference-reviewed', message: '题库参考推导'}
     }));
-    const scene = exact?.scene || sceneFor(item);
+    const scene = exact?.scene ? {...exact.scene,referenceScene:{id:item.id,revision:item.sceneRevision||1}} : sceneFor(item);
     const solution = {
       ...exact, mode: 'reference-lesson', title: item.title + ' · 题库参考讲解',
       scene: scene ? JSON.parse(JSON.stringify(scene)) : null,

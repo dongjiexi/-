@@ -20,6 +20,11 @@ module.exports=async({page,context,assert,screenshot})=>{
     assert(result.parts.every(p=>p.status!=='needs_information'),'Uncovered rules do not certify missing conditions');
     const diagram=await page.evaluate(({scene,q,parts})=>window.DongSceneAudit?.inspect(scene,q,parts,window.DongConstruct)||null,{scene:result.scene,q:item.question,parts:result.parts});
     const parameterChecks=[];
+    if(item.id==='2023-ii-10'){
+      assert.equal(result.completion.answered,1);assert.match(result.answer,/A、C/);
+      assert(result.scene.objects.some(o=>o.op==='circle'));assert.equal(diagram.invalid.length,0);
+      assert.equal(diagram.missing.length,0);assert.equal(diagram.missingLines.length,0);
+    }
     if(!process.env.DONG_EXAM_BASELINE&&['2022-beijing-3','2025-beijing-11','2025-beijing-19-1','2025-ii-16'].includes(item.id)){
       assert.equal(result.completion.answered,result.completion.total);assert.equal(diagram.invalid.length,0);
       if(item.id==='2022-beijing-3'){assert.match(result.parts[0].answer,/a=\\frac\{1\}\{2\}/);assert.equal(result.scene.h,.5);assert(result.scene.lines.some(l=>l.kind==='slope'&&l.m===-2));}

@@ -2,6 +2,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const sandbox={window:{}};
 for(const file of ['question-parts.js','construction-board.js','tangent-solver.js','scene-audit.js','scene-merge.js','math-input.js','number-display.js','equation-builder.js','conic-parameter.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/'+file),'utf8'),sandbox);
 const audit=sandbox.window.DongSceneAudit,construct=sandbox.window.DongConstruct;
+for(const equation of ['y=2x+1','x=-1','x+y=2'])assert.equal(audit.inspect({type:'circle',r:1,showDynamic:false},'直线'+equation,[],construct).missingLines.length,0);
+assert(audit.inspect({type:'circle',r:1,showDynamic:false},'直线l经过原点',[],construct).missingLines.includes('L'));
 (async()=>{
   const {assemble}=await import('../dist/cloud-contract.mjs');
   const {safeConstructionScene}=await import('../dist/scene-contract.mjs');

@@ -332,6 +332,9 @@
     const active = scene.activePart;
     // Specialised teaching overlays must stay complete until their adapter exists.
     for(const key of ['pairedChord','fixedPoint','loci','locus','locusDefinition','rectangle','rectangularParabola','iteration','hyperbolaIteration','parabolaLocus','parabolaFocalData','inverseLocus','symmetricChord','areaChord','distanceExtrema','dotExtrema','orthogonalChord','problemMotion','circleFold']){
+      // This bounded model has fixed premises only: the teaching binding locks
+      // every source. Free motion or extra user objects still use native policy.
+      if(key==='problemMotion'&&scene.focalChoice&&scene.showDynamic===false&&!scene.unrestrictedMotion&&(scene.objects||[]).every(o=>o.source==='question'&&o.op!=='point_on')&&!(scene.lines||[]).length)continue;
       if(scene[key]&&(!Array.isArray(scene[key])||scene[key].length))skipped.push('教学构造：'+key);
     }
     const visible = item => item.visible !== false && (active == null || (item.part!=null?Number(item.part)===Number(active):!Array.isArray(item.parts)||item.parts.includes(Number(active))));
@@ -512,6 +515,14 @@
           else if(item.op==='intersection')expression='Intersect('+refs.join(',')+','+((item.branch||0)+1)+')';
           else if(item.op==='normal')expression='PerpendicularLine('+refs[0]+',Tangent('+refs.join(',')+'))';
           else if(item.op==='reflect_axis')expression='Reflect('+refs[0]+','+(item.axis==='y'?'x':'y')+'='+number(item.axisValue||0)+')';
+          else if(item.op==='reflect_center'&&refs.length===2)expression='Reflect('+refs[0]+','+refs[1]+')';
+          // ClosestPoint on a segment clamps to endpoints; a perpendicular foot
+          // uses the supporting infinite line. Keep those cases in native mode.
+          else if(item.op==='foot'&&refs.length===2&&api.getObjectType?.(refs[1])==='line')expression='ClosestPoint('+refs[1]+','+refs[0]+')';
+          else if(item.op==='line_angle'&&refs.length===1&&Number.isFinite(item.angle)){
+            const radians=item.angle*Math.PI/180;
+            expression='Line('+refs[0]+',Vector(('+number(Math.cos(radians))+','+number(Math.sin(radians))+')))';
+          }
           else if(item.op==='point_on'){
             const spec=window.DongMotionDomain?.driver(item,active)||item;
             let domain;try{domain=window.DongMotionDomain?.validate(spec.motionDomain)||spec.motionDomain||{};}catch{skipped.push(item.label||item.op);continue;}
