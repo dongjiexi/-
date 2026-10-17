@@ -51,6 +51,11 @@
     const templates=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent='按参数添加';templates.append(legend);
     for(const [kind,label]of [['ellipse','椭圆'],['hyperbola','双曲线'],['parabola','抛物线'],['circle','圆']])tool(label,()=>document.querySelector('[data-add-conic="'+kind+'"]').click(),templates);
     content.append(templates);host.prepend(tools);
+    const files=host.querySelector('.dong-ggb-tools');
+    for(const menu of [tools,files])menu.addEventListener('toggle',()=>{if(menu.open)for(const other of [tools,files])if(other!==menu)other.open=false;});
+    document.addEventListener('pointerdown',event=>{for(const menu of [tools,files])if(!menu.contains(event.target))menu.open=false;});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape')for(const menu of [tools,files])if(menu.open){menu.open=false;menu.querySelector('summary').focus();}});
+    makeSettings(host);
     tool('撤销作图',()=>window.DongGeoGebra.getAPI()?.undo(),host);
     tool('重做作图',()=>window.DongGeoGebra.getAPI()?.redo(),host);
     tool('保存完整图稿',()=>exportBoard().catch(error=>message(error.message)),host);
@@ -62,6 +67,31 @@
         if(pendingDraft&&window.DongGeoGebra.getReport().signature===pendingDraft.sceneSignature)ready(window.DongGeoGebra.getReport());
       }catch(error){pendingDraft=null;message(error.message);}finally{file.value='';}
     });
+  }
+  function makeSettings(host){
+    const dialog=document.createElement('dialog');dialog.className='board-settings-dialog';dialog.id='boardSettings';dialog.setAttribute('aria-labelledby','boardSettingsTitle');
+    dialog.innerHTML='<header><h2 id="boardSettingsTitle">画板设置</h2><button type="button" data-close>完成</button></header><div class="board-settings-grid"><fieldset><legend>视图</legend><label>显示网格<input type="checkbox" data-setting="grid"></label><label>显示 x 轴<input type="checkbox" data-setting="x"></label><label>显示 y 轴<input type="checkbox" data-setting="y"></label><button type="button" data-fit>适应全部图形</button></fieldset><fieldset><legend>对象外观</legend><label>选择对象<select data-setting="object" aria-label="选择外观对象"></select></label><label>颜色<input type="color" data-setting="color"></label><label>线条粗细<input type="range" min="1" max="9" step="1" data-setting="thickness"></label><label>显示名称<input type="checkbox" data-setting="label"></label></fieldset></div><p class="board-settings-note">设置即时生效；只修改显示效果，不改变题设坐标或构造关系。随完整图稿保存。</p><p role="status" data-feedback></p>';
+    document.body.append(dialog);const get=key=>dialog.querySelector('[data-setting="'+key+'"]'),api=()=>window.DongGeoGebra.getAPI();
+    const feedback=dialog.querySelector('[data-feedback]');
+    const update=fn=>{try{fn();api().setUndoPoint?.();window.DongGeoGebra.save().catch(error=>feedback.textContent=error.message);feedback.textContent='已应用';}catch(error){feedback.textContent=error.message;}};
+    const readStyle=()=>{const label=get('object').value,disabled=!label;for(const key of ['color','thickness','label'])get(key).disabled=disabled;if(disabled)return;const color=api().getColor(label);get('color').value=/^#[0-9a-f]{6}$/i.test(color)?color:'#3f78d8';get('thickness').value=api().getLineThickness(label)||3;get('label').checked=api().getLabelVisible(label)!==false;};
+    tool('画板设置',()=>{
+      if(!active)return;tools.open=false;host.querySelector('.dong-ggb-tools').open=false;feedback.textContent='';
+      const raw=api().getGraphicsOptions?.(1),view=typeof raw==='string'?JSON.parse(raw):raw||{};
+      get('grid').checked=typeof api().getGridVisible?.(1)==='boolean'?api().getGridVisible(1):document.getElementById('gridToggle').checked;
+      const axes=view.axes||{};get('x').checked=axes.x?.visible !== false;get('y').checked=axes.y?.visible !== false;
+      const names=api().getAllObjectNames?.()||[];get('object').replaceChildren();
+      for(const label of names)if(api().getVisible(label)){const option=document.createElement('option');option.value=label;option.textContent=api().getCaption(label)||label;get('object').append(option);}
+      readStyle();dialog.showModal();
+    },host);
+    dialog.querySelector('[data-close]').addEventListener('click',()=>dialog.close());
+    dialog.querySelector('[data-fit]').addEventListener('click',()=>update(()=>api().showAllObjects()));
+    get('object').addEventListener('change',readStyle);
+    get('grid').addEventListener('change',()=>update(()=>{api().setGridVisible(get('grid').checked);const control=document.getElementById('gridToggle');control.checked=get('grid').checked;control.dispatchEvent(new Event('change',{bubbles:true}));}));
+    for(const key of ['x','y'])get(key).addEventListener('change',()=>update(()=>api().setAxesVisible(get('x').checked,get('y').checked)));
+    get('color').addEventListener('change',()=>update(()=>{const color=get('color').value;api().setColor(get('object').value,...[1,3,5].map(i=>parseInt(color.slice(i,i+2),16)));}));
+    get('thickness').addEventListener('change',()=>update(()=>api().setLineThickness(get('object').value,Number(get('thickness').value))));
+    get('label').addEventListener('change',()=>update(()=>api().setLabelVisible(get('object').value,get('label').checked)));
   }
   async function begin(){
     if(started&&!failed)return;started=true;failed=false;source=current();

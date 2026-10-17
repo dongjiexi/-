@@ -15,7 +15,10 @@ module.exports=async({page,assert,screenshot})=>{
   assert(await page.locator('.board-toolbar').isVisible());
   assert.equal(await page.evaluate(()=>window.__unified.params.showToolBar),false,'No second GeoGebra toolbar');
   assert.equal(await page.evaluate(()=>window.__unified.params.showAlgebraInput),false,'One parameter interface');
+  assert.equal(await page.evaluate(()=>window.__unified.params.allowStyleBar),false,'Common settings use the wide integrated dialog');
+  await page.getByRole('button',{name:'画板设置',exact:true}).click();assert(await page.locator('#boardSettings').isVisible());await page.locator('#boardSettings [data-close]').click();
   await page.locator('.unified-tools summary').click();
+  assert.equal(await page.locator('.unified-tools').evaluate(el=>getComputedStyle(el).overflow),'visible','Shared details styling must not clip this menu');
   await page.locator('.unified-tool-content').getByRole('button',{name:'切线',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.__unified.mode),13);
   await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).click();

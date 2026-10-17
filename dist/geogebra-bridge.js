@@ -185,7 +185,7 @@
           showToolBar: !teachingBinding?.automatic, showAlgebraInput: !teachingBinding, showMenuBar: !teachingBinding?.automatic,
           showToolBarHelp: false, showZoomButtons: !teachingBinding?.automatic, showFullscreenButton: true,
           enableUndoRedo: true, enableRightClick: true, enableLabelDrags: true,
-          enableShiftDragZoom: true, allowStyleBar: true, enableCAS: true, enable3d: true,
+          enableShiftDragZoom: true, allowStyleBar: !teachingBinding?.automatic, enableCAS: true, enable3d: true,
           useBrowserForJS: false, disableJavaScript: true, enableFileFeatures: false, showResetIcon: false,
           capturingThreshold: 6, preventFocus: true, showStartTooltip: false,
           appletOnLoad: async loadedApi => {

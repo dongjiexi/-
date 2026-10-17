@@ -5,7 +5,24 @@ module.exports=async({page,assert,screenshot})=>{
   await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('t'),null,{timeout:100000});
   assert.equal(await page.locator('#openGeoGebraInline').isVisible(),false);
   assert.equal(await page.locator('.dong-ggb-close').isVisible(),false);
+  for(const selector of ['.unified-tools','.dong-ggb-tools']){
+    await page.locator(selector+' > summary').click();
+    const button=page.locator(selector+' > div button:visible').first();
+    await button.scrollIntoViewIfNeeded();
+    assert(await button.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),'Open menu must be above the real GeoGebra canvas: '+selector);
+    await page.locator(selector+' > summary').click();
+  }
   await page.evaluate(()=>{const api=window.DongGeoGebra.getAPI();api.evalCommand('Manual=(7,8)');api.evalCommand('ManualLine=Line(U,Manual)');});
+  await page.getByRole('button',{name:'画板设置',exact:true}).click();
+  const settings=page.locator('#boardSettings');assert(await settings.isVisible());
+  const rect=await settings.boundingBox();assert(rect.width>rect.height,'Desktop settings should be a wide dialog, not a narrow side strip');
+  await settings.locator('[data-setting="grid"]').uncheck();assert.equal(await page.evaluate(()=>window.DongGeoGebra.getAPI().getGridVisible(1)),false);
+  await settings.locator('[data-setting="x"]').uncheck();
+  await settings.locator('[data-setting="object"]').selectOption('ManualLine');await settings.locator('[data-setting="color"]').fill('#a34239');await settings.locator('[data-setting="color"]').dispatchEvent('change');
+  assert.equal((await page.evaluate(()=>window.DongGeoGebra.getAPI().getColor('ManualLine'))).toLowerCase(),'#a34239');
+  await screenshot('settings-desktop.png',null);await settings.getByRole('button',{name:'完成',exact:true}).click();
+  await page.getByRole('button',{name:'画板设置',exact:true}).click();assert.equal(await settings.locator('[data-setting="x"]').isChecked(),false,'Axis state is read from the current applet');
+  await settings.locator('[data-setting="x"]').check();await settings.locator('[data-setting="grid"]').check();await settings.getByRole('button',{name:'完成',exact:true}).click();
   await page.locator('#sceneJson').evaluate(el=>{const s=JSON.parse(el.value);s.a=4;el.value=JSON.stringify(s);document.querySelector('#applyJson').click();});
   await page.waitForFunction(()=>window.DongGeoGebra.getAPI().getValue('a')===4);
   assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().isDefined('ManualLine')));
@@ -26,6 +43,7 @@ module.exports=async({page,assert,screenshot})=>{
   assert.equal(JSON.parse(await page.locator('#sceneJson').inputValue()).type,'ellipse');
   await screenshot('unified-real-desktop.png',null);
   await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="board"]').click();
+  await page.getByRole('button',{name:'画板设置',exact:true}).click();assert((await settings.boundingBox()).width<=390);await settings.getByRole('button',{name:'完成',exact:true}).click();
   await page.locator('.unified-tools summary').click();assert(await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).isVisible());
   await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).click();
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot('unified-real-mobile.png',null);

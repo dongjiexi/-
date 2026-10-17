@@ -151,6 +151,21 @@ body::before{background-image:radial-gradient(ellipse at 20% 0%,#fff8e6,transpar
 @media print,(forced-colors:active){.controls>.panel-heading::after,.inspect>.panel-heading::after,.quick-conics::after{display:none}.topbar{background:Canvas}}
 
 /* Translucent paper reveals one continuous painting, without fading the text. */
+/* Dropdowns must escape the shared details-card clipping and cover the canvas. */
+body[data-single-board=true] .dong-ggb-head{z-index:30;flex-shrink:0;overflow:visible}
+.unified-tools,.dong-ggb-tools{overflow:visible;margin-top:0;border:0;border-radius:0}
+body[data-single-board=true] .dong-ggb-host{position:relative;z-index:0}
+.board-settings-dialog{width:min(680px,calc(100vw - 32px));max-height:85dvh;box-sizing:border-box;overflow:auto;border:1px solid #c5a489;border-radius:12px;padding:20px;background:#fffaf1;color:#49362c}
+.board-settings-dialog::backdrop{background:#30251c66}
+.board-settings-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.board-settings-dialog h2{font-size:18px;margin:0}
+.board-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.board-settings-grid fieldset{min-width:0;border:1px solid #ddc9af;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:12px}
+.board-settings-grid label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
+.board-settings-grid select{max-width:155px}.board-settings-grid input[type=color]{width:70px;height:34px;padding:2px}
+.board-settings-dialog button{padding:8px 12px;border:1px solid #c7a88a;border-radius:6px;background:#fff5e4;color:#664132;font:inherit;cursor:pointer}
+.board-settings-note{font-size:12px;line-height:1.6;color:#735d4d}
+@media(max-width:520px){.board-settings-grid{grid-template-columns:1fr}.board-settings-dialog{padding:14px}}
 body::before{background-image:radial-gradient(ellipse 55% 44% at 100% 0%,#f6ecdc 10%,#f6ecdce6 35%,#f6ecdc00 100%),linear-gradient(#fff6e52b,#fff6e526),url('autumn-study.webp');background-size:cover;background-position:center top;opacity:1;filter:saturate(.72)}
 .topbar{background:linear-gradient(90deg,#fff6e6c9,#fff6e680 50%,#f7ead5e8 88%);border-bottom-color:#fff8e680}
 body .workspace>.controls,body .workspace>.inspect{background:rgba(255,249,236,.78);backdrop-filter:blur(3px) saturate(.8);border-color:#fff8e6b3;box-shadow:inset 0 1px 0 #fffaf0a6,1px 3px 9px #61422a18}
