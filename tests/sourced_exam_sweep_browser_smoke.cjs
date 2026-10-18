@@ -20,6 +20,13 @@ module.exports=async({page,context,assert,screenshot})=>{
     assert(result.parts.every(p=>p.status!=='needs_information'),'Uncovered rules do not certify missing conditions');
     const diagram=await page.evaluate(({scene,q,parts})=>window.DongSceneAudit?.inspect(scene,q,parts,window.DongConstruct)||null,{scene:result.scene,q:item.question,parts:result.parts});
     const parameterChecks=[];
+    if(['2023-ii-5','2024-ii-3'].includes(item.id)){
+      assert.equal(result.completion.answered,1);
+      assert.equal(diagram.invalid.length,0);
+      assert(result.scene.boundedAlgebra);
+      if(item.id==='2023-ii-5')assert(result.parts[0].steps.some(s=>s.includes('排除')));
+      else assert.equal(result.scene.objects.filter(o=>o.op==='vector').length,4);
+    }
     if(item.id==='2023-ii-10'){
       assert.equal(result.completion.answered,1);assert.match(result.answer,/A、C/);
       assert(result.scene.objects.some(o=>o.op==='circle'));assert.equal(diagram.invalid.length,0);

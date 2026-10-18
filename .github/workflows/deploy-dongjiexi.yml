@@ -72,6 +72,7 @@ jobs:
           node tests/question_parts_tests.cjs
           node tests/parabola_focal_data_tests.cjs
           node tests/parabola_focal_choice_tests.cjs
+          node tests/algebra_geometry_tests.cjs
           node tests/release_safety_tests.cjs
           node tests/cloud_admission_tests.cjs
           node tests/ai_result_integration_tests.cjs

@@ -108,7 +108,7 @@
           else if(obj.kind==='through_points'){const a=named(obj.a),b=named(obj.b);if(a&&b)result={type:'line',o:a,d:sub(b,a),segment:!obj.infinite};}
           else if(obj.kind==='construction'){
             const [a,b]=refs;
-            if(['line','segment','ray'].includes(obj.op)&&a?.type==='point'&&b?.type==='point')result={type:'line',o:a,d:sub(b,a),segment:obj.op==='segment',ray:obj.op==='ray'};
+            if(['line','segment','ray','vector'].includes(obj.op)&&a?.type==='point'&&b?.type==='point')result={type:'line',o:a,d:sub(b,a),segment:obj.op==='segment'||obj.op==='vector',ray:obj.op==='ray',vector:obj.op==='vector'};
             if(obj.op==='line_angle'&&a?.type==='point'&&Number.isFinite(obj.angle)){const angle=obj.angle*Math.PI/180;result={type:'line',o:a,d:{x:Math.cos(angle),y:Math.sin(angle)}};}
             if(obj.op==='circle'&&a?.type==='point'&&b?.type==='point')result={type:'circle',x:a.x,y:a.y,r:distance(a,b)};
             if(obj.op==='midpoint'&&a?.type==='point'&&b?.type==='point')result=pointValue(mul(add(a,b),.5));
@@ -295,6 +295,7 @@
       if(shape.type==='point')return `(${fmt(shape.x)}, ${fmt(shape.y)})`;
       if(shape.type==='circle')return `(x − ${fmt(shape.x)})² + (y − ${fmt(shape.y)})² = ${fmt(shape.r*shape.r)}`;
       if(shape.type==='measure')return `距离 = ${fmt(shape.value)}`;
+      if(shape.vector)return `向量 = (${fmt(shape.d.x)}, ${fmt(shape.d.y)})，模长 = ${fmt(Math.hypot(shape.d.x,shape.d.y))}`;
       if(shape.type==='line'){if(Math.abs(shape.d.x)<EPS)return `x = ${fmt(shape.o.x)}`;const m=shape.d.y/shape.d.x,b=shape.o.y-m*shape.o.x;return `y = ${fmt(m)}x ${b<0?'−':'+'} ${fmt(Math.abs(b))}`;}
       return '圆锥曲线：拖动中心和蓝色手柄调整参数';
     }
@@ -421,7 +422,12 @@
       for(const obj of state.model.objects||[]){if(obj.kind!=='construction'||!api.visible(obj))continue;const shape=engine.resolve(obj.id);if(!shape)continue;
         const color=selected===obj.id?'#f09819':'#7060b7';
         if(shape.type==='point'){api.point(shape,color,obj.label);const s=xy(shape.x,shape.y);ctx.save();ctx.strokeStyle=color;ctx.strokeRect(s.x-6,s.y-6,12,12);ctx.restore();}
-        else if(shape.type==='line'){const ends=api.clip(shape);if(ends){api.path([ends.a,ends.b],color,2.2);api.annotation(obj.label,ends.b,color);}}
+        else if(shape.type==='line'){const ends=api.clip(shape);if(ends){api.path([ends.a,ends.b],color,2.2);api.annotation(obj.label,ends.b,color);
+          if(shape.vector&&Math.hypot(ends.b.x-shape.o.x-shape.d.x,ends.b.y-shape.o.y-shape.d.y)<EPS){
+            const start=xy(shape.o.x,shape.o.y),end=xy(ends.b.x,ends.b.y),angle=Math.atan2(end.y-start.y,end.x-start.x);
+            if(Math.hypot(end.x-start.x,end.y-start.y)>1){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2.2;ctx.beginPath();for(const side of [-1,1]){ctx.moveTo(end.x,end.y);ctx.lineTo(end.x-9*Math.cos(angle+side*.45),end.y-9*Math.sin(angle+side*.45));}ctx.stroke();ctx.restore();}
+          }
+        }}
         else if(shape.type==='circle'){api.path(Array.from({length:181},(_,i)=>({x:shape.x+shape.r*Math.cos(i*Math.PI/90),y:shape.y+shape.r*Math.sin(i*Math.PI/90)})),color,2.2);api.annotation(obj.label,{x:shape.x+shape.r,y:shape.y},color);}
         else if(shape.type==='measure'){const atMaximum=!state.model.unrestrictedMotion&&Number.isFinite(obj.maximum)&&Math.abs(shape.value-obj.maximum)<1e-7;api.annotation(obj.label+' = '+fmt(shape.value)+(atMaximum?'（达到最大值）':''),shape,atMaximum?'#bc355c':'#886012');}
       }

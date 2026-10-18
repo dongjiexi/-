@@ -5,7 +5,7 @@ const forbidden = new Set(['__proto__', 'prototype', 'constructor']);
 const name = s => typeof s === 'string' && !forbidden.has(s) && /^[A-Za-z][A-Za-z0-9_₀₁₂₃′']{0,12}$/.test(s);
 const id = s => typeof s === 'string' && !forbidden.has(s) && /^[A-Za-z][A-Za-z0-9_-]{0,47}$/.test(s);
 const text = (s, max=6000) => typeof s === 'string' ? s.slice(0,max) : '';
-const arity = {perp_bisector:2, circumcircle:3, line:2, segment:2, ray:2, midpoint:2, inverse:2, reflect_center:2, parallel:2, perpendicular:2, foot:2, tangent:2, normal:2, ellipse_tangent_point:2, intersection:2, second_intersection:3, circle:2, point_on:1, line_angle:1, reflect_axis:1, distance:2};
+const arity = {perp_bisector:2, circumcircle:3, line:2, segment:2, ray:2, vector:2, midpoint:2, inverse:2, reflect_center:2, parallel:2, perpendicular:2, foot:2, tangent:2, normal:2, ellipse_tangent_point:2, intersection:2, second_intersection:3, circle:2, point_on:1, line_angle:1, reflect_axis:1, distance:2};
 
 
 const trim=text;
@@ -172,7 +172,7 @@ export function safeConstructionScene(raw, {partIndexes}={}) {
   // tangent to a point. Such data cannot be interpreted as a valid graph.
   const allById=new Map([...scene.lines,...nodes].map(n=>[n.id,n]));
   const refType=ref=>ref==='$conic'?'curve':ref==='$dynamic'?'line':ref.startsWith('feature:')&&known(ref.slice(8))?'point':pointOps.has(allById.get(ref)?.op)?'point':['circle','circumcircle'].includes(allById.get(ref)?.op)?'curve':allById.get(ref)?.op==='distance'?'measure':allById.has(ref)?'line':null;
-  const signatures={perp_bisector:['point','point'],circumcircle:['point','point','point'],line:['point','point'],segment:['point','point'],ray:['point','point'],midpoint:['point','point'],inverse:['point','point'],reflect_center:['point','point'],circle:['point','point'],distance:['point','point'],reflect_axis:['point'],line_angle:['point'],parallel:['point','line'],perpendicular:['point','line'],foot:['point','line'],tangent:['point','curve'],normal:['point','curve'],ellipse_tangent_point:['point','curve'],intersection:['shape','shape'],second_intersection:['point','line','curve'],point_on:['shape']};
+  const signatures={perp_bisector:['point','point'],circumcircle:['point','point','point'],line:['point','point'],segment:['point','point'],ray:['point','point'],vector:['point','point'],midpoint:['point','point'],inverse:['point','point'],reflect_center:['point','point'],circle:['point','point'],distance:['point','point'],reflect_axis:['point'],line_angle:['point'],parallel:['point','line'],perpendicular:['point','line'],foot:['point','line'],tangent:['point','curve'],normal:['point','curve'],ellipse_tangent_point:['point','curve'],intersection:['shape','shape'],second_intersection:['point','line','curve'],point_on:['shape']};
   for(const node of nodes)node.refs.forEach((ref,index)=>{
     const actual=refType(ref),expected=signatures[node.op]?.[index];
     if(actual&&expected&&(expected==='shape'?!['curve','line'].includes(actual):expected!==actual))warn(node.label+' 的引用对象类型不符合 '+node.op+' 构造。');

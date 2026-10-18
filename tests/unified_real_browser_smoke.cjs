@@ -64,4 +64,13 @@ module.exports=async({page,assert,screenshot})=>{
   assert(await page.evaluate(n=>{const a=window.DongGeoGebra.getAPI();a.evalCommand('RadiusCheck=Radius('+n+')');return Math.abs(a.getValue('RadiusCheck')-8/3)<1e-7;},circle));
   await page.evaluate(()=>window.DongGeoGebra.getAPI().setValue('p',2));
   assert(await page.evaluate(n=>{const a=window.DongGeoGebra.getAPI();a.evalCommand('RadiusCheck=Radius('+n+')');return Math.abs(a.getValue('RadiusCheck')-16/3)<1e-7;},circle),'Circle must follow source conic rather than frozen coordinates');
+  for(const id of ['2023-ii-5','2024-ii-3']){
+    const q=require('../dist/question-bank.json').items.find(q=>q.id===id).question;
+    await page.locator('#sceneJson').evaluate((el,q)=>{el.value=JSON.stringify(window.DongAlgebraGeometry.solve(q).scene);document.querySelector('#applyJson').click();},q);
+    await page.waitForFunction(id=>window.DongGeoGebra.getReport()?.signature?.includes(id==='2024-ii-3'?'vector-norm':'ellipse-area-ratio'),id);
+    try{await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.isDefined('B'));}catch(error){console.log(id,await page.evaluate(()=>({report:window.DongGeoGebra.getReport(),objects:window.DongGeoGebra.getAPI()?.getAllObjectNames().map(n=>[n,window.DongGeoGebra.getAPI().getDefinitionString(n)])})));throw error;}
+    if(id==='2024-ii-3')assert.equal(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return a.getAllObjectNames().filter(n=>a.getObjectType(n)==='vector'&&a.isDefined(n)&&a.getVisible(n)).length;}),4);
+    else assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return Math.abs(a.getXcoord('B')**2/3+a.getYcoord('B')**2-1)<1e-7;}));
+    await screenshot(id+'-unified.png',null);
+  }
 };

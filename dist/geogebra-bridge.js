@@ -337,20 +337,22 @@
     for(const key of ['pairedChord','fixedPoint','loci','locus','locusDefinition','rectangle','rectangularParabola','iteration','hyperbolaIteration','parabolaLocus','parabolaFocalData','inverseLocus','symmetricChord','areaChord','distanceExtrema','dotExtrema','orthogonalChord','problemMotion','circleFold']){
       // This bounded model has fixed premises only: the teaching binding locks
       // every source. Free motion or extra user objects still use native policy.
-      if(key==='problemMotion'&&scene.focalChoice&&scene.showDynamic===false&&!scene.unrestrictedMotion&&(scene.objects||[]).every(o=>o.source==='question'&&o.op!=='point_on')&&!(scene.lines||[]).length)continue;
+      if(key==='problemMotion'&&(scene.focalChoice||scene.boundedAlgebra)&&scene.showDynamic===false&&!scene.unrestrictedMotion&&(scene.objects||[]).every(o=>o.source==='question'&&o.op!=='point_on')&&!(scene.lines||[]).length)continue;
       if(scene[key]&&(!Array.isArray(scene[key])||scene[key].length))skipped.push('教学构造：'+key);
     }
     const visible = item => item.visible !== false && (active == null || (item.part!=null?Number(item.part)===Number(active):!Array.isArray(item.parts)||item.parts.includes(Number(active))));
-    function object(expression, caption, color = [124, 90, 201], show = true) {
+    function object(expression, caption, color = [124, 90, 201], show = true, forcePoint = false) {
       let serialLabel;do{serialLabel='DG'+(++serial);}while(api.exists(serialLabel));
       const candidate = String(caption||'').replace(/₁/g,'1').replace(/₂/g,'2').replace(/（.*）/g,'');
-      const label = /^[A-Za-z][A-Za-z0-9_]*$/.test(candidate)&&!['x','y','z','e','i'].includes(candidate)&&!api.exists(candidate) ? candidate : serialLabel;
+      const label = /^[A-Za-z][A-Za-z0-9_]*$/.test(candidate)&&(!forcePoint||/^[A-Z]/.test(candidate))&&!['x','y','z','e','i'].includes(candidate)&&!api.exists(candidate) ? candidate : serialLabel;
       if (!api.evalCommand(label + (expression.includes('=') ? ':' : '=') + expression)) { skipped.push(caption || expression); return null; }
       if (caption) { api.setCaption(label, String(caption)); api.setLabelStyle(label, 3); api.setLabelVisible(label, true); }
       owned.push(label);api.setColor(label, ...color); api.setVisible(label, show); return label;
     }
     function point(x, y, caption, show = true) {
-      const label = object('(' + number(x) + ',' + number(y) + ')', caption, [63, 120, 216], show);
+      // Lowercase coordinate labels are vectors in GeoGebra. Keep the user's
+      // caption, but assign points an uppercase internal name.
+      const label = object('(' + number(x) + ',' + number(y) + ')', caption, [63, 120, 216], show, true);
       if (label) { api.setPointSize(label, 5); api.setFixed(label, false, true); }
       return label;
     }
@@ -462,8 +464,8 @@
           if (item.x != null && Number.isFinite(Number(item.x))) coords = [finite(item.x), k - 2, finite(item.x), k + 2];
           else if (item.m != null && Number.isFinite(Number(item.m))) coords = [h - 2, finite(item.m) * (h - 2) + finite(item.b), h + 2, finite(item.m) * (h + 2) + finite(item.b)];
           if (coords) {
-            const first = point(coords[0], coords[1], (item.label || '线') + '₁', visible(item));
-            const second = point(coords[2], coords[3], (item.label || '线') + '₂', visible(item));
+            const first = point(coords[0], coords[1], (item.label || '线') + '₁', !teachingBinding&&visible(item));
+            const second = point(coords[2], coords[3], (item.label || '线') + '₂', !teachingBinding&&visible(item));
             label = object('Line(' + first + ',' + second + ')', item.label || '直线', [124, 90, 201], visible(item));
           } else skipped.push(item.label || '不支持的直线');
         } else skipped.push(item.label || item.kind || '对象');
@@ -511,7 +513,7 @@
         for(const item of pending){
           const refs=item.kind==='through_points'?[labels.get(item.a),labels.get(item.b)]:(item.refs||[]).map(ref);
           if(!refs.length||refs.some(v=>!v)){next.push(item);continue;}
-          const names={line:'Line',segment:'Segment',ray:'Ray',midpoint:'Midpoint',circle:'Circle',circumcircle:'Circle',perp_bisector:'PerpendicularBisector',parallel:'Line',perpendicular:'PerpendicularLine',tangent:'Tangent',distance:'Distance'};
+          const names={line:'Line',segment:'Segment',ray:'Ray',vector:'Vector',midpoint:'Midpoint',circle:'Circle',circumcircle:'Circle',perp_bisector:'PerpendicularBisector',parallel:'Line',perpendicular:'PerpendicularLine',tangent:'Tangent',distance:'Distance'};
           let expression=null,seed=null;
           if(item.kind==='through_points')expression=(item.infinite?'Line':'Segment')+'('+refs.join(',')+')';
           else if(names[item.op])expression=names[item.op]+'('+refs.join(',')+')';
@@ -556,7 +558,9 @@
       for(const [index,polygon] of (scene.polygons||[]).entries()){const refs=(polygon.labels||[]).map(name=>labels.get(name));if(refs.length>=3&&refs.every(Boolean)){const label=object('Polygon('+refs.join(',')+')',polygon.label,[229,140,33],visible(polygon));if(label){visibility.push({label,item:polygon});ids.set('polygon:'+index,label);}}else skipped.push(polygon.label||'多边形');}
       for(const item of [...(scene.lines||[]),...objects]){const label=ids.get(item.id);if(label)visibility.push({label,item});}
       if(teachingBinding){for(const label of owned)if(api.exists(label))api.setFixed(label,true,true);for(const {label}of drivers)api.setFixed(label,false,true);}
-      const size = Math.max(a, b, r, p * 2, 3) * 1.65;
+      if(scene.boundedAlgebra)for(const [key,label]of ids)if(key.startsWith('polygon:'))api.setLabelVisible(label,false);
+      const extent=scene.isFreeBoard?Math.max(1,...Object.values(scene.points||{}).flat().map(v=>Math.abs(finite(v)))):Math.max(a,b);
+      const size = scene.boundedAlgebra?extent*1.5:Math.max(a, b, r, p * 2, 3) * 1.65;
       const rawView=api.getViewProperties(1),view=typeof rawView==='string'?JSON.parse(rawView):rawView;
       const ratio=(view.width||800)/(view.height||600),halfWidth=Math.max(size,size*ratio),halfHeight=halfWidth/ratio;
       api.setCoordSystem(h-halfWidth,h+halfWidth,k-halfHeight,k+halfHeight);
