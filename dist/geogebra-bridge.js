@@ -562,8 +562,25 @@
       const extent=scene.isFreeBoard?Math.max(1,...Object.values(scene.points||{}).flat().map(v=>Math.abs(finite(v)))):Math.max(a,b);
       const size = scene.boundedAlgebra?extent*1.5:Math.max(a, b, r, p * 2, 3) * 1.65;
       const rawView=api.getViewProperties(1),view=typeof rawView==='string'?JSON.parse(rawView):rawView;
-      const ratio=(view.width||800)/(view.height||600),halfWidth=Math.max(size,size*ratio),halfHeight=halfWidth/ratio;
-      api.setCoordSystem(h-halfWidth,h+halfWidth,k-halfHeight,k+halfHeight);
+      const ratio=(view.width||800)/(view.height||600);
+      let left=h-size,right=h+size,bottom=k-size,top=k+size;
+      // A given point may lie far beyond the main conic. Include visible,
+      // defined points only: hidden construction handles and undefined
+      // intersections must not distort the initial teaching viewport.
+      const margin=Math.max(.15,size*.08);
+      for(const label of owned){
+        if(api.getObjectType?.(label)!=='point'||!api.getVisible(label)||!api.isDefined(label))continue;
+        const x=api.getXcoord(label),y=api.getYcoord(label);
+        if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+        left=Math.min(left,x-margin);right=Math.max(right,x+margin);
+        bottom=Math.min(bottom,y-margin);top=Math.max(top,y+margin);
+      }
+      if(left<h-size||right>h+size||bottom<k-size||top>k+size){
+        const paddingX=(right-left)*.06,paddingY=(top-bottom)*.06;
+        left-=paddingX;right+=paddingX;bottom-=paddingY;top+=paddingY;
+      }
+      const cx=(left+right)/2,cy=(bottom+top)/2,halfWidth=Math.max((right-left)/2,(top-bottom)*ratio/2),halfHeight=halfWidth/ratio;
+      api.setCoordSystem(cx-halfWidth,cx+halfWidth,cy-halfHeight,cy+halfHeight);
       api.setAxesVisible(true, true); api.setGridVisible(true); api.setMode(0); api.setUndoPoint();
       if (skipped.length) info('已转换支持的图形；未转换对象：' + skipped.join('、') + '。可用 GeoGebra 工具栏补建。');
     } finally { api.setRepaintingActive(true); }

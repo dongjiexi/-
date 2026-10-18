@@ -85,4 +85,16 @@ module.exports=async({page,assert,screenshot})=>{
     const visible=await page.evaluate(edges=>{const a=window.DongGeoGebra.getAPI();return {polygon:a.getVisible('TeachingTriangle'),edges:edges.map(n=>a.getVisible(n)),separate:a.getVisible('separate')};},generatedEdges);
     assert.equal(visible.polygon,part===1);assert(visible.edges.every(v=>v===(part===1)),'Polygon boundary must follow its own part, without affecting an independently constructed edge');assert.equal(visible.separate,part===2);
   }
+  const distantScene={type:'circle',r:1,showDynamic:false,points:{Far:[20,14]},objects:[{id:'hidden-far',kind:'point',label:'HiddenFar',x:1000,y:1000,visible:false}]};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},distantScene);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('Far'));
+  const farView=await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI(),raw=a.getViewProperties(1);return typeof raw==='string'?JSON.parse(raw):raw;});
+  assert(20>farView.xMin&&20<farView.xMin+farView.width*farView.invXscale&&14>farView.yMin&&14<farView.yMin+farView.height*farView.invYscale,'A named point far from the main curve must be inside the initial viewport');
+  assert(farView.xMin+farView.width*farView.invXscale<100,'Hidden points must not expand the viewport');
+  assert((farView.xMin+farView.width*farView.invXscale-20)/farView.invXscale>=16,'Leave screen-space margin around a distant point, not just one visible pixel');
+  await screenshot('distant-given-point.png',null);
+  const currentScene=JSON.parse(await page.locator('#sceneJson').inputValue());
+  await page.evaluate(s=>{window.DongGeoGebra.getAPI().setCoordSystem(-2,2,-2,2);window.DongGeoGebra.syncTeaching({...s,r:2});},currentScene);
+  await page.waitForFunction(()=>JSON.parse(window.DongGeoGebra.getReport().signature).r===2);
+  assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI(),raw=a.getViewProperties(1),v=typeof raw==='string'?JSON.parse(raw):raw;return Math.abs(v.xMin+2)<1e-7&&Math.abs(v.width*v.invXscale-4)<1e-7;}),'Parameter edits preserve a user-selected zoom instead of repeatedly refitting');
 };
