@@ -73,4 +73,16 @@ module.exports=async({page,assert,screenshot})=>{
     else assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return Math.abs(a.getXcoord('B')**2/3+a.getYcoord('B')**2-1)<1e-7;}));
     await screenshot(id+'-unified.png',null);
   }
+  const polygonScene={type:'circle',r:2,showConic:false,showDynamic:false,showFeatures:false,points:{U:[0,0],V:[2,0],W:[0,2]},objects:[{id:'separate-edge',kind:'construction',op:'segment',refs:['feature:U','feature:V'],label:'separate',part:2}],polygons:[{labels:['U','V','W'],label:'TeachingTriangle',part:1}]};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},polygonScene);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('TeachingTriangle'));
+  const generatedEdges=await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return a.getAllObjectNames().filter(n=>a.getObjectType(n)==='segment'&&n!=='separate');});
+  assert.equal(generatedEdges.length,3,'Actual polygon creates three additional boundary objects');
+  const partScene=JSON.parse(await page.locator('#sceneJson').inputValue());
+  for(const part of [2,1,2]){
+    await page.evaluate(({s,part})=>window.DongGeoGebra.syncTeaching({...s,activePart:part}),{s:partScene,part});
+    await page.waitForFunction(part=>JSON.parse(window.DongGeoGebra.getReport().signature).activePart===part,part);
+    const visible=await page.evaluate(edges=>{const a=window.DongGeoGebra.getAPI();return {polygon:a.getVisible('TeachingTriangle'),edges:edges.map(n=>a.getVisible(n)),separate:a.getVisible('separate')};},generatedEdges);
+    assert.equal(visible.polygon,part===1);assert(visible.edges.every(v=>v===(part===1)),'Polygon boundary must follow its own part, without affecting an independently constructed edge');assert.equal(visible.separate,part===2);
+  }
 };

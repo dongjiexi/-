@@ -3,14 +3,30 @@
   'use strict';
   const near=(a,b)=>Math.abs(a-b)<=128*Number.EPSILON*Math.max(1,Math.abs(a),Math.abs(b));
   const plain=s=>root.DongMathInput.toPlain(String(s).replace(/\\(?:boldsymbol|mathbf|vec)\s*/g,' ')).replace(/[\s${}]/g,'').replace(/[（），：；]/g,c=>({'（':'(', '）':')','，':',','：':':','；':';'}[c])).replace(/[−–]/g,'-');
-  const num=s=>{if(!/^[0-9+*/().-]{1,80}$/.test(s))return null;try{const n=root.DongEquationBuilder.scalar(s);return Number.isFinite(n)&&Math.abs(n)<1e4?n:null;}catch{return null;}};
+  const num=s=>{if(s.length>80||!s.length||!/^[0-9+*/().-]+$/.test(s.replace(/sqrt/g,'')))return null;try{const n=root.DongEquationBuilder.scalar(s);return Number.isFinite(n)&&Math.abs(n)<1e4?n:null;}catch{return null;}};
+  // Only rewrite explicitly equivalent clauses. Never discard unknown premises,
+  // negation, point restrictions, or extra questions to obtain a match.
+  function normalized(raw){const s=plain(raw),curve=/^(?:已知|设)?椭圆([A-Z]):/.exec(s)?.[1];return s
+    .replace(/\(([xy])\^2\)(?=\/)/g,'$1^2')
+    .replace(/^(?:已知|设)/,'')
+    .replace(/^平面向量/,'向量')
+    .replace(/^向量([a-z])(?:和|与|、)([a-z])/,'向量$1,$2')
+    .replace(/的左、右焦点分别为/,'的左右焦点记为')
+    .replace(/的左右焦点分别为/,'的左右焦点记为')
+    .replace(/的左右焦点为/,'的左右焦点记为')
+    .replace(/与椭圆([A-Z])?(?:相交|交)于/g,(text,label)=>!label||label===curve?'截椭圆于':text)
+    .replace(/(截椭圆于[A-Z][,、][A-Z])两点/,'$1')
+    .replace(/S△/g,'S')
+    .replace(/[,;]求(?:实数)?m的值/,'，求m')
+    .replace(/[,;]求([|][a-z][|])的值/,'，求$1')
+    .replace(/，/g,',');}
   const tex=n=>root.DongNumber.tex(n),clone=x=>JSON.parse(JSON.stringify(x));
   function result(raw,kind,answer,steps,scene){
     scene.schemaVersion=2;scene.boundedAlgebra={kind};scene.problemMotion=true;
     return{engineExtensions:['algebra-geometry'],mode:'symbolic-fallback',title:kind==='vector-norm'?'向量模长与数量积消元':'共底面积比与交点条件',restatement:raw,answer,parts:[{index:0,label:'推导与检验',status:'answered',answer,steps}],completion:{answered:1,total:1},scene,verification:{status:'locally-verified',counts:{verified:1,contradicted:0,unresolved:0},checks:[{id:kind,status:'verified',category:'construction',label:'原条件独立回代',detail:'根据原条件重新计算参数并核对合法性；图形不代替代数推导。'}]},scene_notice:kind==='vector-norm'?'图中是一组满足条件的代表向量；整体旋转或镜像后仍满足条件，方向不是唯一解。':'每个保留候选值都检查了两不同交点条件；多解时分别显示，第二组交点使用下标区分。'};
   }
   function vector(raw){
-    const s=plain(raw),m=/^向量([a-z]),([a-z])满足\|\1\|=([^、,]+)[、,]\|\1\+([^a-z]*)\2\|=([^,]+),且\(\2-([^a-z]*)\1\)垂直\2,求\|\2\|[。.]?$/.exec(s);
+    const s=normalized(raw),m=/^向量([a-z]),([a-z])满足\|\1\|=([^、,;]+)[、,;]\|\1\+(.*?)\2\|=([^,;]+)[,;]且\(\2-(.*?)\1\)垂直\2[,;]求\|\2\|[。.]?$/.exec(s);
     if(!m||m[1]===m[2])return null;
     const u=num(m[3]),k=num(m[4]||'1'),v=num(m[5]),h=num(m[6]||'1');
     if(!(u>0)||v===null||v<0||k===null||h===null||!h||!k)return null;
@@ -29,7 +45,7 @@
     return result(raw,'vector-norm',answer,steps,{type:'circle',r:Math.max(u,Math.sqrt(t),1),isFreeBoard:true,showConic:false,showDynamic:false,showFeatures:false,points,lines:[],objects,polygons:[],title:'代表向量与垂直关系'});
   }
   function ellipse(raw){
-    const s=plain(raw),m=/^椭圆([A-Z]):x\^2\/([^+]+)\+y\^2(?:\/([^=]+))?=1的左右焦点记为F1,F2。直线y=([^x]*)x\+m截椭圆于([A-Z])[,、]([A-Z]);若SF1([A-Z]{2})=([^S]+)SF2([A-Z]{2}),求m[。.]?$/.exec(s);
+    const s=normalized(raw),m=/^椭圆([A-Z]):x\^2\/([^+]+)\+y\^2(?:\/([^=]+))?=1的左右焦点记为F1[,、]F2[。,;]直线y=([^x]*)x\+m截椭圆于([A-Z])[,、]([A-Z])[,;]若SF1([A-Z]{2})=([^S]+)SF2([A-Z]{2})[,;]求m[。.]?$/.exec(s);
     if(!m||m[5]===m[6]||m[7]!==m[5]+m[6]||m[9]!==m[7])return null;
     const a2=num(m[2]),b2=num(m[3]||'1'),k=num(m[4]==='-'?'-1':m[4]||'1'),ratio=num(m[8]);
     if(!(a2>b2&&b2>0)||k===null||!k||!(ratio>0))return null;
