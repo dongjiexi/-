@@ -43,6 +43,7 @@ module.exports=async({page,assert,screenshot})=>{
   assert.equal(JSON.parse(await page.locator('#sceneJson').inputValue()).type,'ellipse');
   await screenshot('unified-real-desktop.png',null);
   await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="board"]').click();
+  await page.waitForFunction(()=>{const host=document.querySelector('.dong-ggb-host'),frame=host?.querySelector('.GeoGebraFrame');return frame&&frame.getBoundingClientRect().width>=host.clientWidth*.95;});
   await page.getByRole('button',{name:'画板设置',exact:true}).click();assert((await settings.boundingBox()).width<=390);await settings.getByRole('button',{name:'完成',exact:true}).click();
   await page.locator('.unified-tools summary').click();assert(await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).isVisible());
   await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).click();

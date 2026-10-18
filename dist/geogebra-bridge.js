@@ -182,6 +182,9 @@
         const params = {
           id: 'dongGeoGebraApi', appName: 'classic', language: 'zh', country: 'CN',
           width: Math.max(300, host.clientWidth), height: Math.max(180, host.clientHeight),
+          // ResizeObserver owns the viewport size; automatic CSS scaling would
+          // scale the already resized applet a second time on narrow screens.
+          disableAutoScale: true,
           showToolBar: !teachingBinding?.automatic, showAlgebraInput: !teachingBinding, showMenuBar: !teachingBinding?.automatic,
           showToolBarHelp: false, showZoomButtons: !teachingBinding?.automatic, showFullscreenButton: true,
           enableUndoRedo: true, enableRightClick: true, enableLabelDrags: true,
