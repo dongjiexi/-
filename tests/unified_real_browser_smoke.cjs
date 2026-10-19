@@ -97,4 +97,23 @@ module.exports=async({page,assert,screenshot})=>{
   await page.evaluate(s=>{window.DongGeoGebra.getAPI().setCoordSystem(-2,2,-2,2);window.DongGeoGebra.syncTeaching({...s,r:2});},currentScene);
   await page.waitForFunction(()=>JSON.parse(window.DongGeoGebra.getReport().signature).r===2);
   assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI(),raw=a.getViewProperties(1),v=typeof raw==='string'?JSON.parse(raw):raw;return Math.abs(v.xMin+2)<1e-7&&Math.abs(v.width*v.invXscale-4)<1e-7;}),'Parameter edits preserve a user-selected zoom instead of repeatedly refitting');
+  const degenerate={type:'circle',r:1,showDynamic:false,objects:[{id:'secant',kind:'slope',m:0,b:2,label:'secant'},{id:'i1',kind:'construction',op:'intersection',refs:['secant','$conic'],branch:0,label:'P'},{id:'i2',kind:'construction',op:'intersection',refs:['secant','$conic'],branch:1,label:'Q'},{id:'mid',kind:'construction',op:'midpoint',refs:['i1','i2'],label:'M'}]};
+  await page.evaluate(()=>localStorage.setItem('dongjiexi:geogebra:v1:teaching:archive','[null]'));
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},degenerate);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('M'));
+  assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return !a.isDefined('P')&&!a.isDefined('Q')&&!a.isDefined('M');}),'Nonintersecting objects stay as undefined dependencies, not fabricated points');
+  assert(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('dongjiexi:geogebra:v1:teaching:archive:recovery:')&&localStorage.getItem(k)==='[null]')));
+  await page.evaluate(()=>window.DongGeoGebra.save());await page.reload();await page.locator('[data-mobile-panel="board"]').click();
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('M'),null,{timeout:100000});
+  assert(await page.evaluate(()=>!window.DongGeoGebra.getAPI().isDefined('M')),'Undefined construction survives save and reload');
+  const recovered=JSON.parse(await page.locator('#sceneJson').inputValue());
+  for(const radius of [3,1,3]){
+    await page.evaluate(({s,r})=>window.DongGeoGebra.syncTeaching({...s,r}),{s:recovered,r:radius});
+    await page.waitForFunction(r=>JSON.parse(window.DongGeoGebra.getReport().signature).r===r,radius);
+    const defined=await page.evaluate(()=>window.DongGeoGebra.getAPI().isDefined('M'));
+    if(defined!==(radius===3))console.log('Degenerate restoration',radius,await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return a.getAllObjectNames().map(n=>[n,a.getObjectType(n),a.getDefinitionString(n),a.isDefined(n),a.getObjectType(n)==='point'&&a.isDefined(n)?[a.getXcoord(n),a.getYcoord(n)]:null]);}));
+    assert.equal(defined,radius===3);
+    assert(await page.evaluate(()=>new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml').querySelector('element[label="R"] fixed')?.getAttribute('val')==='true'),'Parameter updates restore the source-point lock');
+    if(radius===3)assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return Math.abs(a.getXcoord('M'))<1e-7&&Math.abs(a.getYcoord('M')-2)<1e-7&&Math.abs(a.getXcoord('P')**2+a.getYcoord('P')**2-9)<1e-7;}));
+  }
 };

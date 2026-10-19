@@ -16,7 +16,15 @@
   const highlighted=new Map();
   let teachingBinding=null,linkedTimer=null,linkedRunning=false,linkedSignature='',linkedStructure='';
   const draftKey=()=>KEY+(teachingBinding?':teaching':'');
-  const savedScene=signature=>[read(KEY+':teaching'),...(read(KEY+':teaching:archive')||[])].find(record=>record?.sceneSignature===signature);
+  function archiveSnapshot(){
+    let raw;try{raw=localStorage.getItem(KEY+':teaching:archive');}catch{return{raw:null,records:[],invalid:false};}
+    if(raw==null)return{raw,records:[],invalid:false};
+    let parsed;try{parsed=JSON.parse(raw);}catch{return{raw,records:[],invalid:true};}
+    if(!Array.isArray(parsed))return{raw,records:[],invalid:true};
+    const records=parsed.filter(item=>item&&typeof item==='object'&&typeof item.sceneSignature==='string'&&typeof item.base64==='string'&&Array.isArray(item.owned));
+    return{raw,records,invalid:records.length!==parsed.length};
+  }
+  const savedScene=signature=>[read(KEY+':teaching'),...archiveSnapshot().records].find(record=>record?.sceneSignature===signature);
   function additiveExtras(next){
     if(!linkedSignature||typeof api.getXML!=='function')return null;
     const before=JSON.parse(linkedSignature),oldObjects=before.objects||[],newObjects=next?.objects||[];
@@ -270,7 +278,13 @@
     if (!api) throw new Error('请等待 GeoGebra 加载完成。');
     const record = await save();
     try { localStorage.setItem(draftKey()+':previous', JSON.stringify(record));
-      if(teachingBinding&&record.sceneSignature){const archive=read(KEY+':teaching:archive')||[];localStorage.setItem(KEY+':teaching:archive',JSON.stringify([record,...archive.filter(item=>item.sceneSignature!==record.sceneSignature)].slice(0,4)));}
+      if(teachingBinding&&record.sceneSignature){
+        const archive=archiveSnapshot();
+        // Preserve unreadable history before replacing the active index. If
+        // storage is full, fail without discarding the original archive.
+        if(archive.invalid)localStorage.setItem(KEY+':teaching:archive:recovery:'+Date.now()+'-'+Math.random().toString(36).slice(2),archive.raw);
+        localStorage.setItem(KEY+':teaching:archive',JSON.stringify([record,...archive.records.filter(item=>item.sceneSignature!==record.sceneSignature)].slice(0,4)));
+      }
     }
     catch { throw new Error('无法备份当前图，请先保存 .ggb 文件并清理浏览器存储空间。'); }
   }
@@ -586,11 +600,17 @@
     } finally { api.setRepaintingActive(true); }
     return { skipped,drivers,owned:owned.filter(label=>api.exists(label)),ids,labels,update(next){
       const show=item=>item.visible!==false&&(next.activePart==null||(item.part!=null?Number(item.part)===Number(next.activePart):!Array.isArray(item.parts)||item.parts.includes(Number(next.activePart))));
+      const moveSource=(label,x,y)=>{
+        if(!label)return;
+        const locked=!!teachingBinding&&!drivers.some(driver=>driver.label===label);
+        if(locked)api.setFixed(label,false,true);
+        try{api.setCoords(label,x,y);}finally{if(locked)api.setFixed(label,true,true);}
+      };
       api.setRepaintingActive(false);
       try{
-        if(center)api.setCoords(center,finite(next.h),finite(next.k));
+        if(center)moveSource(center,finite(next.h),finite(next.k));
         if(axisA)api.setValue(axisA,positive(next.a,3));if(axisB)api.setValue(axisB,positive(next.b,2));if(parabolaP)api.setValue(parabolaP,positive(next.p,2));
-        if(circleEdge)api.setCoords(circleEdge,finite(next.h)+positive(next.r,3),finite(next.k));
+        if(circleEdge)moveSource(circleEdge,finite(next.h)+positive(next.r,3),finite(next.k));
         if(dynamic){const angle=finite(next.theta,42)*Math.PI/180;api.setCoords(dynamic.handle,api.getXcoord(dynamic.pivot)+dynamic.radius*Math.cos(angle),api.getYcoord(dynamic.pivot)+dynamic.radius*Math.sin(angle));}
         for(const {label,item}of visibility)if(label)api.setVisible(label,show(item));
       }finally{api.setRepaintingActive(true);}

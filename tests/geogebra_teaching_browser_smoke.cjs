@@ -36,6 +36,16 @@ module.exports=async({page,assert,screenshot})=>{
   assert(await page.evaluate(()=>!!localStorage.getItem('dongjiexi:geogebra:v1:teaching:previous')),'Graph replacement keeps a backup');
   const backupSignature=await page.evaluate(()=>JSON.parse(localStorage.getItem('dongjiexi:geogebra:v1:teaching:previous')).sceneSignature);
   assert.equal(JSON.parse(backupSignature).type,'ellipse','Old board backup must not be associated with the new circle question');
+  for(const [index,raw]of ['{"unexpected":true}','[null,42]','{not-json'].entries()){
+    await page.evaluate(raw=>localStorage.setItem('dongjiexi:geogebra:v1:teaching:archive',raw),raw);
+    await page.locator('#sceneJson').evaluate((el,index)=>{el.value=JSON.stringify({type:'circle',r:3+index,showDynamic:false,points:{['Recovery'+index]:[1,2]},objects:[]});document.querySelector('#applyJson').click();},index);
+    await page.waitForFunction(index=>window.DongGeoGebra.getAPI().exists('Recovery'+index),index,{timeout:6000});
+    assert(await page.evaluate(raw=>Object.keys(localStorage).filter(k=>k.startsWith('dongjiexi:geogebra:v1:teaching:archive:recovery:')).some(k=>localStorage.getItem(k)===raw),raw),'Preserve unreadable archive data instead of deleting it');
+  }
+  const retained=await page.evaluate(()=>{const key='dongjiexi:geogebra:v1:teaching:archive',record=JSON.parse(localStorage.getItem(key))[0];localStorage.setItem(key,JSON.stringify([record,null]));return record;});
+  await page.locator('#sceneJson').evaluate(el=>{el.value=JSON.stringify({type:'circle',r:10,showDynamic:false,points:{Recovered:[1,2]},objects:[]});document.querySelector('#applyJson').click();});
+  await page.waitForFunction(()=>window.DongGeoGebra.getAPI().exists('Recovered'));
+  assert(await page.evaluate(record=>JSON.parse(localStorage.getItem('dongjiexi:geogebra:v1:teaching:archive')).some(item=>JSON.stringify(item)===JSON.stringify(record)),retained),'Valid history remains available even when another record is corrupt');
   assert(await page.locator('.dong-ggb-close').isVisible());await screenshot('teaching-linked-desktop.png',null);
   await page.locator('.dong-ggb-close').click();assert(await page.locator('#canvas').isVisible());
 };
