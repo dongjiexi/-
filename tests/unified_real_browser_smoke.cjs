@@ -98,6 +98,7 @@ module.exports=async({page,assert,screenshot})=>{
   await page.waitForFunction(()=>JSON.parse(window.DongGeoGebra.getReport().signature).r===2);
   assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI(),raw=a.getViewProperties(1),v=typeof raw==='string'?JSON.parse(raw):raw;return Math.abs(v.xMin+2)<1e-7&&Math.abs(v.width*v.invXscale-4)<1e-7;}),'Parameter edits preserve a user-selected zoom instead of repeatedly refitting');
   const degenerate={type:'circle',r:1,showDynamic:false,objects:[{id:'secant',kind:'slope',m:0,b:2,label:'secant'},{id:'i1',kind:'construction',op:'intersection',refs:['secant','$conic'],branch:0,label:'P'},{id:'i2',kind:'construction',op:'intersection',refs:['secant','$conic'],branch:1,label:'Q'},{id:'mid',kind:'construction',op:'midpoint',refs:['i1','i2'],label:'M'}]};
+  await page.locator('#question').evaluate(el=>{el.value='之前的题目仍留在输入栏，不应改变手工图稿的约束属性。';});
   await page.evaluate(()=>localStorage.setItem('dongjiexi:geogebra:v1:teaching:archive','[null]'));
   await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},degenerate);
   await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('M'));
@@ -105,8 +106,12 @@ module.exports=async({page,assert,screenshot})=>{
   assert(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('dongjiexi:geogebra:v1:teaching:archive:recovery:')&&localStorage.getItem(k)==='[null]')));
   await page.evaluate(()=>window.DongGeoGebra.save());await page.reload();await page.locator('[data-mobile-panel="board"]').click();
   await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('M'),null,{timeout:100000});
+  assert.equal(JSON.parse(await page.locator('#sceneJson').inputValue()).problemMotion,false,'Reload preserves manual scene provenance despite retained question text');
   assert(await page.evaluate(()=>!window.DongGeoGebra.getAPI().isDefined('M')),'Undefined construction survives save and reload');
   const recovered=JSON.parse(await page.locator('#sceneJson').inputValue());
+  await page.locator('#importLesson').setInputFiles({name:'manual-lesson.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'dongjiexi-lesson',version:1,question:'保留题目文字的手工图稿',scene:recovered,solution:null}))});
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('M'),null,{timeout:100000});
+  assert.equal(JSON.parse(await page.locator('#sceneJson').inputValue()).problemMotion,false,'Lesson import preserves explicitly manual scenes');
   for(const radius of [3,1,3]){
     await page.evaluate(({s,r})=>window.DongGeoGebra.syncTeaching({...s,r}),{s:recovered,r:radius});
     await page.waitForFunction(r=>JSON.parse(window.DongGeoGebra.getReport().signature).r===r,radius);
