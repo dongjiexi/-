@@ -51,6 +51,11 @@
     if(!record?.base64||record.sceneSignature!==linkedSignature||JSON.stringify(record.owned)!==JSON.stringify(importReport.owned))return false;
     await loadBase64(record.base64);
     if(!importReport.owned.every(label=>api.exists(label)))throw new Error('保存图稿与题目对象不一致，请使用图稿文件恢复。');
+    if(importReport.originCommands?.length&&record.coordinateFrameVersion!==1){
+      localStorage.setItem(KEY+':teaching:origin-migration:'+Date.now(),JSON.stringify(record));
+      const wasBusy=busy;busy=true;
+      try{for(const command of importReport.originCommands)if(!api.evalCommand(command))throw new Error('原点构造迁移失败，原图稿已备份。');}finally{busy=wasBusy;}
+    }
     importReport.refreshLabels?.();
     return true;
   }
@@ -269,7 +274,7 @@
     const sceneSignature=teachingBinding?linkedSignature:null;
     const owned=[...(importReport.owned||[])],title=sessionTitle;
     const base64 = await getBase64();
-    const record = { base64, title, savedAt: new Date().toISOString(),sceneSignature,owned };
+    const record = { base64, title, savedAt: new Date().toISOString(),sceneSignature,owned,coordinateFrameVersion:1 };
     try { localStorage.setItem(key, JSON.stringify(record)); }
     catch { throw new Error('浏览器存储空间不足，请点击“保存 .ggb”把图稿保存到文件。'); }
     return record;
@@ -346,6 +351,8 @@
     const scene = raw && raw.model ? { ...raw.model, ...raw.p, activePart: raw.activePart } : (raw || {});
     sessionTitle = scene.title || 'GeoGebra 自由作图';
     let serial = 0;
+    const originExpression='(0, 0)',originCommands=[];
+    const coordinate=(label,axis)=>label===originExpression?0:axis==='x'?api.getXcoord(label):api.getYcoord(label);
     const labels = new Map(), ids=new Map(), paths=new Map(), anchors = {}, skipped = [], deferred = [],drivers=[],owned=[],visibility=[];
     const active = scene.activePart;
     // Specialised teaching overlays must stay complete until their adapter exists.
@@ -361,6 +368,7 @@
       const candidate = String(caption||'').replace(/₁/g,'1').replace(/₂/g,'2').replace(/（.*）/g,'');
       const label = /^[A-Za-z][A-Za-z0-9_]*$/.test(candidate)&&(!forcePoint||/^[A-Z]/.test(candidate))&&!['x','y','z','e','i'].includes(candidate)&&!api.exists(candidate) ? candidate : serialLabel;
       if (!api.evalCommand(label + (expression.includes('=') ? ':' : '=') + expression)) { skipped.push(caption || expression); return null; }
+      if(expression.includes(originExpression))originCommands.push(label+(expression.includes('=')?':':'=')+expression);
       if (caption) { api.setCaption(label, String(caption)); api.setLabelStyle(label, 3); api.setLabelVisible(label, true); }
       owned.push(label);api.setColor(label, ...color); api.setVisible(label, show); return label;
     }
@@ -440,6 +448,7 @@
         if (item.label) labels.set(item.label, label);
         if(item.source==='user'&&label)drivers.push({id:item.id,label});
       }
+      if(!Object.hasOwn(scene.points||{},'O')&&!objects.some(item=>item.label==='O'))labels.set('O',originExpression);
       for (const item of [...(scene.lines || []), ...objects.filter(value => value.kind !== 'point')]) {
         let label = null;
         if(['tangent','normal'].includes(item.role)&&Array.isArray(item.refs)&&item.refs.length===2){
@@ -505,7 +514,7 @@
         dynamic={pivot,handle,radius};
         if(handle)drivers.push({id:'$dynamic-angle',label:handle});
         const angle = finite(scene.theta, 42) * Math.PI / 180;
-        if (handle) api.setCoords(handle, api.getXcoord(pivot) + radius * Math.cos(angle), api.getYcoord(pivot) + radius * Math.sin(angle));
+        if (handle) api.setCoords(handle, coordinate(pivot,'x') + radius * Math.cos(angle), coordinate(pivot,'y') + radius * Math.sin(angle));
         const line = object('Line(' + pivot + ',' + handle + ')', scene.dynamicLineLabel || 'l', [242, 163, 60],visible(dynamicItem));
         visibility.push({label:line,item:dynamicItem});
         if(line)ids.set('$dynamic',line);
@@ -606,7 +615,7 @@
       api.setAxesVisible(true, true); api.setGridVisible(true); api.setMode(0); api.setUndoPoint();
       if (skipped.length) info('已转换支持的图形；未转换对象：' + skipped.join('、') + '。可用 GeoGebra 工具栏补建。');
     } finally { api.setRepaintingActive(true); }
-    return { skipped,drivers,owned:owned.filter(label=>api.exists(label)),ids,labels,refreshLabels,update(next){
+    return { skipped,drivers,owned:owned.filter(label=>api.exists(label)),ids,labels,refreshLabels,originCommands,update(next){
       const show=item=>item.visible!==false&&(next.activePart==null||(item.part!=null?Number(item.part)===Number(next.activePart):!Array.isArray(item.parts)||item.parts.includes(Number(next.activePart))));
       const moveSource=(label,x,y)=>{
         if(!label)return;
@@ -620,7 +629,7 @@
         refreshLabels(next);
         if(axisA)api.setValue(axisA,positive(next.a,3));if(axisB)api.setValue(axisB,positive(next.b,2));if(parabolaP)api.setValue(parabolaP,positive(next.p,2));
         if(circleEdge)moveSource(circleEdge,finite(next.h)+positive(next.r,3),finite(next.k));
-        if(dynamic){const angle=finite(next.theta,42)*Math.PI/180;api.setCoords(dynamic.handle,api.getXcoord(dynamic.pivot)+dynamic.radius*Math.cos(angle),api.getYcoord(dynamic.pivot)+dynamic.radius*Math.sin(angle));}
+        if(dynamic){const angle=finite(next.theta,42)*Math.PI/180;api.setCoords(dynamic.handle,coordinate(dynamic.pivot,'x')+dynamic.radius*Math.cos(angle),coordinate(dynamic.pivot,'y')+dynamic.radius*Math.sin(angle));}
         for(const {label,item}of visibility)if(label)api.setVisible(label,show(item));
       }finally{api.setRepaintingActive(true);}
     }};

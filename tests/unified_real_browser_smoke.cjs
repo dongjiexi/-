@@ -137,4 +137,24 @@ module.exports=async({page,assert,screenshot})=>{
     await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('KeptSegment'),null,{timeout:100000});
     assert.equal(await page.evaluate(()=>window.DongGeoGebra.getAPI().getCaption('O')),'中心');
   }
+  for(const type of ['circle','ellipse','hyperbola','parabola']){
+    const s={type,a:3,b:2,r:3,p:1,h:2,k:1,points:{Z:[4,3]},showDynamic:true,lineThrough:'point:O',dynamicLineLabel:'OriginLine',objects:[{id:'origin-mid',kind:'construction',op:'midpoint',refs:['feature:O','feature:Z'],label:'OriginMid'}]};
+    await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},s);
+    await page.waitForFunction(type=>{const r=window.DongGeoGebra.getReport();return window.DongUnifiedBoard.isActive()&&JSON.parse(r.signature).type===type&&window.DongGeoGebra.getAPI()?.exists('OriginMid');},type);
+    const check=()=>page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();a.evalCommand('OriginResidual=Distance((0,0),OriginLine)');return [a.getXcoord('OriginMid'),a.getYcoord('OriginMid'),a.getValue('OriginResidual')];});
+    let values=await check();assert(Math.abs(values[0]-2)<1e-8&&Math.abs(values[1]-1.5)<1e-8&&Math.abs(values[2])<1e-8,'Implicit O is the origin, not the translated center or vertex');
+    if(type==='circle'){
+      const legacy=await page.evaluate(async()=>{const a=window.DongGeoGebra.getAPI(),report=window.DongGeoGebra.getReport();document.getElementById('dong-geogebra-dialog').removeAttribute('open');a.evalCommand('OriginMid=Midpoint(O,Z)');a.evalCommand('OriginLine=Line(O,(4,5))');a.evalCommand('LegacyManual=Segment(O,Z)');const base64=await new Promise(resolve=>a.getBase64(resolve));return {base64,owned:report.owned,sceneSignature:report.signature,title:'Legacy origin fixture'};});
+      await page.addInitScript(record=>{if(!sessionStorage.getItem('origin-legacy-injected')){localStorage.setItem('dongjiexi:geogebra:v1:teaching',JSON.stringify(record));sessionStorage.setItem('origin-legacy-injected','1');}},legacy);
+      await page.reload();await page.locator('[data-mobile-panel="board"]').click();
+      try{await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('LegacyManual'),null,{timeout:100000});}catch(error){console.log('Origin migration diagnostic',await page.evaluate(()=>({status:document.querySelector('#boardEngineStatus')?.outerHTML,report:window.DongGeoGebra.getReport(),names:window.DongGeoGebra.getAPI()?.getAllObjectNames(),saved:JSON.parse(localStorage.getItem('dongjiexi:geogebra:v1:teaching'))?.owned})));throw error;}
+      values=await check();assert(Math.abs(values[0]-2)<1e-8&&Math.abs(values[1]-1.5)<1e-8&&Math.abs(values[2])<1e-8,'Legacy automatic origin references migrate');
+      assert(await page.evaluate(()=>Object.keys(localStorage).some(key=>key.startsWith('dongjiexi:geogebra:v1:teaching:origin-migration:'))),'Original legacy draft is backed up');
+      assert(await page.evaluate(()=>Math.abs(window.DongGeoGebra.getAPI().getValue('LegacyManual')-Math.sqrt(8))<1e-8),'Manual center-based auxiliary is not rewritten');
+    }
+    await page.locator('#parameterTarget').evaluate(el=>{el.value='$conic';el.dispatchEvent(new Event('change',{bubbles:true}));});
+    await page.locator('#r-h').evaluate(el=>{el.value='-2';el.dispatchEvent(new Event('input',{bubbles:true}));});
+    await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&JSON.parse(window.DongGeoGebra.getReport().signature).h===-2);
+    values=await check();assert(Math.abs(values[0]-2)<1e-8&&Math.abs(values[1]-1.5)<1e-8&&Math.abs(values[2])<1e-8,'Origin dependencies remain fixed as the curve moves');
+  }
 };
