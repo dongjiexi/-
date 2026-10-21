@@ -51,6 +51,7 @@
     if(!record?.base64||record.sceneSignature!==linkedSignature||JSON.stringify(record.owned)!==JSON.stringify(importReport.owned))return false;
     await loadBase64(record.base64);
     if(!importReport.owned.every(label=>api.exists(label)))throw new Error('保存图稿与题目对象不一致，请使用图稿文件恢复。');
+    importReport.refreshLabels?.();
     return true;
   }
   const notifyReady=()=>teachingBinding?.ready?.({skipped:[...importReport.skipped],signature:linkedSignature});
@@ -374,12 +375,19 @@
     const r = positive(scene.r, 3), p = positive(scene.p, 2), direction = finite(scene.direction, 1) < 0 ? -1 : 1;
     const vertical = scene.orientation === 'vertical', showFeatures = scene.showFeatures !== false;
     let conic = null, center = null, axisA=null,axisB=null,parabolaP=null,circleEdge=null,dynamic=null;
+    function refreshLabels(next=scene){
+      // Keep internal identities stable: saved auxiliary constructions may use
+      // them. An unnamed translated center must not look like the origin.
+      if(!center||next.type==='parabola'||next.pointBindings?.[center]==='center')return;
+      api.setCaption(center,finite(next.h)===0&&finite(next.k)===0?'O':'中心');
+    }
     api.setRepaintingActive(false);
     try {
       if (!scene.isFreeBoard&&['ellipse', 'hyperbola', 'circle', 'parabola'].includes(scene.type)) {
         center = point(h, k, scene.type === 'parabola' ? 'V' : 'O', showFeatures);
         anchors.center = center; anchors.vertex = center;
         labels.set('O', scene.type==='parabola'&&(h!==0||k!==0)?point(0,0,'O',showFeatures):center); labels.set('V', center);
+        refreshLabels();
         const x = '(x-x(' + center + '))', y = '(y-y(' + center + '))';
         if (scene.type === 'ellipse' || scene.type === 'hyperbola') {
           const ax = object(number(a), 'a', [15, 159, 153], false);
@@ -598,7 +606,7 @@
       api.setAxesVisible(true, true); api.setGridVisible(true); api.setMode(0); api.setUndoPoint();
       if (skipped.length) info('已转换支持的图形；未转换对象：' + skipped.join('、') + '。可用 GeoGebra 工具栏补建。');
     } finally { api.setRepaintingActive(true); }
-    return { skipped,drivers,owned:owned.filter(label=>api.exists(label)),ids,labels,update(next){
+    return { skipped,drivers,owned:owned.filter(label=>api.exists(label)),ids,labels,refreshLabels,update(next){
       const show=item=>item.visible!==false&&(next.activePart==null||(item.part!=null?Number(item.part)===Number(next.activePart):!Array.isArray(item.parts)||item.parts.includes(Number(next.activePart))));
       const moveSource=(label,x,y)=>{
         if(!label)return;
@@ -609,6 +617,7 @@
       api.setRepaintingActive(false);
       try{
         if(center)moveSource(center,finite(next.h),finite(next.k));
+        refreshLabels(next);
         if(axisA)api.setValue(axisA,positive(next.a,3));if(axisB)api.setValue(axisB,positive(next.b,2));if(parabolaP)api.setValue(parabolaP,positive(next.p,2));
         if(circleEdge)moveSource(circleEdge,finite(next.h)+positive(next.r,3),finite(next.k));
         if(dynamic){const angle=finite(next.theta,42)*Math.PI/180;api.setCoords(dynamic.handle,api.getXcoord(dynamic.pivot)+dynamic.radius*Math.cos(angle),api.getYcoord(dynamic.pivot)+dynamic.radius*Math.sin(angle));}

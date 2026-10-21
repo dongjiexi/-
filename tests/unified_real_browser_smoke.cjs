@@ -121,4 +121,20 @@ module.exports=async({page,assert,screenshot})=>{
     assert(await page.evaluate(()=>new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml').querySelector('element[label="R"] fixed')?.getAttribute('val')==='true'),'Parameter updates restore the source-point lock');
     if(radius===3)assert(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return Math.abs(a.getXcoord('M'))<1e-7&&Math.abs(a.getYcoord('M')-2)<1e-7&&Math.abs(a.getXcoord('P')**2+a.getYcoord('P')**2-9)<1e-7;}));
   }
+  for(const type of ['circle','ellipse','hyperbola']){
+    await page.locator('#sceneJson').evaluate((el,type)=>{el.value=JSON.stringify({type,r:2,a:3,b:2,h:2,k:-1,showDynamic:false});document.querySelector('#applyJson').click();},type);
+    await page.waitForFunction(type=>{const s=JSON.parse(window.DongGeoGebra.getReport().signature);return window.DongUnifiedBoard.isActive()&&s.type===type&&s.h===2&&s.k===-1;},type);
+    assert.equal(await page.evaluate(()=>window.DongGeoGebra.getAPI().getCaption('O')),'中心','Translated default center must not be displayed as the origin');
+    await page.evaluate(()=>window.DongGeoGebra.getAPI().evalCommand('KeptSegment=Segment(O,(5,4))'));
+    await page.locator('#parameterTarget').evaluate(el=>{el.value='$conic';el.dispatchEvent(new Event('change',{bubbles:true}));});
+    for(const [h,k,caption]of [[0,0,'O'],[-3,2,'中心']]){
+      for(const [key,value]of [['h',h],['k',k]])await page.locator('#r-'+key).evaluate((el,value)=>{el.value=String(value);el.dispatchEvent(new Event('input',{bubbles:true}));},value);
+      await page.waitForFunction(({h,k})=>{const s=JSON.parse(window.DongGeoGebra.getReport().signature);return window.DongUnifiedBoard.isActive()&&s.h===h&&s.k===k;},{h,k});
+      assert.equal(await page.evaluate(()=>window.DongGeoGebra.getAPI().getCaption('O')||'O'),caption);
+      assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().isDefined('KeptSegment')),'Existing center-dependent auxiliaries survive translation');
+    }
+    await page.evaluate(()=>window.DongGeoGebra.save());await page.reload();await page.locator('[data-mobile-panel="board"]').click();
+    await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('KeptSegment'),null,{timeout:100000});
+    assert.equal(await page.evaluate(()=>window.DongGeoGebra.getAPI().getCaption('O')),'中心');
+  }
 };
