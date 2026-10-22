@@ -52,6 +52,7 @@
     for(const [kind,label]of [['ellipse','椭圆'],['hyperbola','双曲线'],['parabola','抛物线'],['circle','圆']])tool(label,()=>document.querySelector('[data-add-conic="'+kind+'"]').click(),templates);
     content.append(templates);host.prepend(tools);
     const files=host.querySelector('.dong-ggb-tools');
+    tool('整理点名',()=>{const result=window.DongGeoGebra.arrangeLabels();message(result.unresolved?'已整理点名；局部仍拥挤，可放大画面后再次整理。':'已整理点名；只调整文字位置，不改变几何关系。');window.DongGeoGebra.save().catch(failure);files.open=false;},files.querySelector('div'));
     for(const menu of [tools,files])menu.addEventListener('toggle',()=>{if(menu.open)for(const other of [tools,files])if(other!==menu)other.open=false;});
     document.addEventListener('pointerdown',event=>{for(const menu of [tools,files])if(!menu.contains(event.target))menu.open=false;});
     document.addEventListener('keydown',event=>{if(event.key==='Escape')for(const menu of [tools,files])if(menu.open){menu.open=false;menu.querySelector('summary').focus();}});

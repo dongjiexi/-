@@ -157,4 +157,18 @@ module.exports=async({page,assert,screenshot})=>{
     await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&JSON.parse(window.DongGeoGebra.getReport().signature).h===-2);
     values=await check();assert(Math.abs(values[0]-2)<1e-8&&Math.abs(values[1]-1.5)<1e-8&&Math.abs(values[2])<1e-8,'Origin dependencies remain fixed as the curve moves');
   }
+  const crowded={type:'circle',r:3,showDynamic:false,points:{N:[1,1],Np:[1.03,1.02],F1:[1.05,1.04]},objects:[{id:'mid-label-test',kind:'construction',op:'midpoint',refs:['feature:N','feature:F1'],label:'LabelMid'}]};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},crowded);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('LabelMid'));
+  const before=await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return ['N','Np','F1','LabelMid'].map(n=>[n,a.getXcoord(n),a.getYcoord(n),a.getCommandString(n,false)]);});
+  await page.locator('.dong-ggb-tools > summary').click();await page.getByRole('button',{name:'整理点名',exact:true}).click();
+  const after=await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return ['N','Np','F1','LabelMid'].map(n=>[n,a.getXcoord(n),a.getYcoord(n),a.getCommandString(n,false)]);});
+  assert.deepEqual(after,before,'Arranging labels changes neither coordinates nor construction commands');
+  const offsets=await page.evaluate(()=>{const doc=new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml');return ['N','Np','F1','LabelMid'].map(n=>doc.querySelector('element[label="'+n+'"] labelOffset')?.outerHTML);});
+  assert(offsets.every(Boolean)&&new Set(offsets).size>1,'Nearby point labels receive distinct screen offsets');
+  await screenshot('arranged-point-labels-mobile.png',null);
+  await page.evaluate(()=>window.DongGeoGebra.save());await page.reload();await page.locator('[data-mobile-panel="board"]').click();
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('LabelMid'),null,{timeout:100000});
+  const restoredOffsets=await page.evaluate(()=>{const doc=new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml');return ['N','Np','F1','LabelMid'].map(n=>doc.querySelector('element[label="'+n+'"] labelOffset')?.outerHTML);});
+  assert.deepEqual(restoredOffsets,offsets,'Label offsets survive saving and reopening');
 };
