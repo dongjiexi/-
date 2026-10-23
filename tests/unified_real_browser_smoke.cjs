@@ -166,6 +166,9 @@ module.exports=async({page,assert,screenshot})=>{
   assert.deepEqual(after,before,'Arranging labels changes neither coordinates nor construction commands');
   const offsets=await page.evaluate(()=>{const doc=new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml');return ['N','Np','F1','LabelMid'].map(n=>doc.querySelector('element[label="'+n+'"] labelOffset')?.outerHTML);});
   assert(offsets.every(Boolean)&&new Set(offsets).size>1,'Nearby point labels receive distinct screen offsets');
+  await page.evaluate(()=>window.DongGeoGebra.arrangeLabels());
+  const repeatedOffsets=await page.evaluate(()=>{const doc=new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml');return ['N','Np','F1','LabelMid'].map(n=>doc.querySelector('element[label="'+n+'"] labelOffset')?.outerHTML);});
+  assert.deepEqual(repeatedOffsets,offsets,'Repeated arrangement is stable in the real GGB renderer');
   await screenshot('arranged-point-labels-mobile.png',null);
   await page.evaluate(()=>window.DongGeoGebra.save());await page.reload();await page.locator('[data-mobile-panel="board"]').click();
   await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('LabelMid'),null,{timeout:100000});

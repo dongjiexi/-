@@ -47,5 +47,38 @@ module.exports=async({page,assert,screenshot})=>{
   await page.waitForFunction(()=>window.DongGeoGebra.getAPI().exists('Recovered'));
   assert(await page.evaluate(record=>JSON.parse(localStorage.getItem('dongjiexi:geogebra:v1:teaching:archive')).some(item=>JSON.stringify(item)===JSON.stringify(record)),retained),'Valid history remains available even when another record is corrupt');
   assert(await page.locator('.dong-ggb-close').isVisible());await screenshot('teaching-linked-desktop.png',null);
+  // Screen-layout fixture: real browser XML/canvas, deliberately not a GGB
+  // rendering assertion. Dense, boundary and hidden-axis behavior is deterministic.
+  const layout=await page.evaluate(()=>{
+    const api=window.DongGeoGebra.getAPI();
+    let width=320,height=240,showAxes=false,patches=0;
+    const points=Array.from({length:24},(_,i)=>({name:'Near'+i,x:160+i*.12,y:120+i*.1}));
+    points.push({name:'Edge',x:319,y:1});
+    let doc;
+    const reset=()=>{doc=new DOMParser().parseFromString('<geogebra><euclidianView><axis id="0" show="'+showAxes+'"/><axis id="1" show="'+showAxes+'"/></euclidianView><construction>'+points.map(p=>'<element type="point" label="'+p.name+'"><labelOffset x="150" y="150"/></element>').join('')+'</construction></geogebra>','application/xml');};
+    reset();
+    api.getXML=()=>new XMLSerializer().serializeToString(doc);
+    api.getViewProperties=()=>({width,height,xMin:-160,yMin:-120,invXscale:1,invYscale:1});
+    api.getXcoord=n=>points.find(p=>p.name===n).x-160;
+    api.getYcoord=n=>120-points.find(p=>p.name===n).y;
+    api.getVisible=()=>true;api.isDefined=()=>true;api.getLabelVisible=()=>true;
+    api.getLabelStyle=()=>0;api.getPointSize=()=>5;
+    api.evalXML=xml=>{patches++;const parsed=new DOMParser().parseFromString('<root>'+xml+'</root>','application/xml');for(const el of parsed.querySelectorAll('element'))doc.querySelector('element[label="'+el.getAttribute('label')+'"]').replaceWith(doc.importNode(el,true));};
+    const result=window.DongGeoGebra.arrangeLabels();
+    const ctx=document.createElement('canvas').getContext('2d');ctx.font='18px sans-serif';
+    const boxes=points.map(p=>{const offset=doc.querySelector('element[label="'+p.name+'"] labelOffset');return {x:p.x+4+Number(offset.getAttribute('x')),y:p.y-30+Number(offset.getAttribute('y')),width:Math.max(20,ctx.measureText(p.name).width+10),height:26,px:p.x,py:p.y};});
+    const first=api.getXML();window.DongGeoGebra.arrangeLabels();const second=api.getXML();
+    // Single point beside the origin: hidden axes must not consume room.
+    points.splice(1);points[0]={name:'Near0',x:160,y:120};showAxes=false;reset();window.DongGeoGebra.arrangeLabels();const hidden=api.getXML();
+    showAxes=true;reset();window.DongGeoGebra.arrangeLabels();const shown=api.getXML();
+    const offsetOf=xml=>new DOMParser().parseFromString(xml,'application/xml').querySelector('labelOffset').outerHTML;
+    width=20;let smallError='';const count=patches;try{window.DongGeoGebra.arrangeLabels();}catch(e){smallError=e.message;}
+    return {result,boxes,stable:first===second,hidden:offsetOf(hidden),shown:offsetOf(shown),smallError,smallWrites:patches-count};
+  });
+  assert(layout.result.unresolved>0,'An overcrowded cluster is reported rather than silently declared readable');
+  for(const r of layout.boxes){assert(r.x>=5&&r.y>=5&&r.x+r.width<=315&&r.y+r.height<=235,'Labels remain in the viewport');assert(Math.hypot(Math.max(r.x-r.px,0,r.px-r.x-r.width),Math.max(r.y-r.py,0,r.py-r.y-r.height))<=49,'Labels stay close to their own point');}
+  assert(layout.stable,'Repeated arrangement must not make labels wander');
+  assert.notEqual(layout.hidden,layout.shown,'Only visible axes reserve label space');
+  assert(layout.smallError.includes('展开画板')&&layout.smallWrites===0,'Collapsed viewport is rejected without changing labels');
   await page.locator('.dong-ggb-close').click();assert(await page.locator('#canvas').isVisible());
 };

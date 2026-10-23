@@ -638,7 +638,7 @@
   function arrangeLabels(){
     if(!api||busy)throw new Error('请等待画板加载完成。');
     const raw=api.getViewProperties(1),view=typeof raw==='string'?JSON.parse(raw):raw;
-    if(!view||![view.width,view.height,view.invXscale,view.invYscale].every(v=>Number.isFinite(v)&&v>0))throw new Error('当前画板尺寸不可用。');
+    if(!view||![view.width,view.height,view.invXscale,view.invYscale].every(v=>Number.isFinite(v)&&v>0)||view.width<40||view.height<40)throw new Error('当前画板尺寸不可用，请展开画板后再整理。');
     const doc=new DOMParser().parseFromString(api.getXML(),'application/xml');
     const ctx=document.createElement('canvas').getContext('2d');ctx.font='18px sans-serif';
     const points=[];
@@ -657,15 +657,31 @@
     const overlap=(a,b)=>Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y));
     const occupied=points.map(p=>({x:p.x-7,y:p.y-7,width:14,height:14}));
     const axisX=-view.xMin/view.invXscale,axisY=view.height+view.yMin/view.invYscale;
-    if(axisX>=0&&axisX<=view.width)occupied.push({x:axisX-26,y:0,width:32,height:view.height});
-    if(axisY>=0&&axisY<=view.height)occupied.push({x:0,y:axisY-5,width:view.width,height:28});
+    const axes=doc.querySelector('euclidianView');
+    const axisVisible=id=>axes?.querySelector('axis[id="'+id+'"]')?.getAttribute('show')!=='false';
+    if(axisVisible(1)&&axisX>=0&&axisX<=view.width)occupied.push({x:axisX-26,y:0,width:32,height:view.height});
+    if(axisVisible(0)&&axisY>=0&&axisY<=view.height)occupied.push({x:0,y:axisY-5,width:view.width,height:28});
     const patches=[];let unresolved=0;
     for(const p of points){
       const old=p.el.querySelector('labelOffset'),ox=Number(old?.getAttribute('x')||0),oy=Number(old?.getAttribute('y')||0);
       const candidates=[{x:p.x+4+ox,y:p.y-2*p.size+oy-20}];
-      for(const gap of [10,28,48,72])for(const [dx,dy]of [[gap,-gap-26],[gap,gap],[-gap-p.width,-gap-26],[-gap-p.width,gap],[-p.width/2,-gap-26],[-p.width/2,gap]])candidates.push({x:p.x+dx,y:p.y+dy});
+      // Keep labels near their own marker. Avoid trading an unreadable cluster
+      // for non-overlapping names whose point association is impossible to tell.
+      for(const gap of [10,20,32,48])for(const [dx,dy]of [[gap,-gap-26],[gap,gap],[-gap-p.width,-gap-26],[-gap-p.width,gap],[-p.width/2,-gap-26],[-p.width/2,gap]])candidates.push({x:p.x+dx,y:p.y+dy});
       let best=null,bestScore=Infinity;
-      for(const c of candidates){const rect={x:Math.max(6,Math.min(view.width-p.width-6,c.x)),y:Math.max(6,Math.min(view.height-p.height-6,c.y)),width:p.width,height:p.height};const area=occupied.reduce((sum,r)=>sum+overlap(rect,r),0);const distance=Math.hypot(Math.max(rect.x-p.x,0,p.x-rect.x-rect.width),Math.max(rect.y-p.y,0,p.y-rect.y-rect.height));const score=area*10000+distance+Math.hypot(rect.x-c.x,rect.y-c.y)*.1;if(score<bestScore){bestScore=score;best={...rect,area,distance};}}
+      for(const c of candidates){
+        const rect={x:Math.max(6,Math.min(view.width-p.width-6,c.x)),y:Math.max(6,Math.min(view.height-p.height-6,c.y)),width:p.width,height:p.height};
+        // Score the integer offset that GGB will actually save, not an ideal
+        // fractional rectangle. Otherwise repeated clicks can keep drifting.
+        rect.x=p.x+4+Math.round(rect.x-p.x-4);
+        rect.y=p.y-2*p.size-20+Math.round(rect.y+20-p.y+2*p.size);
+        const area=occupied.reduce((sum,r)=>sum+overlap(rect,r),0);
+        const distance=Math.hypot(Math.max(rect.x-p.x,0,p.x-rect.x-rect.width),Math.max(rect.y-p.y,0,p.y-rect.y-rect.height));
+        if(distance>48)continue;
+        const score=area*10000+distance;
+        if(score<bestScore){bestScore=score;best={...rect,area,distance};}
+      }
+      if(!best){unresolved++;continue;}
       if(best.area>0||best.distance>48)unresolved++;occupied.push(best);
       const dx=Math.round(best.x-p.x-4),dy=Math.round(best.y+20-p.y+2*p.size);
       if(dx===ox&&dy===oy)continue;
