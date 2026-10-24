@@ -347,6 +347,7 @@
   // User labels are captions, never executable command fragments.
   function populate(raw) {
     if (!api) return;
+    window.dispatchEvent(new Event('dong:board-rebuilt'));
     highlighted.clear();
     const scene = raw && raw.model ? { ...raw.model, ...raw.p, activePart: raw.activePart } : (raw || {});
     sessionTitle = scene.title || 'GeoGebra 自由作图';

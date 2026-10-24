@@ -3,11 +3,12 @@
  */
 (() => {
   'use strict';
-  let options,source=null,started=false,failed=false,active=false,slot,board,status,tools,observer,pendingDraft=null;
+  let options,source=null,started=false,failed=false,active=false,slot,board,status,tools,observer,pendingDraft=null,closePointFinder=()=>{};
   const current=()=>options?.scene()||{isFreeBoard:true,objects:[],showDynamic:false};
   const sceneKey=value=>JSON.stringify(value);
   function message(text){status.querySelector('span').textContent=text;}
   function activate(value){
+    if(!value)closePointFinder();
     active=value;board.dataset.renderer=value?'geogebra':'native';
     board.toggleAttribute('data-ggb-active',value);
     if(value)board.dataset.ggbActive='true';
@@ -52,6 +53,7 @@
     for(const [kind,label]of [['ellipse','椭圆'],['hyperbola','双曲线'],['parabola','抛物线'],['circle','圆']])tool(label,()=>document.querySelector('[data-add-conic="'+kind+'"]').click(),templates);
     content.append(templates);host.prepend(tools);
     const files=host.querySelector('.dong-ggb-tools');
+    makePointFinder(host,files);
     tool('整理点名',()=>{const result=window.DongGeoGebra.arrangeLabels();message(result.unresolved?'已整理点名；局部仍拥挤，可放大画面后再次整理。':'已整理点名；只调整文字位置，不改变几何关系。');window.DongGeoGebra.save().catch(failure);files.open=false;},files.querySelector('div'));
     for(const menu of [tools,files])menu.addEventListener('toggle',()=>{if(menu.open)for(const other of [tools,files])if(other!==menu)other.open=false;});
     document.addEventListener('pointerdown',event=>{for(const menu of [tools,files])if(!menu.contains(event.target))menu.open=false;});
@@ -68,6 +70,55 @@
         if(pendingDraft&&window.DongGeoGebra.getReport().signature===pendingDraft.sceneSignature)ready(window.DongGeoGebra.getReport());
       }catch(error){pendingDraft=null;message(error.message);}finally{file.value='';}
     });
+  }
+  function makePointFinder(host,files){
+    const panel=document.createElement('div');panel.hidden=true;panel.id='boardPointFinder';
+    panel.style.cssText='flex-basis:100%;min-width:0;padding:8px;border:1px solid #c9a98b;border-radius:8px;background:#fff9ef';
+    const label=document.createElement('label');label.textContent='查找点 ';const select=document.createElement('select');select.setAttribute('aria-label','选择要定位的点');select.style.cssText='max-width:100%;min-width:120px';label.append(select);panel.append(label);
+    const feedback=document.createElement('p');feedback.setAttribute('role','status');feedback.style.cssText='margin:6px 0 0;font-size:12px';
+    const marker=document.createElement('div');marker.id='boardPointLocator';marker.hidden=true;marker.setAttribute('aria-hidden','true');
+    // A read-only DOM overlay: never add a geometric object, alter style, or
+    // serialize a temporary highlight into the user's GGB construction.
+    marker.style.cssText='position:fixed;pointer-events:none;z-index:9999;width:26px;height:26px;border:3px solid #9d3828;border-radius:50%;box-shadow:0 0 0 3px #ffffffcc;transform:translate(-50%,-50%);box-sizing:border-box';
+    document.body.append(marker);let timer=0;
+    const say=text=>{if(feedback.textContent!==text)feedback.textContent=text;};
+    const tick=()=>{
+      marker.hidden=true;if(panel.hidden||!active)return;
+      try{
+        const a=window.DongGeoGebra.getAPI(),name=select.value;
+        if(!name){say('选择点名后用定位圈标出位置；不会移动点或修改图稿。');return;}
+        if(!a.exists(name)||a.getObjectType(name)!=='point'){say('这个点已删除或改名，请刷新点名。');return;}
+        if(!a.isDefined(name)){say('这个点当前未定义，请检查交点或构造条件。');return;}
+        if(!a.getVisible(name)){say('这个点已隐藏；定位不会自动显示它。');return;}
+        const raw=a.getViewProperties(1),v=typeof raw==='string'?JSON.parse(raw):raw;
+        if(!v||![v.width,v.height,v.invXscale,v.invYscale].every(n=>Number.isFinite(n)&&n>0)){say('当前视图尚未就绪。');return;}
+        const canvases=[...document.querySelectorAll('#dong-geogebra-applet canvas')].map(c=>c.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0);
+        const rect=canvases.sort((a,b)=>b.width*b.height-a.width*a.height)[0];
+        if(!rect){say('请展开图像栏目查看定位。');return;}
+        const x=(a.getXcoord(name)-v.xMin)/v.invXscale,y=v.height-(a.getYcoord(name)-v.yMin)/v.invYscale;
+        if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>v.width||y>v.height){say('这个点在当前视野外；可缩小画面或使用“适应全部图形”。');return;}
+        const left=rect.left+x*rect.width/v.width,top=rect.top+y*rect.height/v.height;
+        if(left<0||left>innerWidth||top<0||top>innerHeight){say('请滚动到画板查看定位。');return;}
+        marker.style.left=left+'px';marker.style.top=top+'px';marker.hidden=false;
+        say('正在定位 '+(a.getCaption(name)||name)+'（对象 '+name+'）；定位圈随点移动，不是新增点。');
+      }catch{say('画板正在更新，请稍候或刷新点名。');}
+    };
+    const refresh=()=>{
+      const previous=select.value,a=window.DongGeoGebra.getAPI();select.replaceChildren();
+      const empty=document.createElement('option');empty.value='';empty.textContent='请选择点名';select.append(empty);
+      for(const name of a.getAllObjectNames())if(a.getObjectType(name)==='point'){
+        const item=document.createElement('option'),caption=a.getCaption(name)||name;item.value=name;
+        item.textContent=(caption===name?name:caption+'（'+name+'）')+(!a.isDefined(name)?' · 未定义':!a.getVisible(name)?' · 已隐藏':'');select.append(item);
+      }
+      select.value=[...select.options].some(o=>o.value===previous)?previous:'';tick();
+    };
+    tool('刷新点名',refresh,panel);
+    closePointFinder=()=>{clearInterval(timer);timer=0;panel.hidden=true;marker.hidden=true;select.value='';};
+    window.addEventListener('dong:board-rebuilt',closePointFinder);
+    tool('结束定位',closePointFinder,panel);panel.append(feedback);host.append(panel);
+    select.addEventListener('change',tick);
+    tool('查找点',()=>{if(!active)return;files.open=false;tools.open=false;panel.hidden=false;refresh();clearInterval(timer);timer=setInterval(tick,250);select.focus();},files.querySelector('div'));
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!panel.hidden){closePointFinder();event.preventDefault();}});
   }
   function makeSettings(host){
     const dialog=document.createElement('dialog');dialog.className='board-settings-dialog';dialog.id='boardSettings';dialog.setAttribute('aria-labelledby','boardSettingsTitle');
