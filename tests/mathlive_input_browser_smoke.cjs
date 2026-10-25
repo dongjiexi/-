@@ -1,4 +1,4 @@
-module.exports=async({page,assert})=>{
+module.exports=async({page,assert,screenshot})=>{
   await page.locator('[data-mobile-panel="board"]').click({force:true}).catch(()=>{});
   if(await page.locator('.board-shell').isHidden())await page.locator('[data-mobile-panel="board"]').click();
   if(await page.locator('.board-shell').evaluate(element=>element.classList.contains('toolbox-collapsed')))await page.locator('#toolboxToggle').click();
@@ -7,6 +7,21 @@ module.exports=async({page,assert})=>{
   await radius.focus();
   await page.locator('#addConicDialog [data-open-math-keyboard]').click();
   await page.locator('#mathLiveField').waitFor({state:'visible'});
+  const numeric=page.locator('#mathKeyboardKeys');
+  assert.equal(await numeric.getAttribute('data-layout'),'common');
+  assert.equal(await numeric.locator('button').count(),24,'Numeric keypad has four six-key rows');
+  await radius.fill('');await radius.focus();
+  await numeric.getByRole('button',{name:'a/b',exact:true}).click();
+  await numeric.getByRole('button',{name:'1',exact:true}).click();
+  assert.equal(await radius.inputValue(),'(1)/()','Fraction template places the cursor in the numerator');
+  const firstTab=page.locator('#math-tab-common');await firstTab.focus();await page.keyboard.press('ArrowRight');
+  assert.equal(await numeric.getAttribute('data-layout'),'letters');
+  await numeric.getByRole('button',{name:'A',exact:true}).click();
+  assert((await radius.inputValue()).includes('A'),'Letter keyboard writes to the selected parameter');
+  await page.locator('#math-tab-common').click();
+  await page.setViewportSize({width:390,height:844});
+  assert(await numeric.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Numeric keys fit a phone without horizontal scrolling');
+  await screenshot('numeric-keyboard-mobile.png',null);
   await page.locator('#mathLiveField').evaluate(field=>{
     // Reconnect and type in the same task, before requestAnimationFrame can run.
     window.DongMathLive.connect(document.querySelector('#mathKeyboard'),document.querySelector('#addConicFields [data-equation-param="r"]'));

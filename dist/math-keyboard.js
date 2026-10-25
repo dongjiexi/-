@@ -3,15 +3,13 @@
 /* Offline math-symbol keyboard for mixed Chinese question/equation input. */
 (function () {
   const groups = [
-    {id:'common', name:'常用', keys:[
-      ...'1234567890'.split('').map(value=>({label:value,insert:value})),
-      ...['x','y','a','b','h','k','p','t'].map(value=>({label:value,insert:value})),
-      {label:'+ ',insert:'+'},{label:'−',insert:'−'},{label:'×',insert:'×'},{label:'÷',insert:'÷'},
-      {label:'=',insert:'='},{label:'≠',insert:'≠'},{label:'≈',insert:'≈'},{label:'<',insert:'<'},{label:'>',insert:'>'},
-      {label:'≤',insert:'≤'},{label:'≥',insert:'≥'},{label:'(',insert:'('},{label:')',insert:')'},
-      {label:'[ ]',insert:'[]',caret:-1},{label:'{ }',insert:'{}',caret:-1},{label:'| |',insert:'||',caret:-1},
-      {label:',',insert:','},{label:';',insert:';'},{label:':',insert:':'},{label:'∞',insert:'∞'}
+    {id:'common', name:'123 · 运算', keys:[
+      {label:'x',insert:'x'},{label:'y',insert:'y'},...['7','8','9'].map(insert=>({label:insert,insert})),{label:'÷',insert:'÷'},
+      {label:'a/b',insert:'()/()',caret:-4},{label:'√',insert:'√()',caret:-1},...['4','5','6'].map(insert=>({label:insert,insert})),{label:'×',insert:'×'},
+      {label:'aⁿ',insert:'()^()',caret:-4},{label:'π',insert:'π'},...['1','2','3'].map(insert=>({label:insert,insert})),{label:'−',insert:'−'},
+      {label:'(',insert:'('},{label:')',insert:')'},{label:'0',insert:'0'},{label:'.',insert:'.'},{label:'=',insert:'='},{label:'+',insert:'+'}
     ]},
+    {id:'letters',name:'ABC · 字母',keys:[...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(insert=>({label:insert,insert}))]},
     {id:'algebra', name:'代数与函数', keys:[
       {label:'x²',insert:'x²'},{label:'x³',insert:'x³'},{label:'上标 ^',insert:'^'},
       {label:'√',insert:'√()',caret:-1},{label:'∛',insert:'∛()',caret:-1},{label:'分数',insert:'()/()',caret:-4},
@@ -33,6 +31,8 @@
       {label:'斜率',insert:'k='},{label:'距离',insert:'d='},{label:'离心率',insert:'e='},{label:'Δ',insert:'Δ'}
     ]},
     {id:'greek', name:'希腊与集合', keys:[
+      ...['≠','≈','<','>','≤','≥',',',';',':','∞'].map(insert=>({label:insert,insert})),
+      {label:'[ ]',insert:'[]',caret:-1},{label:'{ }',insert:'{}',caret:-1},{label:'| |',insert:'||',caret:-1},
       ...['α','β','γ','δ','ε','ζ','η','θ','λ','μ','ν','ξ','π','ρ','σ','τ','φ','χ','ψ','ω'].map(value=>({label:value,insert:value})),
       {label:'∈',insert:'∈'},{label:'∉',insert:'∉'},{label:'⊂',insert:'⊂'},{label:'⊆',insert:'⊆'},
       {label:'∪',insert:'∪'},{label:'∩',insert:'∩'},{label:'∅',insert:'∅'},{label:'ℝ',insert:'ℝ'},
@@ -57,9 +57,10 @@
     panel.innerHTML = '<header><div><strong id="mathKeyboardTitle">数学键盘</strong><span id="mathKeyboardHelp">点按符号会插入到当前参数或文字输入框</span><span id="mathKeyboardTarget" aria-live="polite"></span></div><div class="math-keyboard-edit"><button type="button" data-key-command="left" aria-label="光标左移">←</button><button type="button" data-key-command="right" aria-label="光标右移">→</button><button type="button" data-key-command="backspace" aria-label="退格">⌫</button><button type="button" data-key-command="close">关闭</button></div></header><div class="mathlive-host" data-mathlive-host><p class="mathlive-note">正在准备完整 LaTeX 公式编辑器…</p></div><div class="math-keyboard-tabs" role="tablist"></div><div class="math-keyboard-keys"></div>';
     document.body.append(panel);
     const tabBox=panel.querySelector('.math-keyboard-tabs'),keyBox=panel.querySelector('.math-keyboard-keys');
+    keyBox.id='mathKeyboardKeys';keyBox.setAttribute('role','tabpanel');
     let activeGroup=groups[0].id,lastTarget=defaultTarget || null;
 
-    const usable = element => element && element.matches('textarea,input[type="text"],input[type="search"],input:not([type])') && !element.disabled && !element.readOnly && !element.closest('#mathKeyboard');
+    const usable = element => element && element.isConnected && element.matches('textarea,input[type="text"],input[type="search"],input:not([type])') && !element.disabled && !element.readOnly && !element.closest('#mathKeyboard');
     const targetName = target => target?.getAttribute('aria-label') || target?.closest('label')?.firstChild?.textContent?.trim() || target?.placeholder || '输入框';
     const announceTarget = () => {const output=panel.querySelector('#mathKeyboardTarget');if(output)output.textContent=`当前输入：${targetName(lastTarget)}`;};
     document.addEventListener('focusin', event => {if(usable(event.target)){lastTarget=event.target;if(!panel.hidden)announceTarget();}});
@@ -88,10 +89,17 @@
     }
     function renderGroup() {
       const group=groups.find(item=>item.id===activeGroup) || groups[0];
+      keyBox.dataset.layout=group.id;keyBox.setAttribute('aria-labelledby','math-tab-'+group.id);
       [...tabBox.children].forEach(button=>{const selected=button.dataset.group===group.id;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;});
       keyBox.replaceChildren(...group.keys.map(key=>{const button=document.createElement('button');button.type='button';button.className=key.insert.length>10?'wide':'';button.textContent=key.label;button.title=`插入 ${key.insert}`;button.addEventListener('click',()=>insert(key.insert,key.caret||0));return button;}));
     }
-    for(const group of groups){const button=document.createElement('button');button.type='button';button.role='tab';button.dataset.group=group.id;button.textContent=group.name;button.addEventListener('click',()=>{activeGroup=group.id;renderGroup();});tabBox.append(button);}
+    for(const group of groups){const button=document.createElement('button');button.type='button';button.role='tab';button.id='math-tab-'+group.id;button.setAttribute('aria-controls',keyBox.id);button.dataset.group=group.id;button.textContent=group.name;button.addEventListener('click',()=>{activeGroup=group.id;renderGroup();});tabBox.append(button);}
+    tabBox.addEventListener('keydown',event=>{
+      if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+      event.preventDefault();const index=groups.findIndex(g=>g.id===activeGroup);
+      const next=event.key==='Home'?0:event.key==='End'?groups.length-1:(index+(event.key==='ArrowLeft'?-1:1)+groups.length)%groups.length;
+      activeGroup=groups[next].id;renderGroup();tabBox.children[next].focus();
+    });
     renderGroup();
 
     function open(target){

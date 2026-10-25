@@ -66,7 +66,10 @@ function connect(panel, target) {
     activeField.focus();
     keyboard.show();
   });
-  host.append(label, activeField, help, openKeyboard);
+  const advanced=document.createElement('details');
+  const summary=document.createElement('summary');summary.textContent='高级公式与更多符号';
+  advanced.append(summary,help,openKeyboard);
+  host.append(label, activeField, advanced);
   if (configureField) {
     activeField.mathVirtualKeyboardPolicy = 'manual';
     activeField.smartFence = true;
