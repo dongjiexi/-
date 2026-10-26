@@ -7,6 +7,11 @@ let activeTarget = null;
 let activeField = null;
 let syncing = false;
 let fieldEditing = false;
+let visualEditing = false;
+document.addEventListener('focusin',event=>{
+  if(event.target===activeField)visualEditing=true;
+  else if(event.target.matches?.('input,textarea'))visualEditing=false;
+});
 
 document.addEventListener('input', event => {
   if (syncing || event.target !== activeTarget || !activeField) return;
@@ -32,6 +37,7 @@ function connect(panel, target) {
     return;
   }
   activeTarget = target;
+  visualEditing = false;
   let configureField = false;
   if (!activeField) {
     activeField = new MathfieldElement();
@@ -85,8 +91,21 @@ function connect(panel, target) {
 
 function close() {
   activeTarget = null;
+  visualEditing = false;
   window.mathVirtualKeyboard?.hide();
 }
 
-window.DongMathLive = Object.freeze({connect, close, version: '0.110.0'});
+function edit(target,text,command){
+  if(!visualEditing||target!==activeTarget||!target?.isConnected||!activeField?.isConnected||target.disabled||target.readOnly)return false;
+  const commands={left:'moveToPreviousChar',right:'moveToNextChar',backspace:'deleteBackward',next:'moveToNextPlaceholder'};
+  const templates={'()/()':'\\frac{#?}{#?}','√()':'\\sqrt{#?}','∛()':'\\sqrt[3]{#?}','()^()':'{#?}^{#?}'};
+  syncing=true;
+  try{
+    if(command)activeField.executeCommand(commands[command]);
+    else activeField.executeCommand(['insert',templates[text]||window.DongMathInput?.toTex(text)||text,{selectionMode:templates[text]?'placeholder':'after'}]);
+    target.value=activeField.value;target.dispatchEvent(new Event('input',{bubbles:true}));
+  }finally{syncing=false;fieldEditing=false;}
+  activeField.focus();return true;
+}
+window.DongMathLive = Object.freeze({connect, close, edit, version: '0.110.0'});
 document.dispatchEvent(new CustomEvent('dong-mathlive-ready'));

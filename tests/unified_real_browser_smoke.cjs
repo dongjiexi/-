@@ -178,6 +178,10 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('.dong-ggb-tools > summary').click();await page.getByRole('button',{name:'查找点',exact:true}).click();
   await page.getByLabel('选择要定位的点').selectOption('N');
   await page.locator('#boardPointLocator').waitFor({state:'visible'});
+  await page.waitForFunction(()=>document.querySelector('#boardPointInfo').textContent.includes('坐标读数（近似）'));
+  await page.getByLabel('选择要定位的点').selectOption('LabelMid');
+  await page.waitForFunction(()=>document.querySelector('#boardPointInfo').textContent.includes('Midpoint'));
+  await page.getByLabel('选择要定位的点').selectOption('N');
   assert.equal(await page.evaluate(()=>new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml').querySelector('construction').outerHTML),originalXML,'Locating a point does not change the GGB construction or style');
   await screenshot('point-finder-mobile.png',null);
   await page.evaluate(()=>window.DongGeoGebra.getAPI().evalCommand('LocatorFree=(2,1)'));

@@ -22,6 +22,19 @@ module.exports=async({page,assert,screenshot})=>{
   await page.setViewportSize({width:390,height:844});
   assert(await numeric.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Numeric keys fit a phone without horizontal scrolling');
   await screenshot('numeric-keyboard-mobile.png',null);
+  await radius.fill('');await radius.dispatchEvent('input');await page.locator('#mathLiveField').focus();
+  await numeric.getByRole('button',{name:'a/b',exact:true}).click();
+  await numeric.getByRole('button',{name:'1',exact:true}).click();
+  await page.locator('[data-key-command="next"]').click();
+  await numeric.getByRole('button',{name:'2',exact:true}).click();
+  assert.equal(await radius.evaluate(el=>window.DongMathInput.toPlain(el.value)),'1/2','Visible fraction placeholders write a parseable fraction to the original parameter');
+  await page.locator('[data-key-command="backspace"]').click();
+  await numeric.getByRole('button',{name:'3',exact:true}).click();
+  assert.equal(await radius.evaluate(el=>window.DongMathInput.toPlain(el.value)),'1/3','Backspace edits the denominator in the visible formula');
+  await radius.fill('');await radius.dispatchEvent('input');await page.locator('#mathLiveField').focus();
+  await numeric.getByRole('button',{name:'√',exact:true}).click();await numeric.getByRole('button',{name:'9',exact:true}).click();
+  assert.equal(await radius.evaluate(el=>window.DongMathInput.toPlain(el.value)),'3','Root template remains compatible with numeric parameter parsing');
+  await screenshot('visual-template-mobile.png',null);
   await page.locator('#mathLiveField').evaluate(field=>{
     // Reconnect and type in the same task, before requestAnimationFrame can run.
     window.DongMathLive.connect(document.querySelector('#mathKeyboard'),document.querySelector('#addConicFields [data-equation-param="r"]'));

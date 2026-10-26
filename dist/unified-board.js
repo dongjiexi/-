@@ -76,6 +76,9 @@
     panel.style.cssText='flex-basis:100%;min-width:0;padding:8px;border:1px solid #c9a98b;border-radius:8px;background:#fff9ef';
     const label=document.createElement('label');label.textContent='查找点 ';const select=document.createElement('select');select.setAttribute('aria-label','选择要定位的点');select.style.cssText='max-width:100%;min-width:120px';label.append(select);panel.append(label);
     const feedback=document.createElement('p');feedback.setAttribute('role','status');feedback.style.cssText='margin:6px 0 0;font-size:12px';
+    const pointInfo=document.createElement('div');pointInfo.id='boardPointInfo';pointInfo.style.cssText='font-size:12px;overflow-wrap:anywhere;margin-top:6px';
+    let infoKey='';
+    const clearInfo=()=>{if(infoKey){pointInfo.replaceChildren();infoKey='';}};
     const marker=document.createElement('div');marker.id='boardPointLocator';marker.hidden=true;marker.setAttribute('aria-hidden','true');
     // A read-only DOM overlay: never add a geometric object, alter style, or
     // serialize a temporary highlight into the user's GGB construction.
@@ -83,12 +86,23 @@
     document.body.append(marker);let timer=0;
     const say=text=>{if(feedback.textContent!==text)feedback.textContent=text;};
     const tick=()=>{
-      marker.hidden=true;if(panel.hidden||!active)return;
+      marker.hidden=true;if(panel.hidden||!active){clearInfo();return;}
       try{
         const a=window.DongGeoGebra.getAPI(),name=select.value;
-        if(!name){say('选择点名后用定位圈标出位置；不会移动点或修改图稿。');return;}
-        if(!a.exists(name)||a.getObjectType(name)!=='point'){say('这个点已删除或改名，请刷新点名。');return;}
-        if(!a.isDefined(name)){say('这个点当前未定义，请检查交点或构造条件。');return;}
+        if(!name){clearInfo();say('选择点名后用定位圈标出位置；不会移动点或修改图稿。');return;}
+        if(!a.exists(name)||a.getObjectType(name)!=='point'){clearInfo();say('这个点已删除或改名，请刷新点名。');return;}
+        if(!a.isDefined(name)){clearInfo();say('这个点当前未定义，请检查交点或构造条件。');return;}
+        const px=a.getXcoord(name),py=a.getYcoord(name),definition=a.getCommandString(name,false)||a.getDefinitionString(name,false)||'';
+        const key=JSON.stringify([name,px,py,definition]);
+        if(key!==infoKey){
+          infoKey=key;pointInfo.replaceChildren();
+          const row=document.createElement('div');row.textContent='坐标读数（近似）：';const value=document.createElement('span');
+          const format=n=>Number.isFinite(n)?String(Number(n.toPrecision(10))):'?';
+          const expression='('+format(px)+', '+format(py)+')';
+          if(window.katex)window.katex.render(expression.replace(/e([+-]?\d+)/g,'\\times 10^{$1}'),value,{throwOnError:false,trust:false});else value.textContent=expression;
+          row.append(value);pointInfo.append(row);
+          const source=document.createElement('div');source.textContent=definition?'构造表达式：'+definition:'独立点或坐标定义点；此处不推断其题设身份。';pointInfo.append(source);
+        }
         if(!a.getVisible(name)){say('这个点已隐藏；定位不会自动显示它。');return;}
         const raw=a.getViewProperties(1),v=typeof raw==='string'?JSON.parse(raw):raw;
         if(!v||![v.width,v.height,v.invXscale,v.invYscale].every(n=>Number.isFinite(n)&&n>0)){say('当前视图尚未就绪。');return;}
@@ -101,7 +115,7 @@
         if(left<0||left>innerWidth||top<0||top>innerHeight){say('请滚动到画板查看定位。');return;}
         marker.style.left=left+'px';marker.style.top=top+'px';marker.hidden=false;
         say('正在定位 '+(a.getCaption(name)||name)+'（对象 '+name+'）；定位圈随点移动，不是新增点。');
-      }catch{say('画板正在更新，请稍候或刷新点名。');}
+      }catch{clearInfo();say('画板正在更新，请稍候或刷新点名。');}
     };
     const refresh=()=>{
       const previous=select.value,a=window.DongGeoGebra.getAPI();select.replaceChildren();
@@ -113,9 +127,9 @@
       select.value=[...select.options].some(o=>o.value===previous)?previous:'';tick();
     };
     tool('刷新点名',refresh,panel);
-    closePointFinder=()=>{clearInterval(timer);timer=0;panel.hidden=true;marker.hidden=true;select.value='';};
+    closePointFinder=()=>{clearInterval(timer);timer=0;panel.hidden=true;marker.hidden=true;select.value='';clearInfo();};
     window.addEventListener('dong:board-rebuilt',closePointFinder);
-    tool('结束定位',closePointFinder,panel);panel.append(feedback);host.append(panel);
+    tool('结束定位',closePointFinder,panel);panel.append(feedback,pointInfo);host.append(panel);
     select.addEventListener('change',tick);
     tool('查找点',()=>{if(!active)return;files.open=false;tools.open=false;panel.hidden=false;refresh();clearInterval(timer);timer=setInterval(tick,250);select.focus();},files.querySelector('div'));
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!panel.hidden){closePointFinder();event.preventDefault();}});

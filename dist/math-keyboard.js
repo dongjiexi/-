@@ -56,6 +56,8 @@
     panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','mathKeyboardTitle');panel.setAttribute('aria-describedby','mathKeyboardHelp');
     panel.innerHTML = '<header><div><strong id="mathKeyboardTitle">数学键盘</strong><span id="mathKeyboardHelp">点按符号会插入到当前参数或文字输入框</span><span id="mathKeyboardTarget" aria-live="polite"></span></div><div class="math-keyboard-edit"><button type="button" data-key-command="left" aria-label="光标左移">←</button><button type="button" data-key-command="right" aria-label="光标右移">→</button><button type="button" data-key-command="backspace" aria-label="退格">⌫</button><button type="button" data-key-command="close">关闭</button></div></header><div class="mathlive-host" data-mathlive-host><p class="mathlive-note">正在准备完整 LaTeX 公式编辑器…</p></div><div class="math-keyboard-tabs" role="tablist"></div><div class="math-keyboard-keys"></div>';
     document.body.append(panel);
+    const next=document.createElement('button');next.type='button';next.dataset.keyCommand='next';next.textContent='下一空';next.title='可视公式中跳到下一个填空位置';panel.querySelector('.math-keyboard-edit').prepend(next);
+    panel.addEventListener('pointerdown',event=>{if(event.target.closest('.math-keyboard-keys button,[data-key-command]'))event.preventDefault();});
     const tabBox=panel.querySelector('.math-keyboard-tabs'),keyBox=panel.querySelector('.math-keyboard-keys');
     keyBox.id='mathKeyboardKeys';keyBox.setAttribute('role','tabpanel');
     let activeGroup=groups[0].id,lastTarget=defaultTarget || null;
@@ -68,6 +70,7 @@
     function insert(text, caret = 0) {
       const target=usable(lastTarget)?lastTarget:defaultTarget;
       if(!usable(target))return;
+      if(window.DongMathLive?.edit(target,text))return;
       const start=Number.isInteger(target.selectionStart)?target.selectionStart:target.value.length;
       const end=Number.isInteger(target.selectionEnd)?target.selectionEnd:start;
       target.setRangeText(text,start,end,'end');
@@ -77,6 +80,8 @@
     }
     function command(value){
       const target=usable(lastTarget)?lastTarget:defaultTarget;if(!usable(target))return;
+      if(window.DongMathLive?.edit(target,null,value))return;
+      if(value==='next'){const from=target.selectionStart??0,index=target.value.indexOf('()',from);if(index>=0){target.setSelectionRange(index+1,index+1);target.focus();}return;}
       let start=target.selectionStart??target.value.length,end=target.selectionEnd??start;
       if(value==='backspace'){
         if(start===end&&start>0)start--;
