@@ -42,6 +42,21 @@ module.exports=async({page,assert,screenshot})=>{
   await numeric.getByRole('button',{name:'√',exact:true}).click();await numeric.getByRole('button',{name:'9',exact:true}).click();
   assert.equal(await radius.evaluate(el=>window.DongMathInput.toPlain(el.value)),'3','Root template remains compatible with numeric parameter parsing');
   await screenshot('visual-template-mobile.png',null);
+  await radius.fill('');await radius.dispatchEvent('input');await page.locator('#mathLiveField').focus();
+  await page.locator('#math-tab-advanced').click();await numeric.getByRole('button',{name:'向量',exact:true}).click();
+  await page.locator('#math-tab-letters').click();await numeric.getByRole('button',{name:'u',exact:true}).click();
+  assert.match(await radius.inputValue(),/\\vec\s*(?:\{u\}|u)/,'Vector key fills the vector name rather than inserting a fixed a');
+  await radius.fill('');await radius.dispatchEvent('input');await page.locator('#mathLiveField').focus();
+  await page.locator('#math-tab-advanced').click();await numeric.getByRole('button',{name:'2×2 矩阵',exact:true}).click();
+  await page.locator('#math-tab-common').click();
+  for(const digit of ['1','2','3','4']){await numeric.getByRole('button',{name:digit,exact:true}).click();if(digit!=='4')await page.locator('[data-key-command="next"]').click();}
+  const matrix=await radius.inputValue();assert(matrix.includes('pmatrix')&&/1\s*&\s*2/.test(matrix)&&/3\s*&\s*4/.test(matrix),'Matrix slots accept four values in order');
+  const center=page.locator('#addConicFields [data-equation-param="h"]');
+  await center.fill('');await center.focus();await page.locator('#mathLiveField').focus();
+  await numeric.getByRole('button',{name:'7',exact:true}).click();
+  assert.equal(await center.inputValue(),'7','Switching parameter reconnects the visible formula editor');
+  assert.equal(await radius.inputValue(),matrix,'Editing another parameter must not overwrite the old one');
+  await center.fill('0');await radius.focus();
   await page.locator('#mathLiveField').evaluate(field=>{
     // Reconnect and type in the same task, before requestAnimationFrame can run.
     window.DongMathLive.connect(document.querySelector('#mathKeyboard'),document.querySelector('#addConicFields [data-equation-param="r"]'));

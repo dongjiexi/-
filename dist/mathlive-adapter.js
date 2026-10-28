@@ -10,7 +10,11 @@ let fieldEditing = false;
 let visualEditing = false;
 document.addEventListener('focusin',event=>{
   if(event.target===activeField)visualEditing=true;
-  else if(event.target.matches?.('input,textarea'))visualEditing=false;
+  else if(event.target.matches?.('input,textarea')){
+    visualEditing=false;
+    const panel=document.getElementById('mathKeyboard');
+    if(panel&&!panel.hidden&&!panel.contains(event.target)&&event.target!==activeTarget)connect(panel,event.target);
+  }
 });
 
 document.addEventListener('input', event => {
@@ -21,7 +25,7 @@ document.addEventListener('input', event => {
 });
 
 function targetSupportsFormulaEditor(target) {
-  return target?.matches?.('input[type="text"],input:not([type])') && !target.disabled && !target.readOnly;
+  return target?.isConnected && target.matches?.('input[type="text"],input:not([type])') && !target.disabled && !target.readOnly;
 }
 
 function targetName(target) {
@@ -46,7 +50,7 @@ function connect(panel, target) {
     configureField = true;
     activeField.addEventListener('beforeinput', () => { if (!syncing) fieldEditing = true; });
     activeField.addEventListener('input', () => {
-      if (syncing || !fieldEditing || !activeTarget) return;
+      if (syncing || !fieldEditing || !targetSupportsFormulaEditor(activeTarget)) return;
       fieldEditing = false;
       syncing = true;
       activeTarget.value = activeField.value;
@@ -99,6 +103,20 @@ function edit(target,text,command){
   if(!visualEditing||target!==activeTarget||!target?.isConnected||!activeField?.isConnected||target.disabled||target.readOnly)return false;
   const commands={left:'moveToPreviousChar',right:'moveToNextChar',backspace:'deleteBackward',next:'moveToNextPlaceholder'};
   const templates={'()/()':'\\frac{#?}{#?}','√()':'\\sqrt{#?}','∛()':'\\sqrt[3]{#?}','()^()':'{#?}^{#?}'};
+  Object.assign(templates,{
+    '\\int  \\, dx':'\\int #?\\,dx',
+    '\\int_{a}^{b}  \\, dx':'\\int_{#?}^{#?}#?\\,dx',
+    '\\binom{n}{k}':'\\binom{#?}{#?}',
+    '\\vec{a}':'\\vec{#?}',
+    '\\left|\\vec{a}\\right|':'\\left|\\vec{#?}\\right|',
+    '\\overline{AB}':'\\overline{#?}',
+    '\\widehat{ABC}':'\\widehat{#?}',
+    '\\sum_{i=1}^{n}':'\\sum_{i=#?}^{#?}#?',
+    '\\prod_{i=1}^{n}':'\\prod_{i=#?}^{#?}#?',
+    '\\lim_{x\\to 0}':'\\lim_{x\\to #?}#?',
+    '\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}':'\\begin{pmatrix}#?&#?\\\\#?&#?\\end{pmatrix}',
+    '\\begin{vmatrix}a&b\\\\c&d\\end{vmatrix}':'\\begin{vmatrix}#?&#?\\\\#?&#?\\end{vmatrix}'
+  });
   syncing=true;
   try{
     if(command)activeField.executeCommand(commands[command]);
