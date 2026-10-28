@@ -10,6 +10,13 @@ module.exports=async({page,assert,screenshot})=>{
   const numeric=page.locator('#mathKeyboardKeys');
   assert.equal(await numeric.getAttribute('data-layout'),'common');
   assert.equal(await numeric.locator('button').count(),24,'Numeric keypad has four six-key rows');
+  assert.equal(await numeric.getByRole('button',{name:'a/b',exact:true}).locator('.katex').count(),1,'Fraction key displays a typeset fraction, not its name');
+  await page.locator('#math-tab-advanced').click();
+  for(const name of ['定积分','向量','2×2 矩阵','行列式','分段'])assert.equal(await numeric.getByRole('button',{name,exact:true}).locator('.katex').count(),1,'Typeset symbol key: '+name);
+  await page.setViewportSize({width:390,height:844});
+  for(const name of ['定积分','2×2 矩阵','分段'])assert(await numeric.getByRole('button',{name,exact:true}).evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Symbol must fit its key: '+name);
+  await screenshot('symbol-keycaps-advanced-mobile.png',null);
+  await page.locator('#math-tab-common').click();
   await radius.fill('');await radius.focus();
   await numeric.getByRole('button',{name:'a/b',exact:true}).click();
   await numeric.getByRole('button',{name:'1',exact:true}).click();

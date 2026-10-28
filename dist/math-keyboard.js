@@ -51,6 +51,20 @@
   ];
 
   function attach({defaultTarget} = {}) {
+    const symbols={
+      'a/b':'\\frac{\\square}{\\square}','分数':'\\frac{\\square}{\\square}','aⁿ':'\\square^{\\square}',
+      '上标 ^':'\\square^{\\square}','√':'\\sqrt{\\square}','∛':'\\sqrt[3]{\\square}',
+      '导数':'\\frac{d}{dx}','二阶导':'\\frac{d^2}{dx^2}','偏导':'\\frac{\\partial}{\\partial x}',
+      '不定积分':'\\int\\square\\,dx','定积分':'\\int_{\\square}^{\\square}\\square\\,dx',
+      '极限':'\\lim_{x\\to\\square}\\square','求和':'\\sum_{i=\\square}^{\\square}\\square','连乘':'\\prod_{i=\\square}^{\\square}\\square',
+      '组合数':'\\binom{\\square}{\\square}','向量':'\\vec{\\square}','单位向量':'\\hat{\\square}',
+      '模长':'\\left|\\vec{\\square}\\right|','上划线':'\\overline{\\square}','帽符号':'\\widehat{\\square}',
+      '2×2 矩阵':'\\begin{pmatrix}\\square&\\square\\\\\\square&\\square\\end{pmatrix}',
+      '行列式':'\\begin{vmatrix}\\square&\\square\\\\\\square&\\square\\end{vmatrix}',
+      '分段':'\\begin{cases}\\square&\\square\\\\\\square&\\square\\end{cases}',
+      '交集':'\\cap','并集':'\\cup','属于':'\\in','推出':'\\Rightarrow','等价':'\\Leftrightarrow',
+      '点坐标':'P(\\square,\\square)','弧':'\\overset{\\frown}{AB}','斜率':'k','距离':'d','离心率':'e'
+    };
     const panel = document.createElement('section');
     panel.id = 'mathKeyboard';panel.className = 'math-keyboard';panel.hidden = true;
     panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','mathKeyboardTitle');panel.setAttribute('aria-describedby','mathKeyboardHelp');
@@ -96,7 +110,15 @@
       const group=groups.find(item=>item.id===activeGroup) || groups[0];
       keyBox.dataset.layout=group.id;keyBox.setAttribute('aria-labelledby','math-tab-'+group.id);
       [...tabBox.children].forEach(button=>{const selected=button.dataset.group===group.id;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;});
-      keyBox.replaceChildren(...group.keys.map(key=>{const button=document.createElement('button');button.type='button';button.className=key.insert.length>10?'wide':'';button.textContent=key.label;button.title=`插入 ${key.insert}`;button.addEventListener('click',()=>insert(key.insert,key.caret||0));return button;}));
+      keyBox.replaceChildren(...group.keys.map(key=>{
+        const button=document.createElement('button');button.type='button';button.className=key.insert.length>10?'wide':'';
+        button.textContent=key.label;button.title=key.label+' · 插入 '+key.insert;button.setAttribute('aria-label',key.label);
+        if(symbols[key.label]&&window.katex){
+          const glyph=document.createElement('span');glyph.setAttribute('aria-hidden','true');
+          try{window.katex.render(symbols[key.label],glyph,{throwOnError:true,trust:false,displayMode:false});button.replaceChildren(glyph);button.style.minHeight='48px';}catch{/* Keep the readable label if the bundled renderer cannot display a symbol. */}
+        }
+        button.addEventListener('click',()=>insert(key.insert,key.caret||0));return button;
+      }));
     }
     for(const group of groups){const button=document.createElement('button');button.type='button';button.role='tab';button.id='math-tab-'+group.id;button.setAttribute('aria-controls',keyBox.id);button.dataset.group=group.id;button.textContent=group.name;button.addEventListener('click',()=>{activeGroup=group.id;renderGroup();});tabBox.append(button);}
     tabBox.addEventListener('keydown',event=>{
