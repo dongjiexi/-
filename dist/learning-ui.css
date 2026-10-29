@@ -1,4 +1,13 @@
 .learning-settings { display:flex;align-items:center;gap:.5rem;margin-top:.6rem; }
+#releaseSupport,#shareLessonDialog { font-size:14px;line-height:1.65; }
+#releaseSupport p,#shareLessonDialog p { margin:.6rem 0; }
+#releaseSupport button,#shareLessonDialog button { min-height:40px;padding:7px 12px;border:1px solid #c6a98e;border-radius:7px;background:#fff7ec;color:#783d2e;font:inherit;cursor:pointer; }
+#releaseSupport [data-download],#shareLessonDialog [data-share-download] { background:#984b39;color:white; }
+#releaseSupport button:disabled { opacity:.5;cursor:default; }
+#releaseSupport label:has(input[type=checkbox]),#shareLessonDialog label:has(input[type=checkbox]) { display:flex;gap:8px;align-items:flex-start;margin:10px 0; }
+#releaseSupport input[type=checkbox],#shareLessonDialog input[type=checkbox] { width:auto;flex:0 0 auto;margin-top:5px; }
+#releaseSupport textarea { min-height:110px;max-height:180px; }
+#releaseSupport pre,#shareLessonDialog pre { padding:8px;background:#f7efdf;border-radius:6px;font-size:12px; }
 .inspector-switch { position:sticky;top:-1rem;z-index:2;display:flex;gap:.4rem;padding:.45rem 0 .6rem;background:white; }
 .inspector-switch button { flex:1;border:1px solid #cbd9e7;border-radius:8px;background:#f5f8fc;padding:.5rem;font-size:.84rem;color:#294559; }
 .inspector-switch button[aria-pressed=true] { background:#087f80;border-color:#087f80;color:white; }
