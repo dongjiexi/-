@@ -61,7 +61,9 @@ class ReleaseBuildTests(unittest.TestCase):
             with zipfile.ZipFile(archive) as package:
                 names = set(package.namelist())
                 for required in ['deploy/phone/configure-inference.py', 'tests/fixtures/sourced-exam-additions.json',
-                                 'dist/scene-contract.mjs', 'dist/scene-audit.js', 'dist/axis-intercept-chord.js', 'dist/conic-parameter.js', 'dist/scene-merge.js']:
+                                 'dist/scene-contract.mjs', 'dist/scene-audit.js', 'dist/axis-intercept-chord.js', 'dist/conic-parameter.js', 'dist/scene-merge.js',
+                                 'dist/release-support.js', 'dist/about.html', 'dist/vendor/katex/LICENSE', 'dist/vendor/mathlive/LICENSE.txt',
+                                 'deploy/cloudflare/usage-guard.mjs', 'deploy/cloudflare/check-usage.ps1', 'deploy/cloudflare/ADMIN-OPERATIONS.md']:
                     self.assertIn('董解析/' + required, names)
                 self.assertFalse(any('wrangler.local' in name or name.endswith('.env') for name in names))
 

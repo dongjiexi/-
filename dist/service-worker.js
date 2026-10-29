@@ -1,9 +1,10 @@
 'use strict';
 
-const VERSION = '0.69.2';
+const VERSION = '0.70.0';
 // Final release review refreshes connectivity-status fixes without losing drafts.
 const CACHE = `dongjiexi-app-${VERSION}`;
 const CORE = [
+  './release-support.js', './about.html', './vendor/katex/LICENSE', './vendor/mathlive/LICENSE.txt',
   './autumn.css', './autumn-background.svg',
   './unified-board.js', './autumn-study.webp',
   './autumn-twig-frame.svg',
@@ -71,6 +72,15 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     const base=new URL(self.registration?.scope||'./',self.location.href||self.location.origin+'/');
+    // Only this named document gets an offline navigation fallback; never turn
+    // unknown paths, download URLs or error pages into the application shell.
+    if(url.pathname===base.pathname+'about.html'){
+      event.respondWith((async()=>{
+        const cache=await caches.open(CACHE);
+        try{const response=await fetch(request);if(response.ok)return response;return await cache.match('./about.html')||response;}
+        catch{return await cache.match('./about.html')||Response.error();}
+      })());return;
+    }
     if(url.pathname!==base.pathname&&url.pathname!==base.pathname+'index.html')return;
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);

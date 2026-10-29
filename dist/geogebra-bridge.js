@@ -701,7 +701,7 @@
     buildShell(); previousFocus = document.activeElement;
     dialog.dataset.teaching=String(!!binding);
     document.querySelector('.workspace')?.setAttribute('data-teaching',String(!!binding));
-    if(binding){dialog.querySelector('.dong-ggb-title').textContent='董解析 · 教学画板（集成预览）';dialog.querySelector('.dong-ggb-note').innerHTML='<details><summary>使用说明与能力边界</summary><p>当前题目自动同步，参数统一在董解析调整。题设构造锁定，支持的动点可拖动并回写原画板。更换构造会备份上一图；新增高级作图暂未回写题目模型，请及时保存 .ggb。</p></details>Made with GeoGebra® © GeoGebra GmbH · <a href="https://www.geogebra.org/license" target="_blank" rel="noopener noreferrer">非商业使用许可</a>';}
+    if(binding){dialog.querySelector('.dong-ggb-title').textContent='董解析 · 教学画板（集成预览）';dialog.querySelector('.dong-ggb-note').innerHTML='<details><summary>使用说明与能力边界</summary><p>当前题目自动同步，参数统一在董解析调整。题设构造锁定，支持的动点可拖动并回写原画板。更换构造会备份上一图；新增高级作图暂未回写题目模型，请及时保存 .ggb。</p></details>Made with GeoGebra® © GeoGebra GmbH · <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">官方网站</a> · <a href="https://www.geogebra.org/license" target="_blank" rel="noopener noreferrer">非商业使用许可</a>';}
     if(dialog.open)dialog.close();
     if(inlineSlot)inlineSlot.closest('.board-shell').removeAttribute('data-ggb-active');
     inlineSlot=slot;dialog.classList.toggle('dong-ggb-inline',!!slot);

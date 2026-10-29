@@ -1,4 +1,4 @@
-module.exports = async ({page, context, assert}) => {
+module.exports = async ({page, context, assert, baseURL}) => {
   const manifest = await page.locator('link[rel="manifest"]').getAttribute('href');
   assert.equal(manifest, 'manifest.webmanifest');
   const response = await page.request.get(new URL('manifest.webmanifest', page.url()).href);
@@ -38,6 +38,10 @@ module.exports = async ({page, context, assert}) => {
   assert.equal(offlineWeb.deployment, 'web');
   assert.equal(offlineWeb.apiEnabled, false);
   assert.match(await page.locator('#engineStatus').textContent(), /云端服务尚未配置.*画板和草稿/);
+  const help=await context.newPage();
+  await help.goto(new URL('about.html',baseURL).href,{waitUntil:'domcontentloaded'});
+  assert.match(await help.locator('h1').textContent(),/使用、隐私与来源/,'Offline help navigation uses its own cached document');
+  await help.close();
   await context.setOffline(false);
 
   await context.unroute('**/runtime-config.js');

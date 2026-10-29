@@ -75,6 +75,7 @@ jobs:
           node tests/algebra_geometry_tests.cjs
           node tests/release_safety_tests.cjs
           node tests/cloud_admission_tests.cjs
+          node tests/cloud_usage_guard_tests.cjs
           node tests/ai_result_integration_tests.cjs
           node tests/solution_review_tests.cjs
           node tests/goal_coverage_tests.cjs

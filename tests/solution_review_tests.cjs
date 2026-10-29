@@ -16,6 +16,8 @@ check(()=>assert.equal(review.inspect(previous).answered,1));
 check(()=>assert.equal(review.inspect(previous).diagram,'incomplete'));
 check(()=>assert.deepEqual(Array.from(review.inspect(previous).issues),['N','切线']));
 check(()=>assert.equal(review.inspect({...previous,scene:null}).diagram,'not-generated'));
+check(()=>{const failed=review.inspect({...previous,sceneAudit:{checks:[]},scene_load_error:'主曲线参数无效'});assert.equal(failed.diagram,'load-error');assert(failed.issues.includes('主曲线参数无效'));});
+check(()=>{const record={format:'dongjiexi-lesson',version:1,question:'题目',scene:{type:'circle',r:2},boardDraft:{base64:'private'},original:{model:{type:'circle'}},activePart:2,solution:{parts:[p(1)],study:{notes:'private'},conversation:[{role:'user',content:'private'}],rawReply:'private'}};const shared=review.shareRecord(record);assert.equal(shared.activePart,2);assert.equal(shared.scene.r,2);for(const key of ['study','conversation','rawReply'])assert.equal(shared.solution[key],undefined);assert.equal(shared.boardDraft,undefined);assert.equal(shared.original,undefined);assert.equal(review.shareRecord(record,{includeBoardDraft:true}).boardDraft.base64,'private');assert.equal(record.solution.study.notes,'private','Sharing must not mutate private backup');});
 check(()=>assert.equal(review.complete({...p(1),derivation:{proof_obligations:['待证']}}),false));
 check(()=>assert.equal(review.complete({...p(1),steps:[' ']}),false));
 check(()=>assert.throws(()=>review.request(previous,'另一题'),/题目已修改/));

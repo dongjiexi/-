@@ -3,7 +3,7 @@
   const escapeText = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
   const textBlock = value => `<div class="math-content">${escapeText(window.DongMathInput?.prepare(value)??value).replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>')}</div>`;
   const statusNames = {answered:'已生成完整作答',partial:'尚未完整解答',needs_information:'AI 认为条件不足（待核实）'};
-  const verificationNames = {generated:'仅生成 · 待核验','locally-verified':'局部代数核验通过',conflict:'发现确定性冲突','fully-verified':'完整验证通过','reference-reviewed':'题库参考讲解 · 非机器证明'};
+  const verificationNames = {generated:'仅生成 · 待核验','locally-verified':'局部代数核验通过',conflict:'发现确定性冲突',contradicted:'发现确定性冲突','fully-verified':'完整验证通过','reference-reviewed':'题库参考讲解 · 非机器证明'};
   const checkNames = {verified:'通过',contradicted:'冲突',unresolved:'未决'};
   const hasUncertainty = value => /\[(?:看不清|模糊|无法辨认|不确定)[^\]]*\]|(?:看不清|无法辨认)处|[?？]{3,}/i.test(String(value||''));
   function questionRepairSuggestion(value) {
@@ -311,7 +311,7 @@
       const summary=solution.completion?`逐问作答：${solution.completion.answered} / ${solution.completion.total}`:solution.mode==='symbolic-fallback'?'内置确定性解题结果':'解题结果';
       const review=window.DongSolutionReview?.inspect(solution);
       const retryable=!all&&solution.mode==='cloud-ai'&&solveMode==='cloud';
-      const reviewMarkup=review?`<div class="solve-review" role="status"><span>文字作答 ${review.answered}/${review.total} 问</span><span>图形：${escapeText({ 'not-generated':'尚未生成',incomplete:'仍有缺失或冲突',checked:'未发现已覆盖项缺失',unchecked:'尚未核对'}[review.diagram])}</span>${retryable&&(review.unanswered.length||review.diagram!=='checked')?'<button type="button" class="button secondary" data-solution-continue="all">补全解答与图形</button>':''}<small>作答、图形和证明核验分别记录；数值核对不代表一般性证明。</small></div>`:'';
+      const reviewMarkup=review?`<div class="solve-review" role="status"><span>文字作答 ${review.answered}/${review.total} 问</span><span>图形：${escapeText({ 'not-generated':'尚未生成','load-error':'载入失败，当前画板不作为本题图形',incomplete:'仍有缺失或冲突',checked:'未发现已覆盖项缺失',unchecked:'尚未核对'}[review.diagram])}</span>${retryable&&(review.unanswered.length||review.diagram!=='checked')?'<button type="button" class="button secondary" data-solution-continue="all">补全解答与图形</button>':''}<small>作答、图形和证明核验分别记录；数值核对不代表一般性证明。</small></div>`:'';
       const stale=api.question.value.trim()!==String(solution.restatement||'').trim()?'<p class="stale-question">输入框已修改，以下解析仍对应下方保存的原题。请重新解答以更新。</p>':'';
       const counts=report.counts||{};
       const trust=`<div class="trust-summary ${escapeText(report.status||'generated')}"><strong>${escapeText(verificationNames[report.status]||'核验状态未知')}</strong>${report.status==='reference-reviewed'?'':`<span>通过 ${Number(counts.verified)||0} · 冲突 ${Number(counts.contradicted)||0} · 未决 ${Number(counts.unresolved)||0}</span>`}</div>`;
@@ -456,6 +456,13 @@
         find('#engineStatus').classList.toggle('ready',selectedReady&&!uncertainHealth);
         find('#engineStatus').textContent=cloudOnly?(selectedReady?'云端 AI 已就绪 · 结论与图形将在浏览器复算':'云端模型暂不可用 · 画板和草稿仍可使用'):selectedReady?(remote?'内置解题 + 在线智能增强已就绪':'内置解题 + 可选本机智能增强已就绪'):data.engine.available?(remote?'内置解题可用 · 在线增强模型未选择':'内置解题可用 · 可选择已安装模型增强'):data.engine.installed?'内置解题可用 · 智能增强组件可选':remote?'内置解题可用 · 在线增强暂不可用':'内置解题已就绪 · 无需安装额外模型';
         if(uncertainHealth)find('#engineStatus').textContent='模型检测暂时波动 · 不是断言服务掉线；实际解题结果以本次请求为准';
+        if(remote&&data.engine.health_status==='paused'){
+          engineReady=false;
+          showCloudFallback(true,'维护者已暂停新的云端解题、识图和追问。题目、画板与题稿仍可使用，请稍后重试。');
+          find('#cloudOutage strong').textContent='云端推理已暂停';
+          setCloudConnection('busy','云端：已连接 · 推理已暂停');
+          find('#engineStatus').textContent='云端推理已暂停 · 画板和草稿仍可使用';
+        }
         const limits=data.limits;
         find('#cloudUsageInfo').textContent='';
         find('#cloudUsageInfo').hidden=true;
@@ -503,8 +510,21 @@
     function snapshot() {
       return {format:'dongjiexi-lesson',version:1,id:crypto.randomUUID(),savedAt:new Date().toISOString(),title:api.state.solution?.title||api.question.value.slice(0,32)||'未命名图稿',question:api.question.value,scene:api.state.model?api.sceneData():null,boardDraft:window.DongUnifiedBoard?.snapshot?.()||null,original:api.state.original||null,solution:api.state.solution||null,activePart:api.state.activePart,exploring:!!api.state.exploring};
     }
-    function readNotebook(){try{const entries=JSON.parse(localStorage.getItem(notebookKey)||'[]');return Array.isArray(entries)?entries:[];}catch{return [];}}
-    function readBackups(){const entries=JSON.parse(localStorage.getItem(backupKey)||'[]');if(!Array.isArray(entries))throw new Error('旧稿备份记录无法读取，已保留原数据。');return entries;}
+    const storedLesson=item=>item&&typeof item==='object'&&!Array.isArray(item)&&item.format==='dongjiexi-lesson'&&item.version===1&&typeof item.id==='string'&&typeof item.title==='string'&&typeof item.question==='string'&&item.question.length<=18000;
+    function collection(key){
+      const raw=localStorage.getItem(key);if(raw==null)return {entries:[],damaged:false,raw:null};
+      try{const parsed=JSON.parse(raw);if(!Array.isArray(parsed))return {entries:[],damaged:true,raw};const entries=parsed.filter(storedLesson);return {entries,damaged:entries.length!==parsed.length,raw};}
+      catch{return {entries:[],damaged:true,raw};}
+    }
+    function readNotebook(){return collection(notebookKey).entries;}
+    function readBackups(){return collection(backupKey).entries;}
+    function writeCollection(key,entries){
+      const previous=collection(key);
+      // Save unreadable original bytes before replacing an index. A failed
+      // recovery backup must leave the user's original collection untouched.
+      if(previous.damaged)localStorage.setItem(key+':recovery:'+Date.now()+':'+crypto.randomUUID(),previous.raw);
+      localStorage.setItem(key,JSON.stringify(entries));
+    }
     let upgradeSolution=null,upgradeModel=null,upgradeQuestion='',upgradeItem=null,bankPromise=null;
     function checkReferenceUpgrade(){
       const notice=find('#lessonUpgradeNotice'),solution=api.state.solution,model=api.state.model;
@@ -530,7 +550,7 @@
         api.modelFromJson(JSON.stringify(next.scene));
         const backup=JSON.parse(JSON.stringify(before));backup.title='升级前备份 · '+backup.title;backup.upgradeBackup=true;
         const entries=readBackups();
-        try{localStorage.setItem(backupKey,JSON.stringify([backup,...entries]));}catch{throw new Error('备份空间不足，未升级、未删除旧稿；请先导出题稿保存。');}
+        try{writeCollection(backupKey,[backup,...entries]);}catch{throw new Error('备份空间不足，未升级、未删除旧稿；请先导出题稿保存。');}
         restoreLesson(next);saveLesson(true);find('#lessonUpgradeNotice').hidden=true;
         api.setStatus('动态图已升级。手动对象和笔记已保留；升级前完整图稿可在“我的题本”中打开。');
       }catch(error){api.setStatus(error.message||'升级未完成；原稿保留。',true);}
@@ -564,18 +584,26 @@
       const record=snapshot();
       const entries=readNotebook().filter(item=>item.question!==record.question);
       const combined=[record,...entries].slice(0,50);
-      try{localStorage.setItem(notebookKey,JSON.stringify(combined));}catch{throw new Error('题本空间不足，当前结果仍在页面中；请导出题稿保存。');}
+      try{writeCollection(notebookKey,combined);}catch{throw new Error('题本空间不足或异常记录未能备份，当前结果仍在页面中；请导出题稿保存。');}
       try{localStorage.removeItem(draftKey);}catch{}
       const draftBox=find('#draftRecovery');if(draftBox)draftBox.hidden=true;
       if(!silent)api.setStatus('本题、全部解析和图形已存入“我的题本”。');
       renderNotebook();
     }
     function restoreLesson(record) {
-      if(record.format!=='dongjiexi-lesson'||record.version!==1||typeof record.question!=='string'||record.question.length>18000)throw new Error('不是支持的董解析题稿。');
+      if(!record||typeof record!=='object'||Array.isArray(record)||record.format!=='dongjiexi-lesson'||record.version!==1||typeof record.question!=='string'||record.question.length>18000)throw new Error('不是支持的董解析题稿。');
+      if(record.solution!=null&&(typeof record.solution!=='object'||Array.isArray(record.solution)))throw new Error('解析数据格式无效。');
       if(record.solution&&(!Array.isArray(record.solution.parts)||record.solution.parts.length>12||record.solution.parts.some(part=>!part||!Array.isArray(part.steps)||part.steps.length>100)))throw new Error('解析数据格式不完整。');
       if(record.solution){
+        const solution=record.solution;
+        for(const key of ['title','restatement','strategy','rawReply'])if(solution[key]!=null&&typeof solution[key]!=='string')throw new Error('解析文字字段格式无效。');
         for(const field of ['knowns','assumptions','conversation'])if(record.solution[field]!=null&&!Array.isArray(record.solution[field]))throw new Error('解析数据格式无效。');
-        if(record.solution.parts.some(part=>part.steps.some(step=>typeof step!=='string')))throw new Error('推导步骤必须是文字。');
+        if(record.solution.parts.some(part=>part.steps.some(step=>typeof step!=='string')||part.answer!=null&&typeof part.answer!=='string'||part.model_steps!=null&&(!Array.isArray(part.model_steps)||part.model_steps.some(step=>typeof step!=='string'))||part.derivation?.proof_obligations!=null&&(!Array.isArray(part.derivation.proof_obligations)||part.derivation.proof_obligations.some(step=>typeof step!=='string'))))throw new Error('推导步骤和结论必须是文字。');
+        for(const report of [solution.verification,...solution.parts.map(part=>part.verification)])if(report?.checks!=null&&(!Array.isArray(report.checks)||report.checks.some(check=>!check||typeof check!=='object')))throw new Error('机器核验记录格式无效。');
+        if(solution.scene_warnings!=null&&(!Array.isArray(solution.scene_warnings)||solution.scene_warnings.some(w=>typeof w!=='string')))throw new Error('图形提示格式无效。');
+        if(solution.sceneAudit)for(const key of ['missing','answerMissing','missingLines','answerMissingLines','unavailable','missingPolygons','invalid','checks','answerUnresolved','answerConflicts'])if(solution.sceneAudit[key]!=null&&(!Array.isArray(solution.sceneAudit[key])||solution.sceneAudit[key].some(item=>['checks','answerUnresolved','answerConflicts'].includes(key)?!item||typeof item!=='object':typeof item!=='string')))throw new Error('图形核对记录格式无效。');
+        if(solution.lessonSource?.sources!=null&&(!Array.isArray(solution.lessonSource.sources)||solution.lessonSource.sources.some(item=>!item||typeof item.url!=='string')))throw new Error('题目来源格式无效。');
+        if(solution.problemModel?.source?.ambiguities!=null&&(!Array.isArray(solution.problemModel.source.ambiguities)||solution.problemModel.source.ambiguities.some(item=>typeof item!=='string')))throw new Error('题目模型的待确认字段格式无效。');
         if(record.solution.conversation?.some(item=>!item||!['user','assistant'].includes(item.role)||typeof item.content!=='string'))throw new Error('追问记录格式无效。');
         if(record.solution.study!=null&&(typeof record.solution.study!=='object'||Array.isArray(record.solution.study)))throw new Error('学习记录格式无效。');
       }
@@ -595,8 +623,9 @@
     function renderNotebook() {
       const query=find('#notebookSearch').value.toLowerCase();
       const filter=find('#reviewFilter')?.value||'all';
+      const damaged=collection(notebookKey).damaged||collection(backupKey).damaged;
       const entries=[...readNotebook(),...readBackups()].filter(item=>(item.title+' '+item.question+' '+(item.solution?.study?.notes||'')).toLowerCase().includes(query)&&(filter==='all'||item.solution?.study?.review===filter));
-      find('#notebookList').innerHTML=entries.length?entries.map(item=>`<article class="notebook-entry"><div><strong>${escapeText(item.title)}</strong><p>${escapeText(item.question.slice(0,100))}</p><small>${escapeText(new Date(item.savedAt).toLocaleString())}</small></div><button class="button secondary" data-open-lesson="${escapeText(item.id)}">打开</button></article>`).join(''):'<p>还没有符合条件的题目。解答后会自动保存，也可以点击“保存本题”。</p>';
+      find('#notebookList').innerHTML=(damaged?'<p role="status">部分题本记录无法读取，原数据已保留；仍可打开有效题稿。保存新题稿时会先备份异常原文。</p>':'')+(entries.length?entries.map(item=>`<article class="notebook-entry"><div><strong>${escapeText(item.title)}</strong><p>${escapeText(item.question.slice(0,100))}</p><small>${escapeText(new Date(item.savedAt).toLocaleString())}</small></div><button class="button secondary" data-open-lesson="${escapeText(item.id)}">打开</button></article>`).join(''):'<p>还没有符合条件的题目。解答后会自动保存，也可以点击“保存本题”。</p>');
       find('#notebookList').querySelectorAll('[data-open-lesson]').forEach(button=>button.addEventListener('click',()=>{try{restoreLesson(entries.find(item=>item.id===button.dataset.openLesson));find('#notebookDialog').close();}catch(error){report(error);}}));
     }
     function printLesson() {
@@ -717,8 +746,9 @@
         result.sceneAudit||={};result.sceneAudit.checks=[...(result.sceneAudit.checks||[]),...algebra];
       }
       result.completion={answered:result.parts.filter(completed).length,total:result.parts.length};
+      delete result.scene_load_error;
       api.showSolution(result);
-      if(result.scene){try{api.installScene(api.modelFromJson(JSON.stringify(result.scene)),['local-ollama','cloud-ai','external-ai'].includes(result.mode)?'智能生成图形（需核验）':'内置精确建模');}catch(error){result.scene_notice='图形未能载入，解析已保留：'+error.message;}}
+      if(result.scene){try{api.installScene(api.modelFromJson(JSON.stringify(result.scene)),['local-ollama','cloud-ai','external-ai'].includes(result.mode)?'智能生成图形（需核验）':'内置精确建模');}catch(error){result.scene_load_error=String(error.message||'图形载入失败');result.scene_notice='图形未能载入，解析已保留：'+result.scene_load_error;api.state.exploring=true;find('#exploreNotice').hidden=false;find('#exploreNotice').textContent='本题图形未能载入；当前画板不作为本题答案的图形。';}}
       else if(api.state.model){api.state.exploring=true;find('#exploreNotice').hidden=false;find('#exploreNotice').textContent='本题没有生成新图形，画板仍是此前的图稿，不对应当前解析。';}
       inspectorView='lesson';renderSolution();api.remember();
       if(api.question.value.trim()===original){try{saveLesson(true);}catch(error){report(error);return;}}
@@ -742,7 +772,7 @@
         if(api.question.value.trim()!==original||api.state.solution!==current){api.setStatus('题目或题稿已切换，旧补全结果未应用。');progress('idle','题稿已切换，等待解题。');return;}
         const merged=window.DongSolutionReview.merge(previous,result);
         const backup=JSON.parse(JSON.stringify(before));backup.title='补全前备份 · '+backup.title;backup.continuationBackup=true;
-        try{localStorage.setItem(backupKey,JSON.stringify([backup,...readBackups()]));}catch{throw new Error('题稿备份失败，补全结果未应用；原解析和手动图稿保留。请先导出题稿。');}
+        try{writeCollection(backupKey,[backup,...readBackups()]);}catch{throw new Error('题稿备份失败，补全结果未应用；原解析和手动图稿保留。请先导出题稿。');}
         return acceptSolution(merged,original);
       });
     }
@@ -938,6 +968,16 @@
     find('#saveLesson').addEventListener('click',async()=>{try{if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();saveLesson();}catch(error){report(error);}});
     find('#notebookSearch').addEventListener('input',renderNotebook);
     const reviewFilter=document.createElement('select');reviewFilter.id='reviewFilter';reviewFilter.setAttribute('aria-label','题本掌握情况筛选');reviewFilter.innerHTML='<option value="all">全部题目</option><option value="review">错题 · 需要复习</option><option value="mastered">已掌握</option>';find('#notebookSearch').after(reviewFilter);reviewFilter.addEventListener('change',renderNotebook);
+    const shareButton=document.createElement('button');shareButton.type='button';shareButton.id='exportSharedLesson';shareButton.className='button secondary';shareButton.textContent='导出分享题稿';find('#exportLesson').after(shareButton);
+    const shareDialog=document.createElement('dialog');shareDialog.id='shareLessonDialog';shareDialog.className='study-dialog';shareDialog.setAttribute('aria-labelledby','shareLessonTitle');
+    shareDialog.innerHTML='<header><h2 id="shareLessonTitle">预览分享题稿</h2><button type="button" data-share-close>取消</button></header><p>包含题目、当前小问、解析和图形构造。追问、学习笔记和原始 AI 回复默认移除。图形标签和解析本身仍可能含个人信息，请检查下方内容后下载。对方可用“我的题本 → 导入题稿”打开。</p><label><input type="checkbox" data-share-board>附加高级画板完整图稿（可能包含自定义文字和手工对象）</label><pre data-share-preview style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:45dvh;overflow:auto"></pre><button type="button" data-share-download>下载分享文件</button>';
+    document.body.append(shareDialog);let shareSnapshot=null,shareContent='';
+    const previewShare=()=>{const record=window.DongSolutionReview.shareRecord(shareSnapshot,{includeBoardDraft:shareDialog.querySelector('[data-share-board]').checked});shareContent=JSON.stringify(record,null,2);shareDialog.querySelector('[data-share-preview]').textContent=shareContent;};
+    shareButton.addEventListener('click',async()=>{try{if(!api.question.value.trim()&&!api.state.model)throw new Error('请先输入题目或建立图形。');if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();shareSnapshot=snapshot();shareDialog.querySelector('[data-share-board]').checked=false;previewShare();find('#notebookDialog').close();shareDialog.showModal();}catch(error){report(error);}});
+    shareDialog.querySelector('[data-share-board]').addEventListener('change',previewShare);
+    shareDialog.querySelector('[data-share-close]').addEventListener('click',()=>shareDialog.close());
+    shareDialog.querySelector('[data-share-download]').addEventListener('click',()=>{if(shareContent)api.download('董解析-分享题稿.json',new Blob([shareContent],{type:'application/json'}));});
+    shareDialog.addEventListener('close',()=>{shareSnapshot=null;shareContent='';shareDialog.querySelector('[data-share-preview]').textContent='';});
     find('#exportLesson').addEventListener('click',async()=>{try{if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();const record=snapshot();api.download('董解析-题稿.json',new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));}catch(error){report(error);}});
     find('#importLesson').addEventListener('change',async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>5*1024*1024)throw new Error('题稿超过 5 MB。');restoreLesson(JSON.parse(await file.text()));find('#notebookDialog').close();}catch(error){report(error);}finally{event.target.value='';}});
     find('#sendFollowup').addEventListener('click',followup);

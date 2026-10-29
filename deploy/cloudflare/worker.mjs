@@ -1,8 +1,9 @@
 import {SOLVE_SYSTEM, splitParts} from '../../dist/cloud-contract.mjs';
 import {VISION_MODEL, VISION_SYSTEM, validateImage} from '../../dist/recognition-contract.mjs';
 import {createHealthProbe} from './health-probe.mjs';
+import {inferencePaused,adminUsage} from './usage-guard.mjs';
 const encoder=new TextEncoder(), decoder=new TextDecoder();
-const VERSION='0.69.2';
+const VERSION='0.70.0';
 class PublicError extends Error {constructor(status,message,retry=0){super(message);this.status=status;this.retry=retry;}}
 const bytes=value=>encoder.encode(value);
 const b64=data=>btoa(String.fromCharCode(...data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -76,9 +77,15 @@ return async(request,env,ctx)=>{
   try{
     if(origin&&!allowed.includes(origin))throw new PublicError(403,'请从董解析页面发起请求。');
     if(request.method==='OPTIONS')return new Response(null,{status:origin?204:403,headers});
+    if(request.method==='GET'&&url.pathname==='/api/admin/usage'){
+      const report=await adminUsage(request,env);
+      if(!report)throw new PublicError(404,'接口不存在。');
+      return json(report);
+    }
     if(request.method==='GET'&&url.pathname==='/api/health'){
       const installed=configured(env),signed=await session(request,env),authorized=installed&&(publicAccess(env)||(signed&&!signed.guest));
-      const health=authorized?await probeHealth(env,models(env),url):{models:[],status:'not-checked',checkedAt:null,error:''};
+      const paused=inferencePaused(env);
+      const health=paused?{models:[],status:'paused',checkedAt:null,error:'INFERENCE_PAUSED'}:authorized?await probeHealth(env,models(env),url):{models:[],status:'not-checked',checkedAt:null,error:''};
       const available=health.models,probeError=health.error;
       const vision=available.includes(VISION_MODEL);
       return json({app:'董解析',version:VERSION,deployment:'cloud',auth_required:!publicAccess(env),guest_session:publicAccess(env),auth_configured:installed,default_model:env.DONGJIEXI_MODEL_ID||'deepseek-flash',limits:{per_hour:publicAccess(env)?40:null,daily:clamp(env.DONGJIEXI_DAILY_JOBS,50,200)},capabilities:{transport:'sse',symbolic_verification:'browser-supported-types',vision},engine:{available:available.length>0,models:available,installed,remote:true,provider:'chat-completions',health_status:health.status,last_verified:health.checkedAt,vision,vision_model:vision?VISION_MODEL:null,...(authorized&&probeError?{error_code:probeError}:{})}});
@@ -95,6 +102,7 @@ return async(request,env,ctx)=>{
       return json({token:token+'.'+b64(await hmac(env.SESSION_SECRET,token)),expires_in:3600,guest});
     }
     const auth=await session(request,env);if(!auth||(!publicAccess(env)&&auth.guest))throw new PublicError(401,publicAccess(env)?'匿名连接凭证已失效，网页可自动重建，无需访问口令。':'在线解题授权已失效，请重新输入访问口令。');
+    if(inferencePaused(env))throw new PublicError(503,'管理员已暂时暂停云端解题、识图和追问。画板与题稿仍可使用。',60);
     const recognizing=url.pathname==='/api/recognize';
     const input=await body(request,recognizing?3*1024*1024:65536);
     if((input.kind==='recognize')!==recognizing)throw new PublicError(400,'图片识别与文字解题须使用各自接口。');

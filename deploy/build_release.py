@@ -20,6 +20,8 @@ STATIC_SUFFIXES = {'.html', '.js', '.mjs', '.css', '.json', '.webmanifest', '.sv
 APP_FILES = {
     'deploy/cloudflare/worker.mjs', 'deploy/cloudflare/schema.sql', 'deploy/cloudflare/wrangler.jsonc', 'deploy/cloudflare/README.md',
     'deploy/cloudflare/health-probe.mjs', 'deploy/public-cloud-policy.json',
+    'deploy/cloudflare/usage-guard.mjs', 'deploy/cloudflare/check-usage.ps1', 'deploy/cloudflare/setup-admin.ps1', 'deploy/cloudflare/ADMIN-OPERATIONS.md',
+    'tests/cloud_admin_scripts_tests.ps1',
     'cloud_inference.py', 'render.yaml',
     'server.py', 'learning_engine.py', 'verification_engine.py', 'requirements.txt', 'version.json',
     'Dockerfile', 'compose.yaml', '.dockerignore', '.gitignore', 'README.md', '使用说明.md', '更新日志.md',

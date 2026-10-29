@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>使用、隐私与来源说明 · 董解析</title>
+<style>body{margin:0;background:#f5ecdd;color:#49372d;font:16px/1.8 system-ui,"Microsoft YaHei",sans-serif}main{max-width:850px;margin:24px auto;padding:24px;background:#fffaf2;border:1px solid #dac8b5;border-radius:14px}h1{font-size:26px}h2{font-size:20px;margin-top:28px}a{color:#964731}li{margin-bottom:8px}nav{display:flex;flex-wrap:wrap;gap:16px}code{overflow-wrap:anywhere}@media(max-width:600px){main{margin:8px;padding:18px}}</style></head>
+<body><main><nav><a href="./">返回董解析</a><a href="#privacy">隐私说明</a><a href="#sources">组件与来源</a><a href="#contact">联系维护者</a></nav>
+<h1>董解析 · 使用、隐私与来源说明</h1><p>更新日期：2026-10-29。董解析当前提供公开测试版本。解题、绘图与局部核验仍有覆盖范围，请结合每问的核验状态使用。</p>
+<h2>答案和图形</h2><p>AI 生成的推导需要核对。“已生成完整作答”表示返回内容完整，不等于经过完整数学证明。局部代数检验、数值检验、题库参考讲解和完整验证分别标注。图形是教学展示；拖动后的探索状态可能与原题条件不同。图形加载失败与题目条件不足是不同情况。</p>
+<h2>保存与分享</h2><p>题本、草稿、图稿与部分偏好保存在当前设备的浏览器存储中。隐私浏览、空间不足、清理浏览器数据或更换浏览器可能使它们无法恢复。请使用“我的题本”导出重要题稿，并保留本机文件。</p><p>分享文件前请预览内容。完整题稿可能包含题目、解析、图形、追问和学习笔记。导出的文件由你自行保管和发送；网站不会替你公开发布题稿。</p>
+<h2 id="privacy">数据与隐私</h2><ul>
+<li>云端解题：题目、所选模型、必要的小问和补全上下文发送到配置的接口，再转交模型服务。追问会附带必要的已有解答和近期对话。</li>
+<li>识图：点击云端识图时，选中的题目图片会随请求发送到模型服务；选择浏览器 OCR 时，识别在浏览器中运行，并按需从 jsDelivr 等资源服务加载 Tesseract.js、识别工作线程及语言资源。资源加载仍会产生网络请求。请勿上传不必要的姓名、学号、联系方式、证件或人脸。</li>
+<li>连接与防滥用：接口使用临时会话；服务端使用网络标识的 HMAC 摘要及计数器实施请求保护。摘要并不意味着无法关联请求，也不等于完全匿名。</li>
+<li>应用后端当前不把题目或图片写入题本数据库；数据库用于计数和并发保护。托管平台访问日志、网络传输和模型供应商另有数据规则，本站不承诺第三方零留存。</li>
+<li>网页资源使用 GitHub Pages，云端接口使用 Cloudflare Workers；模型请求当前转交 DeepSeek。集成画板会加载 GeoGebra 的在线资源，浏览器可能向这些服务提供通常的网络请求信息。</li>
+<li>问题反馈：默认仅包含用户填写的问题类型、描述和应用版本。题目及图形模型须主动勾选；原始图片、会话凭据、浏览器存储不会自动打包。反馈文件本地生成，用户检查后自行发送。</li>
+</ul><p>第三方规则：<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub 隐私说明</a> · <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare 隐私说明</a> · <a href="https://cdn.deepseek.com/policies/zh-CN/deepseek-privacy-policy.html" target="_blank" rel="noopener noreferrer">DeepSeek 隐私政策</a> · <a href="https://www.geogebra.org/privacy" target="_blank" rel="noopener noreferrer">GeoGebra 隐私政策</a>。</p>
+<h2 id="sources">组件授权与题库来源</h2><ul>
+<li>GeoGebra®：Made with GeoGebra® © GeoGebra GmbH。本站通过接口集成在线画板，当前按非商业教学用途使用。应用、服务、素材与源代码的许可范围不同，商业或收费场景须重新核对授权。<a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">GeoGebra 官方网站</a> · <a href="https://www.geogebra.org/license" target="_blank" rel="noopener noreferrer">官方许可</a>。</li>
+<li>KaTeX：用于数学排版，随发行包保留 <a href="vendor/katex/LICENSE">MIT 许可与版权声明</a>。</li>
+<li>MathLive：用于可视公式输入，随发行包保留 <a href="vendor/mathlive/LICENSE.txt">MIT 许可与版权声明</a>。</li>
+<li>真题与参考资料：每题列出卷别、年份、题号、节选或转写范围及核对来源。请在真题题库的题目详情中查看；来源链接和参考讲解不代表官方授权、官方答案认证或完整题库。发现错题或权利问题可联系维护者处理。</li>
+</ul>
+<h2 id="contact">问题、隐私与来源更正</h2><p>维护入口：<a href="https://github.com/dongjiexi/-/issues/new" target="_blank" rel="noopener noreferrer">董解析项目反馈页</a>。该入口公开，请不要提交密码、密钥、个人身份信息或未脱敏的图片。可以先在网站“帮助与问题反馈”生成并检查本地反馈文件。删除或更正请求请指明相关题号、来源或公开内容，避免附上额外个人信息。</p>
+</main></body></html>

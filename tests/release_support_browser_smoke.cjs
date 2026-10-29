@@ -1,0 +1,22 @@
+module.exports=async({page,assert})=>{
+  await page.locator('#question').fill('PRIVATE_QUESTION');
+  await page.getByRole('button',{name:'帮助与问题反馈',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'帮助与问题反馈'});
+  await dialog.locator('[data-description]').fill('<img src=x onerror=alert(1)>');
+  await dialog.locator('[data-preview]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-download]').disabled);
+  let data=JSON.parse(await dialog.locator('[data-output]').textContent());
+  assert(!('question'in data)&&!('scene'in data),'Sensitive attachments are opt-in');
+  assert.equal(await dialog.locator('[data-output] img').count(),0,'Feedback is rendered as literal text');
+  await dialog.locator('[data-question]').check();assert(await dialog.locator('[data-download]').isDisabled());
+  await dialog.locator('[data-preview]').click();await page.waitForFunction(()=>!document.querySelector('[data-download]').disabled);
+  data=JSON.parse(await dialog.locator('[data-output]').textContent());assert.equal(data.question,'PRIVATE_QUESTION');
+  const download=page.waitForEvent('download');await dialog.locator('[data-download]').click();assert.equal((await download).suggestedFilename(),'董解析-问题反馈.json');
+  await page.route('**/app-version.json',async route=>{await new Promise(resolve=>setTimeout(resolve,250));await route.fulfill({json:{version:'fixture'}});});
+  await dialog.locator('[data-preview]').click();await dialog.locator('[data-description]').fill('预览中途修改');
+  await page.waitForTimeout(400);assert(await dialog.locator('[data-download]').isDisabled(),'Changed consent/content invalidates a pending preview');
+  await page.setViewportSize({width:390,height:844});
+  assert(await dialog.evaluate(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1;}),'Feedback dialog fits phone width');
+  await dialog.locator('[data-close]').click();
+  const about=await page.request.get(new URL('about.html',page.url()).href);assert(about.ok());assert((await about.text()).includes('GeoGebra 官方网站'));
+};

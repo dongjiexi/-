@@ -13,7 +13,7 @@ module.exports=async({page,context,assert,screenshot})=>{
     if(transport==='unavailable')return route.fulfill({status:503,contentType:'text/html',body:'Unavailable'});
     const authenticated=!!route.request().headers().authorization;
     return route.fulfill({contentType:'application/json',body:JSON.stringify({app:'董解析',
-      default_model:'deepseek-chat',engine:{available:authenticated&&transport!=='model-unavailable',remote:true,
+      default_model:'deepseek-chat',engine:{available:authenticated&&!['model-unavailable','paused'].includes(transport),remote:true,health_status:transport==='paused'?'paused':'ready',
         models:authenticated?['deepseek-chat']:[]}})});
   });
   await context.route('**/api/session',route=>transport==='network'?route.abort('failed'):
@@ -60,6 +60,9 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.equal(await page.locator('#cloudVisionChoice').isVisible(),false,'Unavailable cloud OCR must not look ready');
   await page.evaluate(()=>window.dispatchEvent(new Event('online')));
   await page.locator('#cloudOutage').waitFor({state:'hidden'});
+  transport='paused';await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForFunction(()=>document.querySelector('#engineStatus').textContent.includes('推理已暂停'));
+  assert.match(await page.locator('#cloudConnectionText').textContent(),/已连接.*推理已暂停/);
   transport='network';await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
   await page.setViewportSize({width:390,height:844});
   await page.locator('[data-mobile-panel="board"]').click();

@@ -51,7 +51,20 @@
     for(const warning of solution?.scene_warnings||[])if(typeof warning==='string'&&!issues.includes(warning))issues.push(warning);
     for(const c of audit?.checks||[])if(c.passed===false&&!issues.includes(c.label))issues.push(c.label);
     const answered=parts.filter(complete).length;
-    return {answered,total:parts.length,unanswered:parts.filter(p=>!complete(p)).map(p=>p.index),diagram:!solution?.scene?'not-generated':issues.length?'incomplete':audit?'checked':'unchecked',issues:issues.slice(0,60)};
+    // Geometry may have passed data checks but still fail during installation.
+    // A retained old board must never be described as this answer's checked graph.
+    if(solution?.scene_load_error&&!issues.includes(solution.scene_load_error))issues.unshift(solution.scene_load_error);
+    return {answered,total:parts.length,unanswered:parts.filter(p=>!complete(p)).map(p=>p.index),diagram:solution?.scene_load_error?'load-error':!solution?.scene?'not-generated':issues.length?'incomplete':audit?'checked':'unchecked',issues:issues.slice(0,60)};
+  }
+  function shareRecord(record,{includeBoardDraft=false}={}){
+    if(!record||record.format!=='dongjiexi-lesson'||record.version!==1||typeof record.question!=='string')throw new Error('当前题稿无法分享，请先保存题目或图形。');
+    // Share a lesson through the existing importer; teacher notes, conversations
+    // and raw model replies belong in the private backup export, not this file.
+    const result=clone(record);delete result.original;
+    if(!includeBoardDraft)delete result.boardDraft;
+    if(result.solution)for(const key of ['study','conversation','rawReply','model_scene','model_scene_warnings'])delete result.solution[key];
+    result.shared=true;
+    return result;
   }
   function request(solution,question,focusPart=null){
     if(!solution||solution.restatement!==question||!Array.isArray(solution.parts)||!solution.parts.length)throw new Error('题目已修改或原解答不可用，请重新解题。');
@@ -85,5 +98,5 @@
     }
     return result;
   }
-  root.DongSolutionReview=Object.freeze({complete,inspect,request,merge,algebraConflicts,restoreReferenceScene});
+  root.DongSolutionReview=Object.freeze({complete,inspect,request,merge,algebraConflicts,restoreReferenceScene,shareRecord});
 })(typeof window==='object'?window:globalThis);
