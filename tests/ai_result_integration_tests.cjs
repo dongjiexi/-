@@ -64,12 +64,14 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
   // Run the real acceptance function with a minimal UI seam, not a second
   // implementation of its status/override rules.
   const ui=fs.readFileSync(path.join(__dirname,'../dist/learning-ui.js'),'utf8');
-  const acceptSource=ui.slice(ui.indexOf('    function acceptSolution('),ui.indexOf('    function checkQuestionGeometry('));
+  const acceptSource=ui.slice(ui.indexOf('    function bindSubmittedQuestion('),ui.indexOf('    function checkQuestionGeometry('));
   const api={question:{value:'求参数值'},state:{model:null,solution:null},setStatus(){},solveDeterministic(){return null;},showSolution(result){this.state.solution=result;},enrichSolvedScene:result=>result,remember(){},modelFromJson:JSON.parse,installScene(scene){this.state.model=scene;}};
   const notices=[],uiBox={window:box.window,api,progress:(...args)=>notices.push(args),find:()=>({hidden:true,textContent:''}),renderSolution(){},saveLesson(){},report(){},verificationNames:{},inspectorView:''};
   vm.runInNewContext(acceptSource+'\nthis.acceptSolution=acceptSolution;',uiBox);
-  const untrusted={mode:'cloud-ai',parts:[{...part(),steps:[]}],completion:{answered:10,total:10},scene:null};
+  const untrusted={mode:'cloud-ai',restatement:'AI 改写后的参数问题',parts:[{...part(),steps:[]}],completion:{answered:10,total:10},scene:null};
   uiBox.acceptSolution(untrusted,'求参数值');
+  check(()=>assert.equal(untrusted.restatement,'求参数值','Accepted results remain bound to the actual submitted question'));
+  check(()=>assert.equal(untrusted.model_restatement,'AI 改写后的参数问题','Model paraphrases remain visible for review'));
   check(()=>assert.equal(untrusted.completion.answered,0,'UI does not trust remote completion counts'));
   check(()=>assert.equal(notices.at(-1)[0],'partial'));
   const before=api.state.solution;check(()=>assert.equal(uiBox.acceptSolution({parts:[],completion:{answered:0,total:0}},'求参数值'),false));
