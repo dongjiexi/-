@@ -18,4 +18,7 @@ module.exports=async({page,context,assert})=>{
   assert.match(solution,/e=3\/2/,'验证答案必须覆盖云端错误摘要');
   assert.doesNotMatch(solution,/61/,'错误云端摘要不得继续显示为最终答案');
   assert.match(await page.locator('#status').textContent(),/符号模型对齐/);
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution);
+  assert.equal(saved.restatement,question,'The lesson remains bound to submitted text, not the model paraphrase');
+  assert.equal(saved.model_restatement,'双曲线焦点垂弦');
 };

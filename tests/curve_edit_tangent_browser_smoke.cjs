@@ -7,7 +7,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#question').fill('已知椭圆x²/9+y²/4=1，求焦点坐标和离心率。');
   await page.locator('#solveButton').click();
   await page.waitForFunction(()=>document.querySelector('#solution').textContent.includes('离心率')&&JSON.parse(document.querySelector('#sceneJson').value).type==='ellipse');
-  const originalQuestion=await page.locator('#question').inputValue(),originalSolution=await page.locator('#solution').textContent();
+  const originalQuestion=await page.locator('#question').inputValue(),originalSolution=await page.locator('#solution .part-body').allTextContents();
   await page.locator('[data-inspector-view="geometry"]').click();
   const model={type:'ellipse',a:3,b:2,h:0,k:0,orientation:'horizontal',showConic:true,showFeatures:true,showDynamic:false,points:{},lines:[],objects:[]};
   async function install(data){await page.locator('#sceneJson').evaluate((el,value)=>{el.value=value;document.querySelector('#applyJson').click();},JSON.stringify(data));await page.locator('#homeButton').click();}
@@ -76,7 +76,8 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#nativeInspector [data-live-equation] .katex').waitFor();
   assert.match(await page.locator('#nativeInspector [data-live-equation]').getAttribute('data-math-source'),/1\/2.*=4/);
   assert.equal(await page.locator('#question').inputValue(),originalQuestion);
-  assert.equal(await page.locator('#solution').textContent(),originalSolution);
+  assert.deepEqual(await page.locator('#solution .part-body').allTextContents(),originalSolution,'Manual replacement keeps the original textual answer and steps');
+  assert.match(await page.locator('.solve-review').textContent(),/手工图稿.*未确认/,'A manually replaced graph no longer inherits the old diagram checks');
   await page.locator('#undoDrag').click();assert.equal((await scene()).objects.find(o=>o.id==='c').r,1);await page.locator('#redoDrag').click();
   await page.locator('#layers .layer-row').filter({hasText:'辅助圆'}).getByRole('button',{name:'编辑',exact:true}).click();
   await page.locator('#addConicFields [data-equation-param="r"]').fill('0');await page.locator('#confirmAddConic').click();

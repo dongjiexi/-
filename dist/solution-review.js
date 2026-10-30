@@ -45,22 +45,58 @@
     return conflicts;
   }
   function inspect(solution){
-    const parts=solution?.parts||[],audit=solution?.sceneAudit;
+    const parts=solution?.parts||[],detached=!!solution?.scene_context_notice,audit=detached?null:solution?.sceneAudit;
     const items=['missing','answerMissing','missingLines','answerMissingLines','unavailable','missingPolygons','invalid','answerUnresolved','answerConflicts'];
     const issues=[...new Set(items.flatMap(key=>(audit?.[key]||[]).map(v=>typeof v==='string'?v:v?.label)).filter(Boolean))];
-    for(const warning of solution?.scene_warnings||[])if(typeof warning==='string'&&!issues.includes(warning))issues.push(warning);
+    if(!detached)for(const warning of solution?.scene_warnings||[])if(typeof warning==='string'&&!issues.includes(warning))issues.push(warning);
     for(const c of audit?.checks||[])if(c.passed===false&&!issues.includes(c.label))issues.push(c.label);
     const answered=parts.filter(complete).length;
     // Geometry may have passed data checks but still fail during installation.
     // A retained old board must never be described as this answer's checked graph.
-    if(solution?.scene_load_error&&!issues.includes(solution.scene_load_error))issues.unshift(solution.scene_load_error);
-    return {answered,total:parts.length,unanswered:parts.filter(p=>!complete(p)).map(p=>p.index),diagram:solution?.scene_load_error?'load-error':!solution?.scene?'not-generated':issues.length?'incomplete':audit?'checked':'unchecked',issues:issues.slice(0,60)};
+    if(detached)issues.unshift(solution.scene_context_notice);
+    else if(solution?.scene_load_error&&!issues.includes(solution.scene_load_error))issues.unshift(solution.scene_load_error);
+    return {answered,total:parts.length,unanswered:parts.filter(p=>!complete(p)).map(p=>p.index),diagram:detached?'detached':solution?.scene_load_error?'load-error':!solution?.scene?'not-generated':issues.length?'incomplete':audit?'checked':'unchecked',issues:issues.slice(0,60)};
+  }
+  function importedSolution(solution){
+    if(solution==null)return solution;
+    if(typeof solution!=='object'||Array.isArray(solution)||!Array.isArray(solution.parts)||solution.parts.some(part=>!part||typeof part!=='object'||Array.isArray(part)))throw new Error('导入题稿的解析数据无效。');
+    const result=clone(solution);
+    // The import file is data, not a verification authority. Keep its old
+    // reports for inspection without letting them certify the current result.
+    // Re-importing an already imported file keeps one historical record rather
+    // than recursively embedding copies of all earlier imports.
+    if(result.imported_verification?.schema!==1||result.imported_verification?.source!=='external-file'){
+      result.imported_verification={schema:1,source:'external-file',verification:result.verification??null,parts:result.parts.map(part=>({index:part.index,verification:part.verification??null})),sceneAudit:result.sceneAudit??null,scene_load_error:result.scene_load_error??null};
+    }
+    const pending=()=>({status:'generated',level:0,checks:[],counts:{verified:0,contradicted:0,unresolved:1},message:'导入题稿的原核验记录尚未在当前设备重新运行。'});
+    result.verification={...pending(),counts:{verified:0,contradicted:0,unresolved:result.parts.length}};
+    result.parts=result.parts.map(part=>({...part,verification:pending()}));
+    result.completion={answered:result.parts.filter(complete).length,total:result.parts.length};
+    delete result.sceneAudit;delete result.scene_load_error;
+    return result;
+  }
+  function shareBaseline(original){
+    if(!original?.model||!original?.values||typeof original.model!=='object'||Array.isArray(original.model)||typeof original.values!=='object'||Array.isArray(original.values))return null;
+    // Only fields consumed by the geometry importer belong in the reset
+    // baseline. Do not attach unrelated lesson/private backup properties.
+    const keys=['type','isFreeBoard','orientation','lineThrough','points','lines','objects','polygons','dotExtrema','distanceExtrema','parameterExpressions','orthogonalChord','ellipseFocusChord','hyperbolaFocalPerpendicularChord','parameterSolution','pointParts','showConic','showDynamic','showFeatures','dynamicLinePart','dynamicLineParts','pointBindings','dynamicIntersectionLabels','pairedChord','fixedPoint','dynamicLineLabel','inferredFromConditions','normalizedImplicit','exact','equation','focusChord','locusDefinition','hyperbolaIteration','parabolaFocalData','rectangularParabola','curveLabel','problemMotion','vertexSecant','inverseLocus','symmetricChord','areaChord','basicConditions','focalChoice','boundedAlgebra','motionBaseline','referenceScene','direction'];
+    const privateKeys=new Set(['study','conversation','notes','rawReply','model_scene','model_scene_warnings','boardDraft','base64','apiKey','api_key','password','token','secret','__proto__','constructor','prototype']);
+    const clean=value=>Array.isArray(value)?value.map(clean):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).filter(([key])=>!privateKeys.has(key)).map(([key,item])=>[key,clean(item)])):value;
+    const model=Object.fromEntries(keys.filter(key=>Object.hasOwn(original.model,key)).map(key=>[key,clean(original.model[key])]));
+    if(!['ellipse','hyperbola','parabola','circle'].includes(model.type))throw new Error('原题重置图形的类型无效，请先保存完整题稿检查。');
+    const values={};
+    for(const key of ['a','b','p','r','h','k','theta','theta2','direction'])if(Object.hasOwn(original.values,key)){
+      const number=original.values[key];if(!Number.isFinite(number)||Math.abs(number)>100000)throw new Error('原题重置参数无效，请先保存完整题稿检查。');values[key]=number;
+    }
+    return {model,values};
   }
   function shareRecord(record,{includeBoardDraft=false}={}){
     if(!record||record.format!=='dongjiexi-lesson'||record.version!==1||typeof record.question!=='string')throw new Error('当前题稿无法分享，请先保存题目或图形。');
+    if(record.solution&&typeof record.solution.restatement==='string'&&record.question.trim()!==record.solution.restatement.trim())throw new Error('题目已修改，解析仍对应原题；请恢复对应题目或重新解题后分享。');
     // Share a lesson through the existing importer; teacher notes, conversations
     // and raw model replies belong in the private backup export, not this file.
-    const result=clone(record);delete result.original;
+    const result=clone(record),baseline=shareBaseline(record.original);delete result.original;
+    if(baseline)result.original=baseline;
     if(!includeBoardDraft)delete result.boardDraft;
     if(result.solution)for(const key of ['study','conversation','rawReply','model_scene','model_scene_warnings'])delete result.solution[key];
     result.shared=true;
@@ -98,5 +134,5 @@
     }
     return result;
   }
-  root.DongSolutionReview=Object.freeze({complete,inspect,request,merge,algebraConflicts,restoreReferenceScene,shareRecord});
+  root.DongSolutionReview=Object.freeze({complete,inspect,request,merge,algebraConflicts,restoreReferenceScene,importedSolution,shareRecord});
 })(typeof window==='object'?window:globalThis);

@@ -16,12 +16,14 @@
   }
   function ready(report){
     if(report.signature!==sceneKey(current()))return;
-    if(pendingDraft&&pendingDraft.sceneSignature===report.signature){const record=pendingDraft;pendingDraft=null;window.DongGeoGebra.restoreMatching(record).then(ok=>{if(!ok)message('题图已恢复，但附加图稿不匹配，未覆盖当前图形。');else window.DongGeoGebra.save().catch(failure);}).catch(failure);}
+    let ignoredDraft=false;
+    if(pendingDraft){const record=pendingDraft;pendingDraft=null;if(record.sceneSignature===report.signature)window.DongGeoGebra.restoreMatching(record).then(ok=>{if(!ok)message('题图已恢复，但附加图稿不匹配，未覆盖当前图形。');else window.DongGeoGebra.save().catch(failure);}).catch(failure);else ignoredDraft=true;}
     failed=false;
     const reasons=[...report.skipped];
     if(current().unrestrictedMotion)reasons.push('无限制移动');
     activate(!reasons.length);
     message(reasons.length?'已自动保留完整教学构造；当前使用兼容绘制，不会省略题设对象。':'题图已同步 · 拖动与参数联动 · 图稿自动保存在此设备');
+    if(ignoredDraft)message('附加图稿与当前题图不匹配，未应用；原文件仍可另行打开。');
     status.querySelector('button').hidden=true;
     status.title=reasons.join('、');
     options.highlight?.();
@@ -203,11 +205,14 @@
     pendingDraft=JSON.parse(JSON.stringify(record));
   }
   async function exportBoard(){
+    assertSynchronized();
     const record=active?await window.DongGeoGebra.save():snapshot();
     const content={format:'dongjiexi-board',version:1,scene:record?.sceneSignature?JSON.parse(record.sceneSignature):current(),boardDraft:record};
     const url=URL.createObjectURL(new Blob([JSON.stringify(content)],{type:'application/json'}));
     const link=document.createElement('a');link.href=url;link.download='董解析-完整图稿.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
-  function image(){return active?'data:image/png;base64,'+window.DongGeoGebra.getAPI().getPNGBase64(2,false,144):null;}
-  window.DongUnifiedBoard=Object.freeze({mount,sync,highlight,snapshot,stageDraft,exportBoard,image,isActive:()=>active});
+  function isSynchronized(){return !active||window.DongGeoGebra.getReport().signature===sceneKey(current());}
+  function assertSynchronized(){if(!isSynchronized())throw new Error('画板正在同步当前题图，请稍后再保存、分享或导出图片。');}
+  function image(){assertSynchronized();return active?'data:image/png;base64,'+window.DongGeoGebra.getAPI().getPNGBase64(2,false,144):null;}
+  window.DongUnifiedBoard=Object.freeze({mount,sync,highlight,snapshot,stageDraft,exportBoard,image,isActive:()=>active,isSynchronized});
 })();

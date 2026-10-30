@@ -3,7 +3,7 @@ import {VISION_MODEL, VISION_SYSTEM, validateImage} from '../../dist/recognition
 import {createHealthProbe} from './health-probe.mjs';
 import {inferencePaused,adminUsage} from './usage-guard.mjs';
 const encoder=new TextEncoder(), decoder=new TextDecoder();
-const VERSION='0.70.1';
+const VERSION='0.70.2';
 class PublicError extends Error {constructor(status,message,retry=0){super(message);this.status=status;this.retry=retry;}}
 const bytes=value=>encoder.encode(value);
 const b64=data=>btoa(String.fromCharCode(...data)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');

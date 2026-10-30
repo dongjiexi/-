@@ -17,7 +17,44 @@ check(()=>assert.equal(review.inspect(previous).diagram,'incomplete'));
 check(()=>assert.deepEqual(Array.from(review.inspect(previous).issues),['N','切线']));
 check(()=>assert.equal(review.inspect({...previous,scene:null}).diagram,'not-generated'));
 check(()=>{const failed=review.inspect({...previous,sceneAudit:{checks:[]},scene_load_error:'主曲线参数无效'});assert.equal(failed.diagram,'load-error');assert(failed.issues.includes('主曲线参数无效'));});
+check(()=>{const notice='当前手工图稿与原解答没有绑定。',detached=review.inspect({...previous,scene_context_notice:notice,scene_load_error:'原图的旧错误',scene_warnings:['原图的旧提示']});assert.equal(detached.diagram,'detached');assert.deepEqual(Array.from(detached.issues),[notice]);assert.equal(detached.answered,1,'Unrelated board changes do not erase old textual answers');});
 check(()=>{const record={format:'dongjiexi-lesson',version:1,question:'题目',scene:{type:'circle',r:2},boardDraft:{base64:'private'},original:{model:{type:'circle'}},activePart:2,solution:{parts:[p(1)],study:{notes:'private'},conversation:[{role:'user',content:'private'}],rawReply:'private'}};const shared=review.shareRecord(record);assert.equal(shared.activePart,2);assert.equal(shared.scene.r,2);for(const key of ['study','conversation','rawReply'])assert.equal(shared.solution[key],undefined);assert.equal(shared.boardDraft,undefined);assert.equal(shared.original,undefined);assert.equal(review.shareRecord(record,{includeBoardDraft:true}).boardDraft.base64,'private');assert.equal(record.solution.study.notes,'private','Sharing must not mutate private backup');});
+check(()=>{
+  const source={mode:'reference-lesson',title:'保留标题',restatement:'原题',parts:[{...p(1),verification:{status:'fully-verified',level:9,checks:[{label:'文件宣称通过',passed:true}]}}],lessonSource:{id:'source-id',sources:[{title:'原题来源',url:'https://example.test/source'}]},verification:{status:'fully-verified',counts:{verified:99},message:'文件宣称已证明'},scene:{type:'circle',r:2},sceneAudit:{checks:[{label:'文件宣称图形已核对',passed:true}]},scene_load_error:'旧设备上的载入错误'};
+  const before=copy(source),imported=review.importedSolution(source);
+  assert.deepEqual(source,before,'Import trust handling must not mutate original file data');
+  assert.equal(imported.verification.status,'generated');assert.equal(imported.verification.level,0);assert.equal(imported.verification.counts.verified,0);
+  assert.equal(imported.parts[0].verification.status,'generated');assert.equal(imported.parts[0].verification.checks.length,0);
+  assert.equal(imported.parts[0].answer,source.parts[0].answer);assert.equal(imported.mode,source.mode);assert.deepEqual(copy(imported.lessonSource),source.lessonSource);
+  assert.equal(imported.sceneAudit,undefined);assert.equal(imported.scene_load_error,undefined);assert.equal(review.inspect(imported).diagram,'unchecked');
+  assert.equal(imported.imported_verification.verification.status,'fully-verified');assert.equal(imported.imported_verification.parts[0].verification.level,9);
+  assert.equal(imported.imported_verification.sceneAudit.checks[0].passed,true);assert.equal(imported.imported_verification.scene_load_error,source.scene_load_error);
+  assert.deepEqual(copy(review.importedSolution(imported).imported_verification),copy(imported.imported_verification),'Repeated imports retain one history record without recursive nesting');
+  assert.equal(imported.completion.answered,1);assert.equal(imported.completion.total,1);
+});
+check(()=>{
+  for(const status of ['reference-reviewed','locally-verified','conflict','contradicted','fully-verified','unknown']){
+    const imported=review.importedSolution({verification:{status},parts:[{...p(0),verification:{status}}]});
+    assert.equal(imported.verification.status,'generated');assert.equal(imported.parts[0].verification.status,'generated');
+    assert.equal(imported.imported_verification.verification.status,status,'Historical assertions remain labelled data even for unknown statuses');
+  }
+});
+check(()=>{assert.equal(review.importedSolution(null),null);for(const value of [[],42,'file',{parts:{}},{parts:[null]}])assert.throws(()=>review.importedSolution(value),/导入题稿的解析数据无效/);});
+check(()=>{
+  const original={model:{type:'ellipse',orientation:'vertical',points:{P:[0,2]},objects:[{id:'mid',kind:'construction',op:'midpoint',refs:['feature:O','feature:P'],notes:'private-object-notes'}],motionBaseline:{values:{a:4,b:2},points:{P:[0,2]},shapes:[],notes:'private-baseline-notes'},notes:'PRIVATE',study:{notes:'PRIVATE'},boardDraft:{base64:'PRIVATE'},title:'private baseline title'},values:{a:4,b:2,h:0,k:0,theta:17,notes:'PRIVATE'},conversation:['PRIVATE']};
+  const record={format:'dongjiexi-lesson',version:1,question:'  原题\n',activePart:1,exploring:true,scene:{type:'ellipse',a:6,b:2},original,boardDraft:{base64:'PRIVATE_GGB'},solution:{restatement:'原题',parts:[p(1)],conversation:['PRIVATE'],study:{notes:'PRIVATE'}}};
+  const before=copy(record),shared=review.shareRecord(record);
+  assert.deepEqual(record,before,'Sharing must preserve the private source baseline');
+  assert.equal(shared.scene.a,6);assert.equal(shared.exploring,true);assert.equal(shared.activePart,1);
+  assert.equal(shared.original.model.type,'ellipse');assert.equal(shared.original.model.orientation,'vertical');assert.equal(shared.original.values.a,4);assert.equal(shared.original.values.theta,17);
+  assert.deepEqual(Array.from(shared.original.model.points.P),[0,2]);assert.deepEqual(Array.from(shared.original.model.objects[0].refs),['feature:O','feature:P']);
+  assert(!JSON.stringify(shared).includes('PRIVATE'));assert.equal(shared.original.model.objects[0].notes,undefined);assert.equal(shared.original.model.motionBaseline.notes,undefined);
+  assert.equal(shared.original.model.title,undefined);assert.equal(shared.original.conversation,undefined);assert.equal(shared.boardDraft,undefined);
+  assert.equal(review.shareRecord(record,{includeBoardDraft:true}).boardDraft.base64,'PRIVATE_GGB');
+  assert.throws(()=>review.shareRecord({...record,question:'原题，增加了条件'}),/题目已修改/);
+  assert.throws(()=>review.shareRecord({...record,original:{...original,values:{a:NaN}}}),/重置参数无效/);
+  assert.throws(()=>review.shareRecord({...record,original:{...original,model:{type:'unknown'}}}),/重置图形的类型无效/);
+});
 check(()=>assert.equal(review.complete({...p(1),derivation:{proof_obligations:['待证']}}),false));
 check(()=>assert.equal(review.complete({...p(1),steps:[' ']}),false));
 check(()=>assert.throws(()=>review.request(previous,'另一题'),/题目已修改/));

@@ -311,17 +311,19 @@
       const summary=solution.completion?`逐问作答：${solution.completion.answered} / ${solution.completion.total}`:solution.mode==='symbolic-fallback'?'内置确定性解题结果':'解题结果';
       const review=window.DongSolutionReview?.inspect(solution);
       const retryable=!all&&solution.mode==='cloud-ai'&&solveMode==='cloud';
-      const reviewMarkup=review?`<div class="solve-review" role="status"><span>文字作答 ${review.answered}/${review.total} 问</span><span>图形：${escapeText({ 'not-generated':'尚未生成','load-error':'载入失败，当前画板不作为本题图形',incomplete:'仍有缺失或冲突',checked:'未发现已覆盖项缺失',unchecked:'尚未核对'}[review.diagram])}</span>${retryable&&(review.unanswered.length||review.diagram!=='checked')?'<button type="button" class="button secondary" data-solution-continue="all">补全解答与图形</button>':''}<small>作答、图形和证明核验分别记录；数值核对不代表一般性证明。</small></div>`:'';
-      const stale=api.question.value.trim()!==String(solution.restatement||'').trim()?'<p class="stale-question">输入框已修改，以下解析仍对应下方保存的原题。请重新解答以更新。</p>':'';
+      const reviewMarkup=review?`<div class="solve-review" role="status"><span>文字作答 ${review.answered}/${review.total} 问</span><span>图形：${escapeText({ 'not-generated':'尚未生成','load-error':'载入失败，当前画板不作为本题图形',detached:'当前手工图稿与解析的对应关系未确认',incomplete:'仍有缺失或冲突',checked:'未发现已覆盖项缺失',unchecked:'尚未核对'}[review.diagram])}</span>${retryable&&(review.unanswered.length||review.diagram!=='checked')?'<button type="button" class="button secondary" data-solution-continue="all">补全解答与图形</button>':''}<small>作答、图形和证明核验分别记录；数值核对不代表一般性证明。</small></div>`:'';
+      const stale=api.question.value.trim()!==String(solution.restatement||'').trim()?'<div class="stale-question" role="status"><p>输入框已修改，以下解析和图形仍对应保存的原题。请恢复原题或重新解题后保存、分享及打印。</p>'+(!all&&String(solution.restatement||'').trim()?'<button type="button" class="button secondary" data-restore-answer-question>保留新题草稿，恢复解析对应题目</button>':'')+'</div>':'';
+      const draft=readDraft(),pendingDraft=!all&&draft&&draft.question.trim()!==api.question.value.trim()?'<p class="help"><button type="button" class="button secondary" data-restore-pending-question>继续编辑已保留的新题草稿</button></p>':'';
+      const imported=solution.imported_verification?'<details class="imported-verification"><summary>导入题稿 · 原核验记录仅供参考</summary><p>以下解析来自文件；此次导入未重新证明其结论。原核验标记不作为本次验证，可查看原记录。</p><pre data-imported-verification style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto">'+escapeText(JSON.stringify(solution.imported_verification,null,2))+'</pre></details>':'';
       const counts=report.counts||{};
       const trust=`<div class="trust-summary ${escapeText(report.status||'generated')}"><strong>${escapeText(verificationNames[report.status]||'核验状态未知')}</strong>${report.status==='reference-reviewed'?'':`<span>通过 ${Number(counts.verified)||0} · 冲突 ${Number(counts.contradicted)||0} · 未决 ${Number(counts.unresolved)||0}</span>`}</div>`;
       const source=solution.lessonSource;
       const provenance=source?`<details class="reference-source"><summary>真题出处 · ${escapeText(source.year||'经典题')} · ${escapeText(source.paper)} · ${escapeText(source.number)} · ${escapeText(source.scope)}</summary>${(source.sources||[]).filter(item=>/^https:\/\//.test(item.url)).map(item=>`<p><a href="${escapeText(item.url)}" target="_blank" rel="noopener noreferrer">${escapeText(item.title)}</a></p>`).join('')}<p>易错点：${escapeText(source.pitfall)}</p></details>`:'';
       const externalReply=solution.mode==='external-ai'&&solution.rawReply?`<details class="external-original"${solution.external?.plain?' open':''}><summary>外部 AI 原始回复 · 未执行其中代码</summary>${textBlock(solution.rawReply)}</details>`:'';
       const model=solution.problemModel;
-      const modelDetails=model?`<details class="problem-model"><summary>结构化题目模型 · ${model.curve?escapeText(model.curve.kind):'曲线未确定'} · ${model.parts?.length||0} 问</summary><p>输入确认：${model.source?.confirmed?'已确认':'存在模糊字段'}；点 ${model.points?.length||0} 个；直线 ${model.lines?.length||0} 条。</p>${model.source?.ambiguities?.length?`<p class="verification-conflict">未确认：${escapeText(model.source.ambiguities.join('、'))}</p>`:''}</details>`:'';
+      const modelDetails=(solution.model_restatement?`<details class="model-restatement"><summary>AI 对题目的重述 · 请核对条件</summary>${textBlock(solution.model_restatement)}</details>`:'')+(model?`<details class="problem-model"><summary>结构化题目模型 · ${model.curve?escapeText(model.curve.kind):'曲线未确定'} · ${model.parts?.length||0} 问</summary><p>输入确认：${model.source?.confirmed?'已确认':'存在模糊字段'}；点 ${model.points?.length||0} 个；直线 ${model.lines?.length||0} 条。</p>${model.source?.ambiguities?.length?`<p class="verification-conflict">未确认：${escapeText(model.source.ambiguities.join('、'))}</p>`:''}</details>`:'');
       const checkList=(part)=>{const checks=(report.checks||[]).filter(item=>item.part==null||Number(item.part)===Number(part.index));if(!checks.length)return '';return `<details class="verification-details"><summary>查看本问机器核验（${checks.length} 项）</summary><ul>${checks.map(item=>`<li class="check-${escapeText(item.status)}"><strong>${escapeText(checkNames[item.status]||item.status)}</strong> · ${escapeText(item.label)}：${escapeText(item.detail)}${item.formula?textBlock('$'+item.formula+'$'):''}</li>`).join('')}</ul></details>`;};
-      const audit=solution.sceneAudit;
+      const audit=solution.scene_context_notice?null:solution.sceneAudit;
       const graphIssues=audit?[...(audit.missing||[]),...(audit.answerMissing||[]),...(audit.missingLines||[]),...(audit.answerMissingLines||[]),...(audit.unavailable||[]),...(audit.missingPolygons||[]),...(audit.invalid||[]),...(audit.answerConflicts||[]).map(n=>n.label+'（关系冲突）'),...(audit.answerUnresolved||[]).map(n=>n.label+(n.dependencyUnconfirmed?'（依赖待确认）':'（构造待完成）'))]:[];
       const graphNotice=graphIssues.length?`<p class="verification-conflict geometry-notice" role="status">图形尚未完整呈现：${escapeText([...new Set(graphIssues)].slice(0,12).join('、'))}。展开“图形核对”查看原因；文字作答完成不代表画板完整。</p>`:'';
       const auditRows=audit?[['题目声明但未找到的点',audit.missing],['答案中尚未呈现的点',audit.answerMissing],['尚未找到的直线或切线',audit.missingLines],['答案中尚未呈现的切线',audit.answerMissingLines],['当前构型无法定位的点',audit.unavailable],['顶点不完整、暂未绘制的多边形',audit.missingPolygons],['当前无法构造',audit.invalid],['已有同名点的关系冲突',(audit.answerConflicts||[]).map(n=>n.label+'：'+n.reason)]].filter(([,items])=>items?.length).map(([label,items])=>`<p class="verification-conflict">${escapeText(label)}：${escapeText(items.join('、'))}。</p>`).join(''):'';
@@ -329,7 +331,7 @@
       const stepLinks=!all&&typeof api.highlightStep==='function';
       const linkToolbar=stepLinks?'<div class="step-graph-toolbar" hidden><span data-step-graph-status role="status" aria-live="polite"></span><button type="button" data-step-graph-clear>清除高亮</button></div>':'';
       const partMarkup=visible.map(part=>{const partTrust=part.verification||(solution.mode==='symbolic-fallback'&&part.status==='answered'?{status:report.status||'generated',message:'内置确定性复算'}:{status:'generated',message:'仅生成'});const derivation=part.derivation||{};const obligations=derivation.proof_obligations||[];return `<section class="part-body" data-part-index="${escapeText(part.index)}"><h3>${escapeText(part.label||'本问')}</h3><span class="answer-status ${['answered','partial','needs_information'].includes(part.status)?part.status:'partial'}">${escapeText(statusNames[part.status]||'请核对解答')}</span><span class="verification-status ${escapeText(partTrust.status||'generated')}">${escapeText(verificationNames[partTrust.status]||partTrust.message||'待核验')}</span>${retryable&&!window.DongSolutionReview.complete(part)?`<button type="button" class="button secondary" data-solution-continue="${Number(part.index)}">继续解答本问</button>`:''}<div class="answer-summary">${textBlock(part.answer)}</div><ol>${(part.steps||[]).map((step,index)=>'<li>'+textBlock(step)+(stepLinks?`<button type="button" class="step-graph-link" data-step-graph-part="${Number(part.index)||0}" data-step-graph-index="${index}" aria-pressed="false" aria-label="高亮第 ${index+1} 步对应图形">对应图形</button>`:'')+'</li>').join('')}</ol>${obligations.length?`<details class="proof-obligations"><summary>尚需完成的证明义务（${obligations.length}）</summary><ul>${obligations.map(item=>'<li>'+textBlock(item)+'</li>').join('')}</ul></details>`:''}${part.quality_notice?`<p class="verification-conflict">${escapeText(part.quality_notice)}</p>`:''}${part.model_answer||part.model_steps?.length?`<details class="model-original"><summary>查看 AI 原始判断与步骤（未证实）</summary>${part.model_answer?textBlock(part.model_answer):''}<ol>${(part.model_steps||[]).map(step=>'<li>'+textBlock(step)+'</li>').join('')}</ol></details>`:''}${checkList(part)}</section>`;}).join('');
-      return `<h3>${escapeText(solution.title||'解题结果')}</h3><p>${escapeText(summary)}${solution.model?' · '+escapeText(solution.model):''}</p>${reviewMarkup}${trust}${provenance}${stale}${solution.quality_notice?`<p class="verification-conflict">${escapeText(solution.quality_notice)}</p>`:''}<details><summary>查看原题</summary>${textBlock(solution.restatement)}</details>${modelDetails}${tabs}${solution.knowns?.length?`<details><summary>已知条件</summary><ul>${solution.knowns.map(value=>'<li>'+textBlock(value)+'</li>').join('')}</ul></details>`:''}${solution.strategy?`<div class="method-overview"><p><strong>解题方法</strong></p>${textBlock(solution.strategy)}</div>`:''}${linkToolbar}${partMarkup}${diagramReport}${externalReply}${solution.assumptions?.length?`<p class="lesson-assumptions">使用的假设：${escapeText(solution.assumptions.join('；'))}</p>`:''}<div class="proof">${escapeText(report.message||'尚未核验')}${solution.scene_notice?'<p>'+escapeText(solution.scene_notice)+'</p>':''}</div>`;
+      return `<h3>${escapeText(solution.title||'解题结果')}</h3><p>${escapeText(summary)}${solution.model?' · '+escapeText(solution.model):''}</p>${reviewMarkup}${trust}${imported}${provenance}${stale}${pendingDraft}${solution.quality_notice?`<p class="verification-conflict">${escapeText(solution.quality_notice)}</p>`:''}<details><summary>查看原题</summary>${textBlock(solution.restatement)}</details>${modelDetails}${tabs}${solution.knowns?.length?`<details><summary>已知条件</summary><ul>${solution.knowns.map(value=>'<li>'+textBlock(value)+'</li>').join('')}</ul></details>`:''}${solution.strategy?`<div class="method-overview"><p><strong>解题方法</strong></p>${textBlock(solution.strategy)}</div>`:''}${linkToolbar}${partMarkup}${diagramReport}${externalReply}${solution.assumptions?.length?`<p class="lesson-assumptions">使用的假设：${escapeText(solution.assumptions.join('；'))}</p>`:''}<div class="proof">${escapeText(report.message||'尚未核验')}${solution.scene_notice?'<p>'+escapeText(solution.scene_notice)+'</p>':''}</div>`;
     }
     function bindTabs(element) {
       element.querySelectorAll('[data-solution-continue]').forEach(button=>{
@@ -354,6 +356,13 @@
       const panel=find('#solution');
       panel.innerHTML=`<div class="lesson-actions"><button data-lesson-action="read">展开解析</button><button data-lesson-action="copy">复制解析</button><button data-lesson-action="print">打印 / PDF</button><button data-lesson-action="save">保存本题</button></div>`+markup(solution);
       panel.hidden=false;bindTabs(panel);bindStepLinks(panel,solution);typeset(panel);renderChat();classroom?.decorate();
+      panel.querySelector('[data-restore-answer-question]')?.addEventListener('click',()=>{
+        try{
+          const changed=api.question.value.trim();if(changed&&!saveDraft())throw new Error('新题草稿未能保存，尚未恢复原题；请先复制当前输入。');
+          clearTimeout(draftTimer);api.question.value=solution.restatement;refreshFormula();api.remember();renderSolution();progress('idle','已恢复解析对应题目。');api.setStatus(changed?'已恢复原题；新题草稿已保留，可点击“继续编辑”返回。':'已恢复解析对应题目。');
+        }catch(error){report(error);}
+      });
+      panel.querySelector('[data-restore-pending-question]')?.addEventListener('click',()=>{const saved=readDraft();if(!saved)return;api.question.value=saved.question;api.question.dispatchEvent(new Event('input',{bubbles:true}));api.setStatus('已恢复新题草稿；旧解析仍对应原题，请重新解题。');});
       if(selectedStep){const selected=[...panel.querySelectorAll('[data-step-graph-index]')].find(button=>Number(button.dataset.stepGraphPart)===selectedStep.part&&Number(button.dataset.stepGraphIndex)===selectedStep.index);if(!selected||selected.closest('li')?.hidden)clearStepHighlight();else updateStepControls();}
       panel.querySelector('[data-diagram-recheck]')?.addEventListener('click',()=>{
         if(!api.state.model||!solution.scene)return;
@@ -379,6 +388,7 @@
       ['solveButton','recognizeButton','sendFollowup','pullModel','parseButton','clearButton','saveLesson','openNotebook','confirmRecognition','engineRefresh','reviewAttempt'].forEach(identifier=>{const button=find('#'+identifier);if(button)button.disabled=value;});
       document.querySelectorAll('[data-solution-continue]').forEach(button=>{button.disabled=value||api.question.value.trim()!==api.state.solution?.restatement;});
       if(!value&&!runtime.config.apiEnabled)find('#engineRefresh').disabled=true;
+      classroom?.refreshContext?.();
       find('#jobPanel').hidden=!value;
       find('#cancelJob').hidden=!activeJob;
       find('#solveButton').textContent=value?'正在处理…':'解题';
@@ -507,8 +517,15 @@
       }catch(error){if(error.name==='AbortError'){if(body.kind==='solve')progress('error','本次解题已停止。');api.setStatus('任务已停止，当前题稿保留。');return;}rateLimited=error.code==='rate_limited';if(body.kind==='solve')progress('error','解题未完成：'+(error.message||String(error)));cloudFailure(error);report(error);}
       finally{streamController=null;activeJob=null;busy(false);if(!rateLimited)refreshEngine();}
     }
-    function snapshot() {
-      return {format:'dongjiexi-lesson',version:1,id:crypto.randomUUID(),savedAt:new Date().toISOString(),title:api.state.solution?.title||api.question.value.slice(0,32)||'未命名图稿',question:api.question.value,scene:api.state.model?api.sceneData():null,boardDraft:window.DongUnifiedBoard?.snapshot?.()||null,original:api.state.original||null,solution:api.state.solution||null,activePart:api.state.activePart,exploring:!!api.state.exploring};
+    function assertLessonContext(){
+      if(api.state.solution&&api.question.value.trim()!==String(api.state.solution.restatement||'').trim()){
+        const saved=saveDraft();throw new Error(saved?'题目已修改，不能将新题目与旧解析一起保存、分享、打印或追问。新题草稿已保留，请恢复原题或重新解题。':'题目与解析不对应，且草稿保存失败；请先复制输入文字，再恢复原题或重新解题。');
+      }
+    }
+    function snapshot({requireBoardReady=false,preserveAnswerQuestion=false}={}) {
+      if(!preserveAnswerQuestion)assertLessonContext();
+      if(requireBoardReady&&window.DongUnifiedBoard?.isSynchronized?.()===false)throw new Error('画板正在同步当前题图，请稍后保存或分享。');
+      return {format:'dongjiexi-lesson',version:1,id:crypto.randomUUID(),savedAt:new Date().toISOString(),title:api.state.solution?.title||api.question.value.slice(0,32)||'未命名图稿',question:preserveAnswerQuestion?api.state.solution.restatement:api.question.value,scene:api.state.model?api.sceneData():null,boardDraft:window.DongUnifiedBoard?.snapshot?.()||null,original:api.state.original||null,solution:api.state.solution||null,activePart:api.state.activePart,exploring:!!api.state.exploring};
     }
     const storedLesson=item=>item&&typeof item==='object'&&!Array.isArray(item)&&item.format==='dongjiexi-lesson'&&item.version===1&&typeof item.id==='string'&&typeof item.title==='string'&&typeof item.question==='string'&&item.question.length<=18000;
     function collection(key){
@@ -576,21 +593,21 @@
     }
     function saveDraft(){
       const question=api.question.value;
-      if(!question.trim()){localStorage.removeItem(draftKey);return;}
-      try{localStorage.setItem(draftKey,JSON.stringify({question,savedAt:new Date().toISOString()}));}catch{}
+      if(question.length>18000)return false;
+      try{if(!question.trim()){localStorage.removeItem(draftKey);return true;}localStorage.setItem(draftKey,JSON.stringify({question,savedAt:new Date().toISOString()}));return true;}catch{return false;}
     }
     function saveLesson(silent=false) {
       if(!api.question.value.trim()&&!api.state.model)throw new Error('请先输入题目或建立图形。');
-      const record=snapshot();
+      const record=snapshot({requireBoardReady:!silent});
       const entries=readNotebook().filter(item=>item.question!==record.question);
       const combined=[record,...entries].slice(0,50);
       try{writeCollection(notebookKey,combined);}catch{throw new Error('题本空间不足或异常记录未能备份，当前结果仍在页面中；请导出题稿保存。');}
-      try{localStorage.removeItem(draftKey);}catch{}
+      try{if(readDraft()?.question.trim()===record.question.trim())localStorage.removeItem(draftKey);}catch{}
       const draftBox=find('#draftRecovery');if(draftBox)draftBox.hidden=true;
       if(!silent)api.setStatus('本题、全部解析和图形已存入“我的题本”。');
       renderNotebook();
     }
-    function restoreLesson(record) {
+    function restoreLesson(record,{externalFile=false}={}) {
       if(!record||typeof record!=='object'||Array.isArray(record)||record.format!=='dongjiexi-lesson'||record.version!==1||typeof record.question!=='string'||record.question.length>18000)throw new Error('不是支持的董解析题稿。');
       if(record.solution!=null&&(typeof record.solution!=='object'||Array.isArray(record.solution)))throw new Error('解析数据格式无效。');
       if(record.solution&&(!Array.isArray(record.solution.parts)||record.solution.parts.length>12||record.solution.parts.some(part=>!part||!Array.isArray(part.steps)||part.steps.length>100)))throw new Error('解析数据格式不完整。');
@@ -608,12 +625,15 @@
         if(record.solution.study!=null&&(typeof record.solution.study!=='object'||Array.isArray(record.solution.study)))throw new Error('学习记录格式无效。');
       }
       if(record.scene?.objects?.length>500)throw new Error('图稿对象超过 500 个。');
+      if(externalFile&&record.solution?.restatement!=null&&record.solution.restatement.trim()!==record.question.trim())throw new Error('导入题稿的题目与解析不一致，当前题稿保留。');
+      const restoredSolution=externalFile?window.DongSolutionReview.importedSolution(record.solution):record.solution;
+      if(externalFile&&record.boardDraft&&restoredSolution)restoredSolution.scene_context_notice='附加画板来自导入文件，尚未逐项核对与解析的对应关系。';
       const parsedScene=record.scene?api.modelFromJson(JSON.stringify(record.scene)):null;
       const original=record.original?.model&&record.original?.values?api.modelFromJson(JSON.stringify({...record.original.model,...record.original.values})):null;
       window.DongUnifiedBoard?.stageDraft?.(record.boardDraft);
       clearStepHighlight();
       api.clear();api.question.value=record.question;
-      api.state.solution=window.DongSolutionReview?.restoreReferenceScene(record.solution,parsedScene?record.scene:null,record.question)??record.solution;api.state.activePart=record.activePart??null;
+      api.state.solution=window.DongSolutionReview?.restoreReferenceScene(restoredSolution,parsedScene?record.scene:null,record.question)??restoredSolution;api.state.activePart=record.activePart??null;
       // An explicitly manual saved scene stays manual even when its lesson has text.
       // Legacy lessons without this flag still receive the existing question constraints.
       if(parsedScene)api.installScene(parsedScene,record.scene.problemMotion===false?'图稿文件':'题本',{original,exploring:!!record.exploring});
@@ -630,14 +650,22 @@
     }
     function printLesson() {
       if(!api.state.solution)throw new Error('请先生成解析。');
+      assertLessonContext();
       const target=find('#printLesson');
       target.innerHTML='<h1>董解析 · 学习题稿</h1>'+textBlock(api.state.solution.restatement)+'<section class="solution">'+markup(api.state.solution,true)+'</section>';
-      if(api.state.model){const image=document.createElement('img');image.src=window.DongUnifiedBoard?.image?.()||api.canvas.toDataURL('image/png');image.alt='当前图形';target.append(image);if(api.state.exploring)target.insertAdjacentHTML('beforeend','<p>此图已调整参数；解析仍对应原题。</p>');}
+      if(api.state.model){if(api.state.solution.scene_context_notice||api.state.solution.scene_load_error||!api.state.solution.scene){const notice=document.createElement('p');notice.textContent='当前画板与本题解析的对应关系未确认，或本题图形未能载入；本页未附图。';target.append(notice);}else{const image=document.createElement('img');image.src=window.DongUnifiedBoard?.image?.()||api.canvas.toDataURL('image/png');image.alt='当前图形';target.append(image);if(api.state.exploring)target.insertAdjacentHTML('beforeend','<p>此图已调整参数；解析仍对应原题。</p>');}}
       typeset(target);window.print();
+    }
+    function bindSubmittedQuestion(result,original){
+      if(!result||typeof result!=='object'||Array.isArray(result))throw new Error('未收到有效解答，原题稿已保留。');
+      if(typeof result.restatement==='string'&&result.restatement.trim()!==original)result.model_restatement=result.restatement;
+      result.restatement=original;
+      return result;
     }
     function acceptSolution(result,original,{installGraph=true}={}){
       if(api.question.value.trim()!==original){api.setStatus('题目已修改，本次旧题结果未应用。请点击“解题”求解当前题目。');return false;}
       if(!result||!Array.isArray(result.parts)||!result.parts.length||result.parts.some(part=>!part||typeof part!=='object')){api.setStatus('解题引擎未返回有效的小问解析，原解析与图稿保留。',true);progress('error','未收到有效解答，请重试。');return false;}
+      bindSubmittedQuestion(result,original);
       const completed=part=>part.status==='answered'&&typeof part.answer==='string'&&part.answer.trim()&&Array.isArray(part.steps)&&part.steps.some(step=>typeof step==='string'&&step.trim());
       // HTTP/local adapters can return their own completion counts. The UI
       // derives its status from actual parts instead of trusting those counts.
@@ -770,7 +798,7 @@
       api.setStatus('云端将重新核对原题、已有解答及缺失图形。应用结果前保存完整旧题稿，手动画图可从题本恢复。');
       await runJob({kind:'solve',text:original,model:find('#modelName').value,depth:find('#solveDepth').value,...options},result=>{
         if(api.question.value.trim()!==original||api.state.solution!==current){api.setStatus('题目或题稿已切换，旧补全结果未应用。');progress('idle','题稿已切换，等待解题。');return;}
-        const merged=window.DongSolutionReview.merge(previous,result);
+        const merged=window.DongSolutionReview.merge(previous,bindSubmittedQuestion(result,original));
         const backup=JSON.parse(JSON.stringify(before));backup.title='补全前备份 · '+backup.title;backup.continuationBackup=true;
         try{writeCollection(backupKey,[backup,...readBackups()]);}catch{throw new Error('题稿备份失败，补全结果未应用；原解析和手动图稿保留。请先导出题稿。');}
         return acceptSolution(merged,original);
@@ -912,9 +940,10 @@
       const solution=api.state.solution;
       const question=find('#followupInput').value.trim();
       if(!solution||!question){report(new Error('请填写追问内容。'));return;}
+      try{assertLessonContext();}catch(error){report(error);return;}
       const conversation=solution.conversation||[];
       await runJob({kind:'chat',text:solution.restatement,context:lessonText(solution),history:conversation,followup:`当前查看小问：${api.state.activePart??'全部'}。\n${question}`,model:find('#modelName').value,depth:find('#solveDepth').value},result=>{
-        if(api.state.solution!==solution){api.setStatus('题目已切换，此次追问未写入新题。',true);return;}
+        if(api.state.solution!==solution||api.question.value.trim()!==String(solution.restatement||'').trim()){api.setStatus('题目已切换，此次追问未写入新题；追问输入仍保留。',true);return;}
         solution.conversation=[...conversation,{role:'user',content:question},{role:'assistant',content:result.text}].slice(-30);
         find('#followupInput').value='';renderChat();api.remember();try{saveLesson(true);}catch(error){report(error);}
         api.setStatus('追问已完成，原解析保留；若模型纠正了结论，请重新解答整题以更新图形。');
@@ -973,13 +1002,13 @@
     shareDialog.innerHTML='<header><h2 id="shareLessonTitle">预览分享题稿</h2><button type="button" data-share-close>取消</button></header><p>包含题目、当前小问、解析和图形构造。追问、学习笔记和原始 AI 回复默认移除。图形标签和解析本身仍可能含个人信息，请检查下方内容后下载。对方可用“我的题本 → 导入题稿”打开。</p><label><input type="checkbox" data-share-board>附加高级画板完整图稿（可能包含自定义文字和手工对象）</label><pre data-share-preview style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:45dvh;overflow:auto"></pre><button type="button" data-share-download>下载分享文件</button>';
     document.body.append(shareDialog);let shareSnapshot=null,shareContent='';
     const previewShare=()=>{const record=window.DongSolutionReview.shareRecord(shareSnapshot,{includeBoardDraft:shareDialog.querySelector('[data-share-board]').checked});shareContent=JSON.stringify(record,null,2);shareDialog.querySelector('[data-share-preview]').textContent=shareContent;};
-    shareButton.addEventListener('click',async()=>{try{if(!api.question.value.trim()&&!api.state.model)throw new Error('请先输入题目或建立图形。');if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();shareSnapshot=snapshot();shareDialog.querySelector('[data-share-board]').checked=false;previewShare();find('#notebookDialog').close();shareDialog.showModal();}catch(error){report(error);}});
+    shareButton.addEventListener('click',async()=>{try{if(!api.question.value.trim()&&!api.state.model)throw new Error('请先输入题目或建立图形。');if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();shareSnapshot=snapshot({requireBoardReady:true});shareDialog.querySelector('[data-share-board]').checked=false;previewShare();find('#notebookDialog').close();shareDialog.showModal();}catch(error){report(error);}});
     shareDialog.querySelector('[data-share-board]').addEventListener('change',previewShare);
     shareDialog.querySelector('[data-share-close]').addEventListener('click',()=>shareDialog.close());
     shareDialog.querySelector('[data-share-download]').addEventListener('click',()=>{if(shareContent)api.download('董解析-分享题稿.json',new Blob([shareContent],{type:'application/json'}));});
     shareDialog.addEventListener('close',()=>{shareSnapshot=null;shareContent='';shareDialog.querySelector('[data-share-preview]').textContent='';});
-    find('#exportLesson').addEventListener('click',async()=>{try{if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();const record=snapshot();api.download('董解析-题稿.json',new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));}catch(error){report(error);}});
-    find('#importLesson').addEventListener('change',async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>5*1024*1024)throw new Error('题稿超过 5 MB。');restoreLesson(JSON.parse(await file.text()));find('#notebookDialog').close();}catch(error){report(error);}finally{event.target.value='';}});
+    find('#exportLesson').addEventListener('click',async()=>{try{if(window.DongUnifiedBoard?.isActive?.())await window.DongGeoGebra.save();const record=snapshot({requireBoardReady:true});api.download('董解析-题稿.json',new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));}catch(error){report(error);}});
+    find('#importLesson').addEventListener('change',async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>5*1024*1024)throw new Error('题稿超过 5 MB。');restoreLesson(JSON.parse(await file.text()),{externalFile:true});find('#notebookDialog').close();}catch(error){report(error);}finally{event.target.value='';}});
     find('#sendFollowup').addEventListener('click',followup);
     document.querySelectorAll('[data-followup]').forEach(button=>button.addEventListener('click',()=>{find('#followupInput').value=button.dataset.followup;find('#followupInput').focus();}));
     find('#followupInput').addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')followup();});
@@ -1001,7 +1030,13 @@
     api.question.addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')solve();});
     window.addEventListener('beforeunload',event=>{if(activeJob){event.preventDefault();event.returnValue='';}});
     classroom=window.DongClassroom.attach({...api,renderSolution,sendFeedback:followup,showLearning:()=>setInspectorView('lesson'),saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
-    window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>saveLesson(true),showLearning:()=>setInspectorView('lesson')});
+    window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>{
+      if(api.state.solution&&api.question.value.trim()!==String(api.state.solution.restatement||'').trim()){
+        if(!saveDraft())throw new Error('新题草稿备份失败，未切换题目，请先复制输入内容。');
+        if(typeof api.state.solution.restatement!=='string'||!api.state.solution.restatement.trim())throw new Error('旧解析缺少原题文字，请先导出图稿保存。');
+        const backup=snapshot({preserveAnswerQuestion:true});backup.title='切题前备份 · '+backup.title;backup.switchBackup=true;writeCollection(backupKey,[backup,...readBackups()]);
+      }else saveLesson(true);
+    },showLearning:()=>setInspectorView('lesson')});
     renderDraftRecovery();
     return {refreshEngine,renderSolution,solve,clearStepHighlight,refreshFold:()=>foldView?.refresh()};
   }

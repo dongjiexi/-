@@ -21,4 +21,7 @@ module.exports=async({page,context,assert})=>{
   assert.deepEqual(JSON.parse(await page.locator('#sceneJson').inputValue()),previous,'Previous drawing survives an installation failure');
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')));
   assert(saved.solution.scene_load_error);assert.equal(saved.solution.title,'绘图失败独立状态');
+  await page.evaluate(()=>{window.__printCalls=0;window.print=()=>window.__printCalls++;});
+  await page.locator('[data-lesson-action="print"]').click();
+  assert.equal(await page.evaluate(()=>window.__printCalls),1);assert.equal(await page.locator('#printLesson img').count(),0,'Failed current graph must not print the previous question drawing');
 };

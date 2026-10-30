@@ -26,6 +26,18 @@ module.exports=async({page,assert,screenshot})=>{
   await page.evaluate(()=>{window.DongGeoGebra.getAPI().evalCommand('Manual=(7,8)');return window.DongGeoGebra.save();});
   await page.reload();await page.waitForFunction(()=>window.DongUnifiedBoard.isActive());
   assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().exists('Manual')),'Same question reload preserves manual auxiliary work');
+  const other={type:'circle',r:5,showDynamic:false,points:{W:[2,1]}};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},other);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&JSON.parse(window.DongGeoGebra.getReport().signature).type==='circle');
+  await page.evaluate(()=>{const r=window.DongGeoGebra.getReport();window.DongUnifiedBoard.stageDraft({base64:btoa(JSON.stringify([...window.__unified.names,'OldPendingMarker'])),sceneSignature:r.signature,owned:r.owned,coordinateFrameVersion:1});});
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},scene);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&JSON.parse(window.DongGeoGebra.getReport().signature).type==='ellipse');
+  assert.match(await page.locator('#boardEngineStatus').textContent(),/附加图稿.*不匹配/);
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},other);
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&JSON.parse(window.DongGeoGebra.getReport().signature).type==='circle');
+  assert.equal(await page.evaluate(()=>window.DongGeoGebra.getAPI().exists('OldPendingMarker')),false,'A rejected draft cannot apply later when another scene happens to match');
+  const exports=await page.evaluate(async()=>{const original=window.DongGeoGebra;window.DongGeoGebra={...original,getReport:()=>({...original.getReport(),signature:'sync-in-progress'})};try{let image='',file='';try{window.DongUnifiedBoard.image();}catch(e){image=e.message;}try{await window.DongUnifiedBoard.exportBoard();}catch(e){file=e.message;}return {image,file};}finally{window.DongGeoGebra=original;}});
+  assert.match(exports.image,/正在同步/);assert.match(exports.file,/正在同步/);
   const functionScene={...scene,objects:[...scene.objects,{id:'f',kind:'function',family:'sine',label:'f',params:{A:2,w:3,phi:0,d:1}}]};
   await page.locator('#sceneJson').evaluate((el,value)=>{el.value=JSON.stringify(value);document.querySelector('#applyJson').click();},functionScene);
   await page.waitForFunction(()=>window.__unified.commands.some(s=>s.includes('sin(')));
