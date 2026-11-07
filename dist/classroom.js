@@ -121,7 +121,16 @@
     window.addEventListener('dong:board-view-changed',()=>{if(casting)clearInk();});
     for(const type of ['pointerdown','wheel'])board.addEventListener(type,event=>{if(casting&&!pen&&!event.target.closest('.board-toolbar,.dong-ggb-head'))clearInk();},{capture:true,passive:true});
     board.addEventListener('click',event=>{if(casting&&['zoomIn','zoomOut','homeButton'].includes(event.target.closest('button')?.id))clearInk();},true);
-    document.addEventListener('keydown',event=>{if(!casting||/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]:not(.dong-ggb-inline)'))return;if(event.key==='Escape'){leave();return;}if(['ArrowRight','PageDown'].includes(event.key)){event.preventDefault();changeStep(1);}if(['ArrowLeft','PageUp'].includes(event.key)){event.preventDefault();changeStep(-1);}});
+    document.addEventListener('keydown',event=>{
+      const editing=event.composedPath().some(node=>node?.matches?.('input,textarea,select,math-field,[contenteditable]:not([contenteditable="false"]),[role="textbox"]'));
+      if(!casting||event.defaultPrevented||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||editing||document.querySelector('dialog[open]:not(.dong-ggb-inline)'))return;
+      if(event.key==='Escape'){
+        if(document.querySelector('.unified-tools[open],.dong-ggb-tools[open],#boardPointFinder:not([hidden])'))return;
+        event.preventDefault();leave();return;
+      }
+      if(['ArrowRight','PageDown'].includes(event.key)){event.preventDefault();changeStep(1);}
+      if(['ArrowLeft','PageUp'].includes(event.key)){event.preventDefault();changeStep(-1);}
+    });
     find('#printWorksheet').addEventListener('click',()=>{if(!requireCurrent())return;const solution=api.state.solution;if(!solution)return;const target=find('#printLesson');target.replaceChildren();const title=document.createElement('h1');title.textContent='董解析 · 独立练习';const name=document.createElement('p');name.textContent='姓名：________________　班级：________________　日期：________________';const problem=document.createElement('div');problem.textContent=solution.restatement;problem.style.whiteSpace='pre-wrap';const space=document.createElement('div');space.className='worksheet-space';space.textContent='作答区';target.append(title,name,problem);if(solution.lessonSource){const source=document.createElement("p");source.textContent=[solution.lessonSource.year,solution.lessonSource.paper,solution.lessonSource.number,solution.lessonSource.scope].filter(Boolean).join(" · ");target.append(source);}target.append(space);if(api.typesetProblem)api.typesetProblem(problem,solution.restatement);else window.renderMathInElement?.(problem,{throwOnError:false,trust:false,delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}]});window.print();});
     api.question.addEventListener('input',refreshContext);
     return {decorate,leave,refreshContext};

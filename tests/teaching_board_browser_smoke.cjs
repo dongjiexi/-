@@ -33,6 +33,14 @@ module.exports=async({page,assert,screenshot})=>{
   assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /);
   await page.keyboard.press('PageDown');assert.match(await page.locator('#classroomProgress').textContent(),/^2 \/ /,'Inline GGB must not swallow lecture navigation');
   await page.keyboard.press('PageUp');assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /);
+  for(const key of ['Control+ArrowRight','Alt+ArrowRight','Shift+ArrowRight']){
+    await page.keyboard.press(key);assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /,'Modified shortcuts must not reveal another step');
+  }
+  await page.locator('.unified-tools > summary').click();await page.keyboard.press('Escape');
+  assert(await page.locator('#classroomBar').isVisible(),'Escape closes the tool menu before leaving the lecture');
+  assert.equal(await page.locator('.unified-tools').evaluate(el=>el.open),false);
+  await page.evaluate(()=>{const field=document.createElement('math-field');field.id='lecture-input-fixture';document.body.append(field);field.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,composed:true}));field.remove();});
+  assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /,'Formula editing must not reveal another step');
   const ink=page.locator('#classroomInk');assert(await ink.isVisible());assert.equal(await ink.evaluate(el=>el.parentElement.className),'dong-ggb-host');
   const rect=await ink.boundingBox(),host=await page.locator('.dong-ggb-host').boundingBox();assert(Math.abs(rect.width-host.width)<2&&Math.abs(rect.height-host.height)<2);
   await page.locator('#inkToggle').click();
