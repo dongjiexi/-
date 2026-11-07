@@ -631,6 +631,7 @@
       const parsedScene=record.scene?api.modelFromJson(JSON.stringify(record.scene)):null;
       const original=record.original?.model&&record.original?.values?api.modelFromJson(JSON.stringify({...record.original.model,...record.original.values})):null;
       window.DongUnifiedBoard?.stageDraft?.(record.boardDraft);
+      clearTimeout(draftTimer);draftTimer=null;
       clearStepHighlight();
       api.clear();api.question.value=record.question;
       api.state.solution=window.DongSolutionReview?.restoreReferenceScene(restoredSolution,parsedScene?record.scene:null,record.question)??restoredSolution;api.state.activePart=record.activePart??null;
@@ -1030,7 +1031,8 @@
       if(formulaPreview.open)refreshFormula();
       api.remember();
       clearTimeout(draftTimer);
-      draftTimer=setTimeout(saveDraft,300);
+      const draftQuestion=api.question.value;
+      draftTimer=setTimeout(()=>{if(api.question.value===draftQuestion)saveDraft();},300);
       if(api.state.solution)renderSolution();
     });
     api.question.addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')solve();});

@@ -27,9 +27,13 @@ module.exports=async({page,assert,screenshot})=>{
   await page.evaluate(()=>{window.__savedSet=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='zhigeometry:last')throw new DOMException('full','QuotaExceededError');return window.__savedSet.call(this,k,v);};});
   await page.locator('#saveLocal').click();assert.match(await page.locator('#status').textContent(),/本机保存失败/);assert.equal(await page.evaluate(()=>localStorage.getItem('zhigeometry:last')),previous);
   await page.evaluate(()=>Storage.prototype.setItem=window.__savedSet);
+  // Hold the input debounce until after the bank has replaced the editor.
+  // A queued callback must not save the next question over the unsolved draft.
+  await page.evaluate(()=>{const native=window.setTimeout;window.__heldDraftSaves=[];window.setTimeout=function(callback,ms,...args){if(ms===300){window.__heldDraftSaves.push(()=>callback(...args));return -1;}return native(callback,ms,...args);};});
   await page.locator('#question').fill(edited);
   await page.locator('#openQuestionBank').click();await page.locator('[data-bank-id="2023-i-6"]').click();await page.locator('[data-bank-action="full"]').click();
   await page.waitForFunction(()=>!document.querySelector('#questionBankDialog').open);
+  await page.evaluate(()=>window.__heldDraftSaves.forEach(run=>run()));
   assert.notEqual(await page.locator('#question').inputValue(),edited,'A preserved draft must not prevent selecting the next bank question');
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('dongjiexi:draft:v1')).question),edited);
   assert(await page.evaluate(q=>JSON.parse(localStorage.getItem('dongjiexi:lesson-backups:v1')).some(r=>r.switchBackup&&r.question===q&&r.solution.restatement===q),original),'The prior answer is backed up under its own original question');
