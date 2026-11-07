@@ -654,6 +654,12 @@
       const target=find('#printLesson');
       target.innerHTML='<h1>董解析 · 学习题稿</h1>'+textBlock(api.state.solution.restatement)+'<section class="solution">'+markup(api.state.solution,true)+'</section>';
       if(api.state.model){if(api.state.solution.scene_context_notice||api.state.solution.scene_load_error||!api.state.solution.scene){const notice=document.createElement('p');notice.textContent='当前画板与本题解析的对应关系未确认，或本题图形未能载入；本页未附图。';target.append(notice);}else{const image=document.createElement('img');image.src=window.DongUnifiedBoard?.image?.()||api.canvas.toDataURL('image/png');image.alt='当前图形';target.append(image);if(api.state.exploring)target.insertAdjacentHTML('beforeend','<p>此图已调整参数；解析仍对应原题。</p>');}}
+      if(target.querySelector('img')){
+        const caption=document.createElement('p');caption.dataset.printGraphScope='';
+        const part=(api.state.solution.parts||[]).find(item=>api.state.activePart!=null&&Number(item.index)===Number(api.state.activePart));
+        caption.textContent=part?'图示对应：'+(part.label||'第 '+part.index+' 问')+'。其余小问请结合各自条件阅读。':'图示显示全部小问图层；各小问条件请分别核对。';
+        target.append(caption);
+      }
       typeset(target);window.print();
     }
     function bindSubmittedQuestion(result,original){
@@ -1029,7 +1035,7 @@
     });
     api.question.addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')solve();});
     window.addEventListener('beforeunload',event=>{if(activeJob){event.preventDefault();event.returnValue='';}});
-    classroom=window.DongClassroom.attach({...api,renderSolution,sendFeedback:followup,showLearning:()=>setInspectorView('lesson'),saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
+    classroom=window.DongClassroom.attach({...api,renderSolution,typesetProblem(element,source){element.innerHTML=textBlock(source);typeset(element);},sendFeedback:followup,showLearning:()=>setInspectorView('lesson'),saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
     window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>{
       if(api.state.solution&&api.question.value.trim()!==String(api.state.solution.restatement||'').trim()){
         if(!saveDraft())throw new Error('新题草稿备份失败，未切换题目，请先复制输入内容。');

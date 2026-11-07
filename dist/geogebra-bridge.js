@@ -14,6 +14,7 @@
   let inlineSlot=null, importReport={skipped:[]}, startGeneration=0, sceneProvider=null;
   let narrowLayout=null;
   const highlighted=new Map();
+  let highlightSnapshotDepth=0;
   let teachingBinding=null,linkedTimer=null,linkedRunning=false,linkedSignature='',linkedStructure='';
   const draftKey=()=>KEY+(teachingBinding?':teaching':'');
   function archiveSnapshot(){
@@ -254,6 +255,7 @@
         teachingBinding.changed(changes);
         latestScene=copy(sceneProvider());linkedSignature=JSON.stringify(latestScene);linkedStructure=structureKey(latestScene);
       }
+      if(['dragEnd','undo','redo','viewChanged2D'].includes(event.type))window.dispatchEvent(new Event('dong:board-view-changed'));
       if (['dragEnd', 'undo', 'redo', 'updateStyle', 'viewChanged2D', 'editorStop'].includes(event.type)) schedule();
     });
   }
@@ -261,9 +263,18 @@
   function getBase64() {
     if (!api) return Promise.reject(new Error('请等待 GeoGebra 加载完成。'));
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('保存图稿超时，请使用“保存 .ggb”重试。')), 12000);
-      try { api.getBase64(value => { clearTimeout(timer); resolve(value); }); }
-      catch (error) { clearTimeout(timer); reject(error); }
+      // Answer-step emphasis is a transient teaching aid. Never write its
+      // enlarged points/thicker lines into saved constructions or shares.
+      if(highlightSnapshotDepth++===0)applyHighlightStyles(false);
+      let settled=false;
+      const finish=(error,value)=>{
+        if(settled)return;settled=true;clearTimeout(timer);
+        if(--highlightSnapshotDepth===0)applyHighlightStyles(true);
+        if(error)reject(error);else resolve(value);
+      };
+      const timer = setTimeout(() => finish(new Error('保存图稿超时，请使用“保存 .ggb”重试。')), 12000);
+      try { api.getBase64(value => finish(null,value)); }
+      catch (error) { finish(error); }
     });
   }
 
@@ -737,14 +748,23 @@
     }catch(error){info('画板同步未完成：'+error.message+'。请返回原画板核对。');teachingBinding?.failed?.(error);}
     finally{busy=false;linkedRunning=false;if(JSON.stringify(latestScene)!==signature)syncTeaching(latestScene);}
   }
+  function applyHighlightStyles(emphasized){
+    if(!api)return;
+    const wasBusy=busy;busy=true;
+    try{for(const [label,style]of highlighted)if(api.exists(label)){
+      api.setLineThickness(label,emphasized?9:style.line);
+      if(style.point!=null)api.setPointSize(label,emphasized?Math.max(style.point,8):style.point);
+    }}finally{busy=wasBusy;}
+  }
   function highlight(ids=[]){
     if(!api)return;
-    for(const [label,style]of highlighted)if(api.exists(label)){api.setLineThickness(label,style.line);if(style.point!=null)api.setPointSize(label,style.point);}
+    applyHighlightStyles(false);
     highlighted.clear();
     for(const id of ids){const label=importReport.ids?.get(id)||importReport.labels?.get(id.replace(/^(point|feature):/,''));if(label&&api.exists(label)&&api.getVisible(label)&&!highlighted.has(label)){
       const line=api.getLineThickness?.(label),point=api.getObjectType?.(label)==='point'?api.getPointSize?.(label):null;
-      highlighted.set(label,{line:Number.isFinite(line)?line:5,point:Number.isFinite(point)?point:null});api.setLineThickness(label,9);if(Number.isFinite(point))api.setPointSize(label,Math.max(point,8));
+      highlighted.set(label,{line:Number.isFinite(line)?line:5,point:Number.isFinite(point)?point:null});
     }}
+    if(!highlightSnapshotDepth)applyHighlightStyles(true);
   }
   window.DongGeoGebra = Object.freeze({ open, close, arrangeLabels, sync, syncTeaching, download, save, highlight, restoreMatching, getAPI: () => api, getSaved:savedScene, getReport:()=>({skipped:[...importReport.skipped],owned:[...(importReport.owned||[])],signature:linkedSignature}) });
 })();

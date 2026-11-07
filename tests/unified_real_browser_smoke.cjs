@@ -212,4 +212,46 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#sceneJson').evaluate(el=>{el.value=JSON.stringify({type:'ellipse',a:3,b:2,showDynamic:false,points:{N:[-1,1]}});document.querySelector('#applyJson').click();});
   await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&JSON.parse(window.DongGeoGebra.getReport().signature).type==='ellipse');
   assert(await page.locator('#boardPointFinder').isHidden());assert(await page.locator('#boardPointLocator').isHidden(),'New problem clears the old selection even if it reuses the name N');
+
+  // Real classroom overlay, not merely the native canvas or an API substitute.
+  await page.setViewportSize({width:1600,height:1050});
+  await page.locator('#openQuestionBank').click();await page.locator('[data-bank-id="2024-ii-3"]').click();await page.locator('[data-bank-action="full"]').click();
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongUnifiedBoard.isSynchronized()&&window.DongGeoGebra.getAPI()?.isDefined('A'),null,{timeout:100000});
+  await page.locator('#learningStyle').selectOption('step');await page.locator('.step-navigation button').first().click();
+  await page.locator('#startClassroom').click();assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /);
+  for(const width of [1366,1600]){
+    await page.setViewportSize({width,height:1050});
+    await page.waitForFunction(()=>{const board=document.querySelector('.board-shell'),inspect=document.querySelector('.inspect'),b=board.getBoundingClientRect(),i=inspect.getBoundingClientRect();return b.left>=i.right&&b.left-i.right<30&&Math.abs(i.top-b.top)<3;});
+    const layout=await page.evaluate(()=>{const b=document.querySelector('.board-shell').getBoundingClientRect(),i=document.querySelector('.inspect').getBoundingClientRect(),w=document.querySelector('.workspace').getBoundingClientRect();return{gap:b.left-i.right,boardRatio:b.width/w.width,scroll:document.documentElement.scrollHeight-innerHeight,bottom:Math.max(b.bottom,i.bottom)-innerHeight};});
+    assert(layout.gap>=0&&layout.gap<30,'Lecture has two adjacent columns, not an empty input column');
+    assert(layout.boardRatio>.55&&layout.boardRatio<.75,'The lecture board receives a useful share of the viewport');
+    assert(layout.scroll<=1&&layout.bottom<=1,'Desktop lecture fits the viewport with independent panel scrolling');
+  }
+  await page.keyboard.press('PageDown');assert.match(await page.locator('#classroomProgress').textContent(),/^2 \/ /);
+  const ink=page.locator('#classroomInk');await ink.waitFor({state:'visible'});
+  assert.equal(await ink.evaluate(el=>el.parentElement.className),'dong-ggb-host');
+  await page.locator('#inkToggle').click();
+  await page.waitForTimeout(300); // The real applet finishes its classroom resize.
+  const inkBounds=await ink.boundingBox(),graphics=await page.locator('.dong-ggb-host').boundingBox();
+  assert(Math.abs(inkBounds.width-graphics.width)<2&&Math.abs(inkBounds.height-graphics.height)<2);
+  const construction=await page.evaluate(()=>new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml').querySelector('construction').outerHTML);
+  await page.mouse.move(inkBounds.x+40,inkBounds.y+50);await page.mouse.down();await page.mouse.move(inkBounds.x+140,inkBounds.y+100,{steps:6});await page.mouse.up();
+  const hasInk=()=>ink.evaluate(el=>el.getContext('2d').getImageData(0,0,el.width,el.height).data.some((v,i)=>i%4===3&&v>0));
+  assert(await hasInk(),'The real primary GGB board must receive visible teacher ink');
+  assert.equal(await page.evaluate(()=>new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml').querySelector('construction').outerHTML),construction,'Screen ink cannot change the actual GGB construction');
+  await screenshot('teaching-real-primary-ink.png',null);
+  await page.locator('#homeButton').click();assert.equal(await hasInk(),false,'Fit/zoom clears obsolete screen marks');
+  await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="lesson"]').click();
+  assert(await page.locator('.inspect').isVisible());assert(await page.locator('.board-shell').isHidden(),'Mobile lecture shows only the selected lesson panel');
+  await page.locator('[data-mobile-panel="board"]').click();assert(await page.locator('.board-shell').isVisible());assert(await page.locator('.inspect').isHidden(),'Mobile lecture switches to only the board');
+  assert((await ink.boundingBox()).width<=390);await screenshot('teaching-real-mobile-board.png',null);
+  await page.setViewportSize({width:1600,height:1050});
+  await page.keyboard.press('Escape');assert(await page.locator('#classroomBar').isHidden(),'The inline GGB dialog must not trap lecture Escape');
+  const originalStyle=await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return[a.getLineThickness('A'),a.getPointSize('A')];});
+  await page.evaluate(()=>window.DongGeoGebra.highlight(['feature:A']));
+  assert.deepEqual(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return[a.getLineThickness('A'),a.getPointSize('A')];}),[9,Math.max(originalStyle[1],8)]);
+  await page.evaluate(()=>window.DongGeoGebra.save());
+  assert.deepEqual(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return[a.getLineThickness('A'),a.getPointSize('A')];}),[9,Math.max(originalStyle[1],8)],'Saving keeps the temporary highlight visible');
+  await page.reload();await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.isDefined('A'),null,{timeout:100000});
+  assert.deepEqual(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return[a.getLineThickness('A'),a.getPointSize('A')];}),originalStyle,'Reload does not promote a temporary highlight to permanent styling');
 };

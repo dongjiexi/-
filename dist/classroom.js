@@ -10,7 +10,7 @@
     castbar.innerHTML='<strong>讲题模式</strong><select id="classroomPart" aria-label="讲解的小问"></select><button id="previousStep">← 上一步</button><button id="nextStep">下一步 →</button><span id="classroomProgress"></span><button id="classroomAnswer">显示 / 隐藏结论</button><select id="lectureFont" aria-label="讲题字号"><option value="18">大字</option><option value="22">特大字</option><option value="26">投影大字</option></select><button id="inkToggle" aria-pressed="false">红笔批注</button><button id="undoInk">撤销批注</button><button id="clearInk">清除批注</button><button id="classroomFullscreen">全屏</button><button id="exitClassroom">退出 · Esc</button>';
     document.body.prepend(castbar);
     const ink=document.createElement('canvas');ink.id='classroomInk';ink.hidden=true;ink.setAttribute('aria-label','讲题屏幕批注');find('.canvas-wrap').append(ink);
-    let casting=false,pen=false,strokes=[],activeStroke=null,solutionRef=null;
+    let casting=false,pen=false,strokes=[],activeStroke=null,solutionRef=null,inkHost=null,inkPart=api.state.activePart;
     const context=ink.getContext('2d');
     const currentQuestion=()=>!!api.state.solution&&api.question.value.trim()===String(api.state.solution.restatement||'').trim();
     const requireCurrent=()=>{if(currentQuestion())return true;api.setStatus('题目已修改，学习记录和讲题仍对应原题。请恢复对应题目或重新解题后继续。',true);return false;};
@@ -32,7 +32,16 @@
     }
     function currentPart(){const parts=api.state.solution?.parts||[];return parts.find(part=>Number(part.index)===Number(api.state.activePart))||parts[0];}
     function persist(){api.remember();api.saveStudy();}
+    const inkResize=new ResizeObserver(()=>{if(casting)showInk();});
+    function placeInk(){
+      const host=window.DongUnifiedBoard?.isActive?.()?find('.dong-ggb-host'):find('.canvas-wrap');
+      if(!host||host===inkHost)return;
+      inkResize.disconnect();inkHost=host;host.append(ink);inkResize.observe(host);
+      strokes=[];activeStroke=null;
+    }
+    function clearInk(){strokes=[];activeStroke=null;showInk();}
     function showInk(){
+      placeInk();
       const bounds=ink.getBoundingClientRect();if(bounds.width<=0||bounds.height<=0)return;
       const ratio=window.devicePixelRatio||1;ink.width=Math.round(bounds.width*ratio);ink.height=Math.round(bounds.height*ratio);context.setTransform(ratio,0,0,ratio,0,0);
       for(const stroke of strokes){if(!stroke.length)continue;context.beginPath();context.moveTo(stroke[0][0]*bounds.width,stroke[0][1]*bounds.height);for(const point of stroke.slice(1))context.lineTo(point[0]*bounds.width,point[1]*bounds.height);context.strokeStyle='#d92835';context.lineWidth=3;context.lineCap='round';context.lineJoin='round';context.stroke();}
@@ -50,14 +59,14 @@
       const part=currentPart(),data=study();if(!part||!data)return;
       data.mode='step';data.counts[part.index]=Math.max(0,Math.min(part.steps.length,(Number(data.counts[part.index])||0)+delta));
       api.renderSolution();persist();
-      const shown=[...document.querySelectorAll('#solution .part-body li:not([hidden])')].at(-1);if(casting)shown?.scrollIntoView({block:'nearest'});
+      const shown=[...document.querySelectorAll('#solution .part-body > ol > li:not([hidden])')].at(-1);if(casting)shown?.scrollIntoView({block:'nearest'});
     }
     function answerToggle(){if(!requireCurrent())return;const part=currentPart(),data=study();if(!part||!data)return;data.answers[part.index]=!data.answers[part.index];api.renderSolution();persist();}
     function leave(){casting=false;pen=false;activeStroke=null;document.body.classList.remove('classroom-mode');castbar.hidden=true;ink.hidden=true;ink.style.pointerEvents='none';find('#inkToggle').setAttribute('aria-pressed','false');if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});api.render();}
     function enter(){
       if(!api.state.solution){api.setStatus('请先载入本题解析。',true);return;}
       if(!requireCurrent())return;
-      const part=currentPart();if(!part){api.setStatus('当前题稿没有可讲解的小问，请重新载入解析。',true);return;}api.state.activePart=part.index;api.partChanged?.();const data=study();data.mode='step';data.counts={};data.answers={};
+      const part=currentPart();if(!part){api.setStatus('当前题稿没有可讲解的小问，请重新载入解析。',true);return;}api.state.activePart=part.index;api.partChanged?.();const data=study();data.mode='step';strokes=[];activeStroke=null;
       casting=true;document.body.classList.add('classroom-mode');castbar.hidden=false;ink.hidden=false;ink.style.pointerEvents='none';
       api.showLearning();api.renderSolution();api.refreshLayers();api.render();updateCastBar();requestAnimationFrame(showInk);persist();
     }
@@ -65,6 +74,7 @@
       const solution=api.state.solution,data=study();controls.hidden=!solution;
       if(!solution){if(casting)leave();return;}
       if(solution!==solutionRef){if(casting)leave();solutionRef=solution;strokes=[];showInk();}
+      if(inkPart!==api.state.activePart){inkPart=api.state.activePart;clearInk();}
       const stepped=data.mode==='step';find('#learningStyle').value=stepped?'step':'full';
       find('#studentAttempt').value=typeof data.notes==='string'?data.notes:'';
       find('#reviewState').value=['review','mastered'].includes(data.review)?data.review:'new';
@@ -72,10 +82,11 @@
       if(stepped){const title=panel.querySelector(':scope > h3');if(title)title.textContent='先独立思考，再逐步展开';}
       panel.querySelectorAll('.part-body').forEach(section=>{
         const index=section.dataset.partIndex;
-        const steps=[...section.querySelectorAll('ol>li')];
+        const steps=[...section.querySelectorAll(':scope > ol > li')];
         const count=Math.min(steps.length,Math.max(0,Number(data.counts[index])||0));
         steps.forEach((step,position)=>step.hidden=stepped&&position>=count);
         section.querySelector('.answer-summary').hidden=stepped&&!data.answers[index];
+        section.querySelectorAll('.model-original').forEach(original=>{original.hidden=stepped;});
         if(!stepped)return;
         const navigation=document.createElement('div');navigation.className='step-navigation';
         const caption=document.createElement('span');caption.textContent=`已展开 ${count} / ${steps.length} 步`;
@@ -98,14 +109,20 @@
     find('#lectureFont').addEventListener('change',event=>document.body.style.setProperty('--lecture-font',event.target.value+'px'));
     find('#classroomFullscreen').addEventListener('click',()=>{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else document.documentElement.requestFullscreen().catch(()=>api.setStatus('浏览器未允许全屏，讲题布局仍可使用。'));});
     find('#inkToggle').addEventListener('click',()=>{if(!requireCurrent())return;pen=!pen;ink.style.pointerEvents=pen?'auto':'none';find('#inkToggle').setAttribute('aria-pressed',String(pen));api.setStatus(pen?'红笔为屏幕批注，不改变几何对象；关闭红笔后可拖动图形。':'已返回图形拖动。');});
-    find('#undoInk').addEventListener('click',()=>{strokes.pop();showInk();});find('#clearInk').addEventListener('click',()=>{strokes=[];showInk();});
+    find('#undoInk').addEventListener('click',()=>{strokes.pop();showInk();});find('#clearInk').addEventListener('click',clearInk);
     const inkPoint=event=>{const bounds=ink.getBoundingClientRect();return[(event.clientX-bounds.left)/bounds.width,(event.clientY-bounds.top)/bounds.height];};
     ink.addEventListener('pointerdown',event=>{if(!pen||!currentQuestion())return;event.preventDefault();ink.setPointerCapture(event.pointerId);activeStroke=[inkPoint(event)];strokes.push(activeStroke);});
     ink.addEventListener('pointermove',event=>{if(activeStroke){activeStroke.push(inkPoint(event));showInk();}});
     ink.addEventListener('pointerup',()=>{activeStroke=null;});ink.addEventListener('pointercancel',()=>{activeStroke=null;});
     window.addEventListener('resize',()=>requestAnimationFrame(showInk));
-    document.addEventListener('keydown',event=>{if(!casting||/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]'))return;if(event.key==='Escape'){leave();return;}if(['ArrowRight','PageDown'].includes(event.key)){event.preventDefault();changeStep(1);}if(['ArrowLeft','PageUp'].includes(event.key)){event.preventDefault();changeStep(-1);}});
-    find('#printWorksheet').addEventListener('click',()=>{if(!requireCurrent())return;const solution=api.state.solution;if(!solution)return;const target=find('#printLesson');target.replaceChildren();const title=document.createElement('h1');title.textContent='董解析 · 独立练习';const name=document.createElement('p');name.textContent='姓名：________________　班级：________________　日期：________________';const problem=document.createElement('div');problem.textContent=solution.restatement;problem.style.whiteSpace='pre-wrap';const space=document.createElement('div');space.className='worksheet-space';space.textContent='作答区';target.append(title,name,problem);if(solution.lessonSource){const source=document.createElement("p");source.textContent=[solution.lessonSource.year,solution.lessonSource.paper,solution.lessonSource.number,solution.lessonSource.scope].filter(Boolean).join(" · ");target.append(source);}target.append(space);window.renderMathInElement?.(target,{throwOnError:false,trust:false,delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}]});window.print();});
+    const board=find('.board-shell');
+    new MutationObserver(()=>{placeInk();if(casting)requestAnimationFrame(showInk);}).observe(board,{attributes:true,attributeFilter:['data-renderer','data-ggb-active']});
+    window.addEventListener('dong:board-rebuilt',clearInk);
+    window.addEventListener('dong:board-view-changed',()=>{if(casting)clearInk();});
+    for(const type of ['pointerdown','wheel'])board.addEventListener(type,event=>{if(casting&&!pen&&!event.target.closest('.board-toolbar,.dong-ggb-head'))clearInk();},{capture:true,passive:true});
+    board.addEventListener('click',event=>{if(casting&&['zoomIn','zoomOut','homeButton'].includes(event.target.closest('button')?.id))clearInk();},true);
+    document.addEventListener('keydown',event=>{if(!casting||/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)||event.target.isContentEditable||document.querySelector('dialog[open]:not(.dong-ggb-inline)'))return;if(event.key==='Escape'){leave();return;}if(['ArrowRight','PageDown'].includes(event.key)){event.preventDefault();changeStep(1);}if(['ArrowLeft','PageUp'].includes(event.key)){event.preventDefault();changeStep(-1);}});
+    find('#printWorksheet').addEventListener('click',()=>{if(!requireCurrent())return;const solution=api.state.solution;if(!solution)return;const target=find('#printLesson');target.replaceChildren();const title=document.createElement('h1');title.textContent='董解析 · 独立练习';const name=document.createElement('p');name.textContent='姓名：________________　班级：________________　日期：________________';const problem=document.createElement('div');problem.textContent=solution.restatement;problem.style.whiteSpace='pre-wrap';const space=document.createElement('div');space.className='worksheet-space';space.textContent='作答区';target.append(title,name,problem);if(solution.lessonSource){const source=document.createElement("p");source.textContent=[solution.lessonSource.year,solution.lessonSource.paper,solution.lessonSource.number,solution.lessonSource.scope].filter(Boolean).join(" · ");target.append(source);}target.append(space);if(api.typesetProblem)api.typesetProblem(problem,solution.restatement);else window.renderMathInElement?.(problem,{throwOnError:false,trust:false,delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}]});window.print();});
     api.question.addEventListener('input',refreshContext);
     return {decorate,leave,refreshContext};
   }

@@ -13,13 +13,26 @@
 #classroomBar button,#classroomBar select { padding:.4rem .6rem;border:1px solid #aebfd1;border-radius:7px;background:white;font-size:.88rem;color:#173956; }
 #classroomBar button[aria-pressed=true] { color:white;background:#ba2330; }
 #classroomProgress { font-size:.85rem;min-width:70px; }
-.classroom-mode .topbar,.classroom-mode .controls,.classroom-mode .footer { display:none; }
+.classroom-mode .topbar,.classroom-mode .controls,.classroom-mode .footer,.classroom-mode .pwa-banner { display:none; }
 .classroom-mode .workspace { grid-template-columns:minmax(0,1.15fr) minmax(340px,1fr);padding:.6rem;max-width:none; }
 .classroom-mode .board-shell { top:0;height:calc(100vh - 112px);min-height:480px; }
 .classroom-mode .inspect { max-height:calc(100vh - 112px); }
 .classroom-mode #solution p,.classroom-mode #solution ol,.classroom-mode #solution .math-content { font-size:var(--lecture-font,18px);line-height:1.9; }
 .classroom-mode #studyTools,.classroom-mode #followupPanel { display:none; }
-#classroomInk { position:absolute;inset:0;z-index:3;touch-action:none;cursor:crosshair; }
+.classroom-mode .dong-ggb-host { position:relative; }
+#classroomInk { position:absolute;inset:0;width:100%;height:100%;z-index:3;touch-action:none;cursor:crosshair; }
 .worksheet-space { margin-top:2rem;min-height:170mm;border-top:1px solid #777;padding-top:1rem; }
+@media (min-width:761px) {
+  body.classroom-mode { height:100dvh;overflow:hidden; }
+  body.classroom-mode>#classroomBar { flex-shrink:0; }
+  body.classroom-mode>.app { flex:1;min-height:0;height:auto; }
+  body.classroom-mode .app>.workspace,
+  body.classroom-mode .app>.workspace[data-teaching=true] {
+    display:grid;grid-template-areas:"lesson board";grid-template-columns:minmax(300px,.95fr) minmax(0,1.7fr);grid-template-rows:minmax(0,1fr);
+    flex:1;min-height:0;height:auto;align-items:stretch;overflow:hidden;gap:10px;padding:6px 12px 8px;
+  }
+  body.classroom-mode .app>.workspace>.inspect { grid-area:lesson;grid-column:1;grid-row:1;height:100%;min-height:0;max-height:none;overflow:auto; }
+  body.classroom-mode .app>.workspace>.board-shell { grid-area:board;grid-column:2;grid-row:1;position:relative;top:0;height:100%;min-height:0;max-height:none;overflow:hidden; }
+}
 @media (max-width:760px) { .classroom-mode .workspace { display:flex; } .classroom-mode .board-shell { height:65vh;min-height:480px; } .classroom-mode .inspect { max-height:none; } #classroomBar { padding:.4rem;gap:.3rem; } #classroomBar button { padding:.35rem;font-size:.8rem; } }
 @media print { #classroomBar { display:none!important; } }
