@@ -106,7 +106,8 @@
       '<div class="bank-filters"><label>找题<input id="bankSearch" type="search" placeholder="题号、知识点、关键字"></label><label>题库<select id="bankKind"><option value="">全部</option><option value="gaokao">近五年高考真题</option><option value="classic">经典例题</option></select></label><label>卷别<select id="bankPaper"><option value="">全部卷别</option><option value="national-i">全国一卷（新高考／新课标）</option><option value="national-ii">全国二卷（新高考／新课标）</option></select></label><label>年份<select id="bankYear"><option value="">全部年份</option></select></label><label>曲线<select id="bankCurve"><option value="">全部曲线</option><option>椭圆</option><option>双曲线</option><option>抛物线</option><option>圆</option></select></label><label>考点<select id="bankTopic"><option value="">全部考点</option></select></label></div>' +
       '<p class="help">先看考点与学习目标，再选择题目；此处不会提前展示答案。</p><p id="bankResultCount" role="status" aria-live="polite"></p><div class="bank-layout"><nav id="bankList" aria-label="题目列表"></nav><section id="bankDetail" aria-label="题目详情"><p>选择一道题开始。</p></section></div>';
     document.body.append(dialog);
-    let data = null, selected = null, loading = null;
+    let data = null, selected = null, loading = null, openingLesson = false, navigationEpoch = 0;
+    dialog.addEventListener('close',()=>{navigationEpoch++;});
     const typeLabel = item => item.year ? `${item.year} · ${item.paper} · 第 ${item.number} 题` : item.paper;
     function textElement(tag, value, className) {const node = document.createElement(tag); node.textContent = value; if (className) node.className = className; return node;}
     function typeset(node) {window.renderMathInElement?.(node, {throwOnError: false, trust: false, delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});}
@@ -134,15 +135,24 @@
       for (const [mode, label] of [['practice', '独立练习 · 逐步提示'], ['full', '查看参考讲解'], ['teach', '进入讲题模式']]) {
         const action = textElement('button', label, 'button ' + (mode === 'practice' ? 'primary' : 'secondary'));
         action.type = 'button'; action.dataset.bankAction = mode;
-        action.addEventListener('click', () => {
+        action.addEventListener('click', async () => {
+          if(openingLesson)return;
+          openingLesson=true;
+          const epoch=navigationEpoch;
+          actions.querySelectorAll('button').forEach(button=>{button.disabled=true;});
+          action.textContent='正在保存并切换…';
           try {
             const record = lesson(item, mode, api.solveDeterministic);
-            if (api.question.value.trim()) api.saveCurrent();
+            if (api.question.value.trim()||api.state?.model) await api.saveCurrent();
+            // Closing or choosing a different item while saving cancels this
+            // pending navigation, but keeps the backup we have just written.
+            if(!dialog.open||!action.isConnected||epoch!==navigationEpoch)return;
             api.restoreLesson(record); dialog.close(); api.showLearning();
             if (mode === 'teach') find('#startClassroom').click();
             if (window.matchMedia('(max-width: 760px)').matches) find('[data-mobile-panel="lesson"]')?.click();
             api.setStatus('已载入' + item.scope + '。' + (mode === 'practice' ? '先独立作答，再点击提示；参考结论默认隐藏。' : '参考讲解已载入；可保存到题本、记录错因。'));
           } catch (error) {api.setStatus(error.message || String(error), true);}
+          finally {openingLesson=false;action.textContent=label;actions.querySelectorAll('button').forEach(button=>{button.disabled=false;});}
         }); actions.append(action);
       }
       detail.append(actions, textElement('p', '参考讲解是独立入口；点击主界面的“解题”仍使用你选择的解题引擎。', 'help'), sources);

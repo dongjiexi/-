@@ -6,6 +6,7 @@
   let options,source=null,started=false,failed=false,active=false,slot,board,status,tools,observer,pendingDraft=null,closePointFinder=()=>{};
   const current=()=>options?.scene()||{isFreeBoard:true,objects:[],showDynamic:false};
   const sceneKey=value=>JSON.stringify(value);
+  const sameScene=(left,right)=>window.DongGeoGebra.matchesScene?.(left,right)??left===right;
   function message(text){status.querySelector('span').textContent=text;}
   function activate(value){
     if(!value)closePointFinder();
@@ -15,9 +16,9 @@
     window.dispatchEvent(new Event('resize'));
   }
   function ready(report){
-    if(report.signature!==sceneKey(current()))return;
+    if(!sameScene(report.signature,sceneKey(current())))return;
     let ignoredDraft=false;
-    if(pendingDraft){const record=pendingDraft;pendingDraft=null;if(record.sceneSignature===report.signature)window.DongGeoGebra.restoreMatching(record).then(ok=>{if(!ok)message('题图已恢复，但附加图稿不匹配，未覆盖当前图形。');else window.DongGeoGebra.save().catch(failure);}).catch(failure);else ignoredDraft=true;}
+    if(pendingDraft){const record=pendingDraft;pendingDraft=null;if(sameScene(record.sceneSignature,report.signature))window.DongGeoGebra.restoreMatching(record).then(ok=>{if(!ok)message('题图已恢复，但附加图稿不匹配，未覆盖当前图形。');else window.DongGeoGebra.save().catch(failure);}).catch(failure);else ignoredDraft=true;}
     failed=false;
     const reasons=[...report.skipped];
     if(current().unrestrictedMotion)reasons.push('无限制移动');
@@ -69,7 +70,7 @@
     file.addEventListener('change',async()=>{
       try{const selected=file.files[0];if(!selected)return;if(selected.size>6*1024*1024)throw new Error('图稿超过 6 MB。');const data=JSON.parse(await selected.text());if(data.format!=='dongjiexi-board'||data.version!==1||!data.scene)throw new Error('请选择董解析导出的完整图稿。');
         stageDraft(data.boardDraft);if(active)await window.DongGeoGebra.save();options.restore(data.scene);
-        if(pendingDraft&&window.DongGeoGebra.getReport().signature===pendingDraft.sceneSignature)ready(window.DongGeoGebra.getReport());
+        if(pendingDraft&&sameScene(window.DongGeoGebra.getReport().signature,pendingDraft.sceneSignature))ready(window.DongGeoGebra.getReport());
       }catch(error){pendingDraft=null;message(error.message);}finally{file.value='';}
     });
   }
@@ -199,20 +200,33 @@
   }
   function highlight(ids){if(active)window.DongGeoGebra.highlight(ids);}
   function snapshot(){return window.DongGeoGebra.getSaved(sceneKey(current()))||null;}
+  async function capture(){
+    assertSynchronized();
+    const signature=sceneKey(current()),wasActive=active;
+    const record=active?await window.DongGeoGebra.save():snapshot();
+    if(signature!==sceneKey(current())||wasActive!==active||!isSynchronized()||(wasActive&&!sameScene(record?.sceneSignature,signature)))throw new Error('保存期间题图已变化，本次操作已取消，请在图形同步后重试。');
+    return record;
+  }
   function stageDraft(record){
     if(!record){pendingDraft=null;return;}
     if(typeof record.base64!=='string'||record.base64.length>4*1024*1024||!/^[A-Za-z0-9+/]*={0,2}$/.test(record.base64)||typeof record.sceneSignature!=='string'||record.sceneSignature.length>2*1024*1024||!Array.isArray(record.owned)||record.owned.length>5000||record.owned.some(label=>typeof label!=='string'||!/^[A-Za-z][A-Za-z0-9_]*$/.test(label)))throw new Error('附加图稿格式无效；原图保留。');
     pendingDraft=JSON.parse(JSON.stringify(record));
   }
+  function restoreStagedDraft(){
+    // Only call after the complete lesson restore, never during intermediate
+    // clear/highlight renders that still refer to the outgoing question.
+    const report=window.DongGeoGebra.getReport();
+    if(pendingDraft&&report.signature===sceneKey(current()))ready(report);
+  }
   async function exportBoard(){
     assertSynchronized();
-    const record=active?await window.DongGeoGebra.save():snapshot();
+    const record=await capture();
     const content={format:'dongjiexi-board',version:1,scene:record?.sceneSignature?JSON.parse(record.sceneSignature):current(),boardDraft:record};
     const url=URL.createObjectURL(new Blob([JSON.stringify(content)],{type:'application/json'}));
     const link=document.createElement('a');link.href=url;link.download='董解析-完整图稿.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
-  function isSynchronized(){return !active||window.DongGeoGebra.getReport().signature===sceneKey(current());}
+  function isSynchronized(){return !active||sameScene(window.DongGeoGebra.getReport().signature,sceneKey(current()));}
   function assertSynchronized(){if(!isSynchronized())throw new Error('画板正在同步当前题图，请稍后再保存、分享或导出图片。');}
   function image(){assertSynchronized();return active?'data:image/png;base64,'+window.DongGeoGebra.getAPI().getPNGBase64(2,false,144):null;}
-  window.DongUnifiedBoard=Object.freeze({mount,sync,highlight,snapshot,stageDraft,exportBoard,image,isActive:()=>active,isSynchronized});
+  window.DongUnifiedBoard=Object.freeze({mount,sync,highlight,snapshot,capture,stageDraft,restoreStagedDraft,exportBoard,image,isActive:()=>active,isSynchronized});
 })();

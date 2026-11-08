@@ -254,4 +254,25 @@ module.exports=async({page,assert,screenshot})=>{
   assert.deepEqual(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return[a.getLineThickness('A'),a.getPointSize('A')];}),[9,Math.max(originalStyle[1],8)],'Saving keeps the temporary highlight visible');
   await page.reload();await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.isDefined('A'),null,{timeout:100000});
   assert.deepEqual(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return[a.getLineThickness('A'),a.getPointSize('A')];}),originalStyle,'Reload does not promote a temporary highlight to permanent styling');
+  // Exercise the complete lesson save/reopen path with the real applet archive.
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isSynchronized());
+  const lessonQuestion=await page.locator('#question').inputValue();
+  await page.locator('[data-inspector-view="lesson"]').click();
+  await page.locator('#learningStyle').selectOption('full');
+  await page.evaluate(()=>window.DongGeoGebra.getAPI().evalCommand('LessonAuxiliary=(1/3,2sqrt(2))'));
+  await page.locator('[data-inspector-view="lesson"]').click();await page.locator('[data-lesson-action="save"]').click();
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('已存入'));
+  const savedId=await page.evaluate(q=>JSON.parse(localStorage.getItem('dongjiexi:notebook:v1')).find(r=>r.question===q).id,lessonQuestion);
+  await page.locator('#openQuestionBank').click();await page.locator('[data-bank-id="2023-ii-5"]').click();await page.locator('[data-bank-action="full"]').click();
+  await page.waitForFunction(()=>!document.querySelector('#questionBankDialog').open&&window.DongUnifiedBoard.isSynchronized());
+  await page.waitForFunction(()=>!window.DongGeoGebra.getAPI().exists('LessonAuxiliary'));
+  // Switching saves another fresh copy under the same question.
+  const reopenedId=await page.evaluate(q=>JSON.parse(localStorage.getItem('dongjiexi:notebook:v1')).find(r=>r.question===q).id,lessonQuestion);
+  assert(savedId&&reopenedId);
+  await page.locator('#openNotebook').click();await page.locator(`[data-open-lesson="${reopenedId}"]`).click();
+  await page.waitForFunction(()=>window.DongUnifiedBoard.isSynchronized()&&window.DongGeoGebra.getAPI().isDefined('LessonAuxiliary'));
+  assert.equal(await page.locator('#question').inputValue(),lessonQuestion);
+  const coordinates=await page.evaluate(()=>{const api=window.DongGeoGebra.getAPI();return[api.getXcoord('LessonAuxiliary'),api.getYcoord('LessonAuxiliary')];});
+  assert(Math.abs(coordinates[0]-1/3)<1e-9&&Math.abs(coordinates[1]-2*Math.sqrt(2))<1e-9,'Real applet preserves exact-coordinate auxiliary geometry across a question switch');
+  await screenshot('lesson-real-save-reopen.png',null);
 };

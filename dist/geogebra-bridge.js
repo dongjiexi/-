@@ -10,7 +10,7 @@
   const KEY = 'dongjiexi:geogebra:v1';
   const BACKUP = KEY + ':previous';
   let dialog, host, status, api, loading, scriptPromise, latestScene = null;
-  let saveTimer, busy = false, previousFocus, sessionTitle = 'GeoGebra 自由作图';
+  let saveTimer, saveSequence=0, savedSequence=0, busy = false, previousFocus, sessionTitle = 'GeoGebra 自由作图';
   let inlineSlot=null, importReport={skipped:[]}, startGeneration=0, sceneProvider=null;
   let narrowLayout=null;
   const highlighted=new Map();
@@ -25,7 +25,15 @@
     const records=parsed.filter(item=>item&&typeof item==='object'&&typeof item.sceneSignature==='string'&&typeof item.base64==='string'&&Array.isArray(item.owned));
     return{raw,records,invalid:records.length!==parsed.length};
   }
-  const savedScene=signature=>[read(KEY+':teaching'),...archiveSnapshot().records].find(record=>record?.sceneSignature===signature);
+  function matchesScene(left,right){
+    if(left===right)return true;
+    if(typeof left!=='string'||typeof right!=='string')return false;
+    // JSON object member order can change during model normalization. Preserve
+    // every value and array order; compare content, not serialization order.
+    const ordered=value=>Array.isArray(value)?value.map(ordered):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,ordered(value[key])])):value;
+    try{return JSON.stringify(ordered(JSON.parse(left)))===JSON.stringify(ordered(JSON.parse(right)));}catch{return false;}
+  }
+  const savedScene=signature=>[read(KEY+':teaching'),...archiveSnapshot().records].find(record=>record&&matchesScene(record.sceneSignature,signature));
   function additiveExtras(next){
     if(!linkedSignature||typeof api.getXML!=='function')return null;
     const before=JSON.parse(linkedSignature),oldObjects=before.objects||[],newObjects=next?.objects||[];
@@ -49,7 +57,7 @@
     api.evalXML(extras.nodes.map(node=>node.xml).join(''));
   }
   async function restoreMatching(record){
-    if(!record?.base64||record.sceneSignature!==linkedSignature||JSON.stringify(record.owned)!==JSON.stringify(importReport.owned))return false;
+    if(!record?.base64||!matchesScene(record.sceneSignature,linkedSignature)||JSON.stringify(record.owned)!==JSON.stringify(importReport.owned))return false;
     await loadBase64(record.base64);
     if(!importReport.owned.every(label=>api.exists(label)))throw new Error('保存图稿与题目对象不一致，请使用图稿文件恢复。');
     if(importReport.originCommands?.length&&record.coordinateFrameVersion!==1){
@@ -279,6 +287,8 @@
   }
 
   async function save() {
+    clearTimeout(saveTimer);
+    const sequence=++saveSequence;
     const key=draftKey();
     // Capture the rendered source BEFORE the asynchronous snapshot. latestScene
     // can already be the next question while this board still shows the old one.
@@ -286,7 +296,8 @@
     const owned=[...(importReport.owned||[])],title=sessionTitle;
     const base64 = await getBase64();
     const record = { base64, title, savedAt: new Date().toISOString(),sceneSignature,owned,coordinateFrameVersion:1 };
-    try { localStorage.setItem(key, JSON.stringify(record)); }
+    // A slower earlier snapshot must never replace a more recent saved board.
+    try { if(sequence>savedSequence){localStorage.setItem(key, JSON.stringify(record));savedSequence=sequence;} }
     catch { throw new Error('浏览器存储空间不足，请点击“保存 .ggb”把图稿保存到文件。'); }
     return record;
   }
@@ -300,7 +311,7 @@
         // Preserve unreadable history before replacing the active index. If
         // storage is full, fail without discarding the original archive.
         if(archive.invalid)localStorage.setItem(KEY+':teaching:archive:recovery:'+Date.now()+'-'+Math.random().toString(36).slice(2),archive.raw);
-        localStorage.setItem(KEY+':teaching:archive',JSON.stringify([record,...archive.records.filter(item=>item.sceneSignature!==record.sceneSignature)].slice(0,4)));
+        localStorage.setItem(KEY+':teaching:archive',JSON.stringify([record,...archive.records.filter(item=>!matchesScene(item.sceneSignature,record.sceneSignature))].slice(0,4)));
       }
     }
     catch { throw new Error('无法备份当前图，请先保存 .ggb 文件并清理浏览器存储空间。'); }
@@ -766,5 +777,5 @@
     }}
     if(!highlightSnapshotDepth)applyHighlightStyles(true);
   }
-  window.DongGeoGebra = Object.freeze({ open, close, arrangeLabels, sync, syncTeaching, download, save, highlight, restoreMatching, getAPI: () => api, getSaved:savedScene, getReport:()=>({skipped:[...importReport.skipped],owned:[...(importReport.owned||[])],signature:linkedSignature}) });
+  window.DongGeoGebra = Object.freeze({ open, close, arrangeLabels, sync, syncTeaching, download, save, highlight, restoreMatching, matchesScene, getAPI: () => api, getSaved:savedScene, getReport:()=>({skipped:[...importReport.skipped],owned:[...(importReport.owned||[])],signature:linkedSignature}) });
 })();
