@@ -66,6 +66,15 @@ module.exports=async({page,assert,screenshot})=>{
   await page.reload();await page.waitForFunction(()=>window.DongUnifiedBoard.isActive());
   assert.deepEqual(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return [a.getLineThickness('A'),a.getPointSize('A'),a.getLineThickness('B'),a.getPointSize('B')];}),[...style,...style],'Reload restores original styles with no stale highlight');
 
+  await page.evaluate(()=>window.DongGeoGebra.highlight(['feature:A']));
+  await page.getByRole('button',{name:'画板设置',exact:true}).click();
+  await page.locator('#boardSettings [data-setting="object"]').selectOption('A');
+  assert.equal(Number(await page.locator('#boardSettings [data-setting="thickness"]').inputValue()),style[0],'Settings reads the original style, not temporary step emphasis');
+  await page.locator('#boardSettings [data-setting="thickness"]').fill('2');await page.locator('#boardSettings [data-setting="thickness"]').dispatchEvent('change');
+  await page.locator('#boardSettings [data-close]').click();
+  const edited=await page.evaluate(async()=>{window.DongGeoGebra.highlight(['feature:A']);const record=await window.DongGeoGebra.save();window.DongGeoGebra.highlight([]);return {saved:JSON.parse(atob(record.base64)).styles.A.line,live:window.DongGeoGebra.getAPI().getLineThickness('A')};});
+  assert.deepEqual(edited,{saved:2,live:2},'A style edit survives later highlighting and saving');
+
   // A bounded native-only dependency tests renderer changes without dropping ink.
   await page.locator('#sceneJson').evaluate(el=>{el.value=JSON.stringify({type:'ellipse',a:3,b:2,showDynamic:false,objects:[{id:'restricted',kind:'construction',op:'point_on',refs:['$conic'],label:'T',t:.5,motionDomain:{parameter:{min:0,max:1,minClosed:false}}}]});document.querySelector('#applyJson').click();});
   await page.waitForFunction(()=>!window.DongUnifiedBoard.isActive());

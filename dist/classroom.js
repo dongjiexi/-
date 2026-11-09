@@ -10,7 +10,8 @@
     castbar.innerHTML='<strong>讲题模式</strong><select id="classroomPart" aria-label="讲解的小问"></select><button id="previousStep">← 上一步</button><button id="nextStep">下一步 →</button><span id="classroomProgress"></span><button id="classroomAnswer">显示 / 隐藏结论</button><select id="lectureFont" aria-label="讲题字号"><option value="18">大字</option><option value="22">特大字</option><option value="26">投影大字</option></select><button id="inkToggle" aria-pressed="false">红笔批注</button><button id="undoInk">撤销批注</button><button id="clearInk">清除批注</button><button id="classroomFullscreen">全屏</button><button id="exitClassroom">退出 · Esc</button>';
     document.body.prepend(castbar);
     const ink=document.createElement('canvas');ink.id='classroomInk';ink.hidden=true;ink.setAttribute('aria-label','讲题屏幕批注');find('.canvas-wrap').append(ink);
-    let casting=false,pen=false,strokes=[],activeStroke=null,solutionRef=null,inkHost=null,inkPart=api.state.activePart;
+    let casting=false,pen=false,strokes=[],activeStroke=null,activePointer=null,solutionRef=null,inkHost=null,inkPart=api.state.activePart;
+    let fullscreenOwned=false,fullscreenPending=false,lectureSession=0;
     const context=ink.getContext('2d');
     const currentQuestion=()=>!!api.state.solution&&api.question.value.trim()===String(api.state.solution.restatement||'').trim();
     const requireCurrent=()=>{if(currentQuestion())return true;api.setStatus('题目已修改，学习记录和讲题仍对应原题。请恢复对应题目或重新解题后继续。',true);return false;};
@@ -32,14 +33,18 @@
     }
     function currentPart(){const parts=api.state.solution?.parts||[];return parts.find(part=>Number(part.index)===Number(api.state.activePart))||parts[0];}
     function persist(){api.remember();api.saveStudy();}
+    function finishStroke(){
+      const pointer=activePointer;activePointer=null;activeStroke=null;
+      if(pointer!=null&&ink.hasPointerCapture(pointer))ink.releasePointerCapture(pointer);
+    }
     const inkResize=new ResizeObserver(()=>{if(casting)showInk();});
     function placeInk(){
       const host=window.DongUnifiedBoard?.isActive?.()?find('.dong-ggb-host'):find('.canvas-wrap');
       if(!host||host===inkHost)return;
       inkResize.disconnect();inkHost=host;host.append(ink);inkResize.observe(host);
-      strokes=[];activeStroke=null;
+      finishStroke();strokes=[];
     }
-    function clearInk(){strokes=[];activeStroke=null;showInk();}
+    function clearInk(){finishStroke();strokes=[];showInk();}
     function showInk(){
       placeInk();
       const bounds=ink.getBoundingClientRect();if(bounds.width<=0||bounds.height<=0)return;
@@ -62,7 +67,7 @@
       const shown=[...document.querySelectorAll('#solution .part-body > ol > li:not([hidden])')].at(-1);if(casting)shown?.scrollIntoView({block:'nearest'});
     }
     function answerToggle(){if(!requireCurrent())return;const part=currentPart(),data=study();if(!part||!data)return;data.answers[part.index]=!data.answers[part.index];api.renderSolution();persist();}
-    function leave(){casting=false;pen=false;activeStroke=null;document.body.classList.remove('classroom-mode');castbar.hidden=true;ink.hidden=true;ink.style.pointerEvents='none';find('#inkToggle').setAttribute('aria-pressed','false');if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});api.render();}
+    function leave(){casting=false;lectureSession++;pen=false;finishStroke();document.body.classList.remove('classroom-mode');castbar.hidden=true;ink.hidden=true;ink.style.pointerEvents='none';find('#inkToggle').setAttribute('aria-pressed','false');if(fullscreenOwned&&document.fullscreenElement===document.documentElement)document.exitFullscreen().catch(()=>{});fullscreenOwned=false;api.render();}
     function enter(){
       if(!api.state.solution){api.setStatus('请先载入本题解析。',true);return;}
       if(!requireCurrent())return;
@@ -107,13 +112,24 @@
     find('#previousStep').addEventListener('click',()=>changeStep(-1));find('#nextStep').addEventListener('click',()=>changeStep(1));find('#classroomAnswer').addEventListener('click',answerToggle);
     find('#classroomPart').addEventListener('change',event=>{if(!requireCurrent())return;api.state.activePart=Number(event.target.value);api.partChanged?.();api.renderSolution();api.refreshLayers();api.render();persist();});
     find('#lectureFont').addEventListener('change',event=>document.body.style.setProperty('--lecture-font',event.target.value+'px'));
-    find('#classroomFullscreen').addEventListener('click',()=>{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else document.documentElement.requestFullscreen().catch(()=>api.setStatus('浏览器未允许全屏，讲题布局仍可使用。'));});
-    find('#inkToggle').addEventListener('click',()=>{if(!requireCurrent())return;pen=!pen;ink.style.pointerEvents=pen?'auto':'none';find('#inkToggle').setAttribute('aria-pressed',String(pen));api.setStatus(pen?'红笔为屏幕批注，不改变几何对象；关闭红笔后可拖动图形。':'已返回图形拖动。');});
-    find('#undoInk').addEventListener('click',()=>{strokes.pop();showInk();});find('#clearInk').addEventListener('click',clearInk);
+    const fullscreenButton=find('#classroomFullscreen');
+    function fullscreenState(){const on=!!document.fullscreenElement;fullscreenButton.textContent=on?'退出全屏':'全屏';fullscreenButton.setAttribute('aria-pressed',String(on));fullscreenButton.disabled=fullscreenPending;if(document.fullscreenElement!==document.documentElement)fullscreenOwned=false;}
+    document.addEventListener('fullscreenchange',fullscreenState);fullscreenState();
+    fullscreenButton.addEventListener('click',async()=>{
+      if(!casting||fullscreenPending)return;
+      const session=lectureSession;fullscreenPending=true;fullscreenState();
+      try{
+        if(document.fullscreenElement){await document.exitFullscreen();fullscreenOwned=false;}
+        else{await document.documentElement.requestFullscreen();if(!casting||session!==lectureSession){if(document.fullscreenElement===document.documentElement)await document.exitFullscreen();}else fullscreenOwned=document.fullscreenElement===document.documentElement;}
+      }catch{if(casting&&session===lectureSession)api.setStatus('浏览器未允许切换全屏，讲题布局仍可使用。');}
+      finally{fullscreenPending=false;fullscreenState();}
+    });
+    find('#inkToggle').addEventListener('click',()=>{if(!requireCurrent())return;finishStroke();pen=!pen;ink.style.pointerEvents=pen?'auto':'none';find('#inkToggle').setAttribute('aria-pressed',String(pen));api.setStatus(pen?'红笔为屏幕批注，不改变几何对象；关闭红笔后可拖动图形。':'已返回图形拖动。');});
+    find('#undoInk').addEventListener('click',()=>{finishStroke();strokes.pop();showInk();});find('#clearInk').addEventListener('click',clearInk);
     const inkPoint=event=>{const bounds=ink.getBoundingClientRect();return[(event.clientX-bounds.left)/bounds.width,(event.clientY-bounds.top)/bounds.height];};
-    ink.addEventListener('pointerdown',event=>{if(!pen||!currentQuestion())return;event.preventDefault();ink.setPointerCapture(event.pointerId);activeStroke=[inkPoint(event)];strokes.push(activeStroke);});
-    ink.addEventListener('pointermove',event=>{if(activeStroke){activeStroke.push(inkPoint(event));showInk();}});
-    ink.addEventListener('pointerup',()=>{activeStroke=null;});ink.addEventListener('pointercancel',()=>{activeStroke=null;});
+    ink.addEventListener('pointerdown',event=>{if(!pen||!currentQuestion()||activePointer!=null||event.button!==0)return;event.preventDefault();ink.setPointerCapture(event.pointerId);activePointer=event.pointerId;activeStroke=[inkPoint(event)];strokes.push(activeStroke);});
+    ink.addEventListener('pointermove',event=>{if(pen&&activeStroke&&event.pointerId===activePointer){activeStroke.push(inkPoint(event));showInk();}});
+    for(const type of ['pointerup','pointercancel','lostpointercapture'])ink.addEventListener(type,event=>{if(event.pointerId===activePointer)finishStroke();});
     window.addEventListener('resize',()=>requestAnimationFrame(showInk));
     const board=find('.board-shell');
     new MutationObserver(()=>{placeInk();if(casting)requestAnimationFrame(showInk);}).observe(board,{attributes:true,attributeFilter:['data-renderer','data-ggb-active']});

@@ -146,6 +146,7 @@
     const readStyle=()=>{const label=get('object').value,disabled=!label;for(const key of ['color','thickness','label'])get(key).disabled=disabled;if(disabled)return;const color=api().getColor(label);get('color').value=/^#[0-9a-f]{6}$/i.test(color)?color:'#3f78d8';get('thickness').value=api().getLineThickness(label)||3;get('label').checked=api().getLabelVisible(label)!==false;};
     tool('画板设置',()=>{
       if(!active)return;tools.open=false;host.querySelector('.dong-ggb-tools').open=false;feedback.textContent='';
+      options.clearHighlight?.();
       const raw=api().getGraphicsOptions?.(1),view=typeof raw==='string'?JSON.parse(raw):raw||{};
       get('grid').checked=typeof api().getGridVisible?.(1)==='boolean'?api().getGridVisible(1):document.getElementById('gridToggle').checked;
       const axes=view.axes||{};get('x').checked=axes.x?.visible !== false;get('y').checked=axes.y?.visible !== false;
