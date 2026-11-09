@@ -27,11 +27,16 @@
       const solution=api.state.solution;if(!solution)return null;
       if(!solution.study||typeof solution.study!=='object'||Array.isArray(solution.study))solution.study={};
       const data=solution.study;
-      if(!data.counts||typeof data.counts!=='object')data.counts={};
-      if(!data.answers||typeof data.answers!=='object')data.answers={};
+      if(!data.counts||typeof data.counts!=='object'||Array.isArray(data.counts))data.counts={};
+      if(!data.answers||typeof data.answers!=='object'||Array.isArray(data.answers))data.answers={};
+      for(const part of solution.parts||[]){
+        const raw=data.counts[part.index],count=typeof raw==='number'||typeof raw==='string'?Number(raw):NaN;
+        data.counts[part.index]=Number.isFinite(count)?Math.max(0,Math.min(part.steps.length,Math.floor(count))):0;
+        data.answers[part.index]=data.answers[part.index]===true;
+      }
       return data;
     }
-    function currentPart(){const parts=api.state.solution?.parts||[];return parts.find(part=>Number(part.index)===Number(api.state.activePart))||parts[0];}
+    function currentPart(){const parts=api.state.solution?.parts||[];return parts.find(part=>api.state.activePart!=null&&Number(part.index)===Number(api.state.activePart))||parts[0];}
     function persist(){api.remember();api.saveStudy();}
     function finishStroke(){
       const pointer=activePointer;activePointer=null;activeStroke=null;
@@ -98,9 +103,11 @@
         const next=document.createElement('button');next.textContent=count===0?'给我第一步提示':'展开下一步';next.disabled=count>=steps.length;
         next.dataset.classroomStep='next';next.dataset.classroomAtEnd=String(count>=steps.length);
         next.addEventListener('click',()=>{if(!requireCurrent())return;data.counts[index]=count+1;api.renderSolution();persist();});
+        const previous=document.createElement('button');previous.textContent='收起上一步';previous.dataset.classroomStep='previous';previous.dataset.classroomAtEnd=String(count===0);previous.disabled=count===0;
+        previous.addEventListener('click',()=>{if(!requireCurrent()||count===0)return;data.counts[index]=count-1;api.renderSolution();persist();});
         const answer=document.createElement('button');answer.dataset.classroomStep='answer';answer.textContent=data.answers[index]?'隐藏结论':'显示结论';answer.addEventListener('click',()=>{if(!requireCurrent())return;data.answers[index]=!data.answers[index];api.renderSolution();persist();});
         const reset=document.createElement('button');reset.dataset.classroomStep='reset';reset.textContent='重新尝试';reset.addEventListener('click',()=>{if(!requireCurrent())return;data.counts[index]=0;data.answers[index]=false;api.renderSolution();persist();});
-        navigation.append(caption,next,answer,reset);section.insertBefore(navigation,section.querySelector('ol'));
+        navigation.append(caption,next,previous,answer,reset);section.insertBefore(navigation,section.querySelector('ol'));
       });
       updateCastBar();refreshContext();
     }

@@ -11,6 +11,9 @@ module.exports=async({page,assert,screenshot})=>{
   const reference=await last(),first=reference.solution.parts[0],second=reference.solution.parts[1];
   assert.equal(reference.solution.parts.length,2);
   assert.equal(await shown(),0);
+  assert(await part().locator('[data-classroom-step="previous"]').isDisabled());
+  await clickHint();await part().locator('[data-classroom-step="previous"]').click();
+  assert.equal(await shown(),0,'A single accidental reveal can be undone without resetting the whole lesson');
   await clickHint();
   await part().locator('[data-classroom-step="answer"]').click();
   assert.equal(await shown(),1);assert(await part().locator('.answer-summary').isVisible());
@@ -84,4 +87,10 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('[data-mobile-panel="lesson"]').click();
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await screenshot('teaching-workflow-mobile.png',null);
+  // Corrupted/legacy learning metadata cannot reveal all hints or answers.
+  await page.evaluate(()=>{const key='zhigeometry:last',r=JSON.parse(localStorage.getItem(key)),parts=r.solution.parts;r.activePart=parts[0].index;r.solution.study={mode:'step',counts:{[parts[0].index]:1.8,[parts[1].index]:'Infinity'},answers:{[parts[0].index]:'false'}};localStorage.setItem(key,JSON.stringify(r));});
+  await page.reload();await page.locator('[data-mobile-panel="lesson"]').click();await page.locator('[data-inspector-view="lesson"]').click();
+  assert.equal(await shown(),1);assert(await part().locator('.answer-summary').isHidden());
+  await page.locator(`[data-study-part="${second.index}"]`).click();assert.equal(await shown(),0);
+  await page.locator(`[data-study-part="${first.index}"]`).click();await part().locator('[data-classroom-step="previous"]').click();assert.equal(await shown(),0);
 };
