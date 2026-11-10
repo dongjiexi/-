@@ -85,7 +85,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#readingDialog [data-close-dialog]').click();
   await page.locator('[data-lesson-action="print"]').click();
   assert.equal(await page.locator('#printLesson .step-graph-link').count(),0);
-  assert.equal(await page.evaluate(()=>!!window.__printedLesson),true);
+  assert.equal(await page.evaluate(()=>!!window.__printedLesson),true,await page.locator('#status').textContent());
   const lastStep=page.locator('#solution [data-step-graph-index]').last();
   await lastStep.click();
   const dependentIds=await page.evaluate(()=>window.DongBoardStep.snapshot());
