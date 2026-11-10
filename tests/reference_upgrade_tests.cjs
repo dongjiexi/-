@@ -8,11 +8,20 @@ test('only outdated sourced reference drafts are eligible; free-input solving is
 });
 test('upgrade is pure, preserves manual objects, note, answers, conversation, poses and visibility',()=>{
   const r=old();r.scene.objects.push({id:'manual',kind:'construction',op:'line',refs:['feature:P','feature:O'],label:'辅助线',source:'user'});r.scene.points.N=[4,5];r.scene.objects[0].visible=false;r.solution.study.notes='我的笔记';r.solution.conversation=[{role:'user',content:'追问'}];r.scene.objects.find(o=>o.label==='P').t=.8;
-  const before=JSON.stringify(r),n=bank.prepareUpgrade(r,item);assert.equal(JSON.stringify(r),before,'input draft must not be mutated');assert.equal(n.scene.referenceScene.revision,2);assert(n.scene.objects.find(o=>o.label==='P').motionByPart['201']);assert.deepEqual(n.scene.objects.find(o=>o.id==='manual').refs,['inverse-moving-P','feature:O']);assert.deepEqual(n.scene.points.N,[4,5]);assert.equal(n.scene.objects[0].visible,false);assert.equal(n.scene.objects.find(o=>o.label==='P').t,.8);assert.deepEqual(n.solution.parts,r.solution.parts);assert.deepEqual(n.solution.study,r.solution.study);assert.deepEqual(n.solution.conversation,r.solution.conversation);assert.equal(n.exploring,false);
+  const before=JSON.stringify(r),n=bank.prepareUpgrade(r,item);assert.equal(JSON.stringify(r),before,'input draft must not be mutated');assert.equal(n.scene.referenceScene.revision,3);assert(n.scene.objects.find(o=>o.label==='P').motionByPart['201']);assert.deepEqual(n.scene.objects.find(o=>o.id==='manual').refs,['inverse-moving-P','feature:O']);assert.deepEqual(n.scene.points.N,[4,5]);assert.equal(n.scene.objects[0].visible,false);assert.equal(n.scene.objects.find(o=>o.label==='P').t,.8);assert.deepEqual(n.solution.parts,r.solution.parts);assert.deepEqual(n.solution.study,r.solution.study);assert.deepEqual(n.solution.conversation,r.solution.conversation);assert.equal(n.exploring,false);
 });
 test('legacy static reference points become dependent nodes without retaining duplicate labels',()=>{
   const r=old();r.scene.objects=r.scene.objects.filter(o=>!['P','M','R','|PM|'].includes(o.label));r.scene.points.P=[2,3];r.scene.points.M=[0,1];r.scene.points.R=[1,1];
   const n=bank.prepareUpgrade(r,item);for(const name of ['P','M','R']){assert(!Object.hasOwn(n.scene.points,name));assert.equal(n.scene.objects.filter(o=>o.label===name).length,1);}
+});
+test('revision 2 upgrades the locus display without moving the saved driver',()=>{
+  const record=bank.lesson(item,'full');
+  record.scene.referenceScene.revision=2;
+  delete record.scene.objects.find(o=>o.id==='locus-circle').role;
+  record.scene.objects.find(o=>o.id==='inverse-moving-P').t=.9;
+  const upgraded=bank.prepareUpgrade(record,item);
+  assert.equal(upgraded.scene.objects.find(o=>o.id==='locus-circle').role,'derived_locus');
+  assert.equal(upgraded.scene.objects.find(o=>o.id==='inverse-moving-P').t,.9);
 });
 test('manual ID or point-label collisions abort without changing the draft',()=>{
   for(const object of [{id:'inverse-moving-P',kind:'point',x:1,y:2,label:'X',source:'user'},{id:'manual',kind:'point',x:1,y:2,label:'P',source:'user'}]){

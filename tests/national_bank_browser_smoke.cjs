@@ -40,7 +40,8 @@ module.exports=async({page,assert,screenshot})=>{
     assert.deepEqual(audit.invalid,[],id+'构造可解析');
     if(id==='2025-i-18'){
       await page.locator('[data-study-part="202"]').click();
-      assert.match(await page.locator('#layers').innerText(),/轨迹所在圆/);
+      assert.match(await page.locator('#layers').innerText(),/P 的轨迹/);
+      assert.match(await page.locator('#locusRangeSummary').textContent(),/已按绑定范围显示/);
       await screenshot('national-i-inverse-max.png');
     }
     await page.locator('#openQuestionBank').click();
