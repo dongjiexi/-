@@ -44,6 +44,21 @@ module.exports = async ({page, context, assert, screenshot}) => {
   assert.match(await page.locator('#metrics').innerText(), /Q（两切线交点）/);
   assert.match(await page.locator('#metrics').innerText(), /两切线方向点积/);
   assert.match(await page.locator('#solution').innerText(), /4\s*\/\s*4|已完成\s*4/);
+  const {q_locus:qPart,m_locus:mPart,area:areaPart}=scene.focusChord.parts;
+  await page.locator(`[data-study-part="${qPart}"]`).click();
+  assert.match(await page.locator('#layers').textContent(),/M 的轨迹 · 推导 · 其他小问/);
+  assert.doesNotMatch(await page.locator('#metrics').textContent(),/△PAB 面积/);
+  await page.locator(`[data-study-part="${mPart}"]`).click();
+  assert.match(await page.locator('#layers').textContent(),/Q 的轨迹 · 推导 · 其他小问/);
+  await page.locator(`[data-study-part="${areaPart}"]`).click();
+  assert.match(await page.locator('#metrics').textContent(),/△PAB 面积/);
+  await page.locator('[data-inspector-view="geometry"]').click();
+  await page.locator('#layers .layer-row').filter({hasText:/^圆锥曲线/}).locator('input').uncheck();
+  assert.match(await page.locator('#metrics').textContent(),/主曲线已隐藏/);
+  assert.doesNotMatch(await page.locator('#metrics').textContent(),/无实交点|△PAB 面积/);
+  await page.locator('#layers .layer-row').filter({hasText:/^圆锥曲线/}).locator('input').check();
+  await page.locator('[data-inspector-view="lesson"]').click();
+  await page.locator('[data-study-part="all"]').click();
 
   const motion = await page.evaluate(sceneData => {
     const model = structuredClone(sceneData), theta = {value: 45};

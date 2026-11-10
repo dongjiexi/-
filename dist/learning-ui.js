@@ -259,6 +259,16 @@
       api.clearStepHighlight?.();
       updateStepControls();
     }
+    function selectPart(part){
+      api.state.activePart=part;
+      api.partChanged?.();
+      renderSolution();
+      api.refreshLayers();
+      api.syncMotionButton?.();
+      api.fitPart?.();
+      api.render();
+      api.remember();
+    }
     function bindStepLinks(panel,solution){
       panel.querySelector('[data-step-graph-clear]')?.addEventListener('click',clearStepHighlight);
       panel.querySelectorAll('[data-step-graph-index]').forEach(button=>button.addEventListener('click',()=>{
@@ -270,6 +280,12 @@
           clearStepHighlight();api.setStatus('题目或步骤已变化，请先重新解题再定位对应图形。');return;
         }
         try{
+          // In the combined view, identically named objects can belong to
+          // different subquestions. Locate the step in its own construction.
+          if(current&&(solution.parts||[]).length>1&&api.state.activePart==null){
+            selectPart(part);
+            panel.querySelector(`[data-step-graph-part="${part}"][data-step-graph-index="${index}"]`)?.focus({preventScroll:true});
+          }
           const result=api.highlightStep({text,part,index})||{};
           const names=values=>Array.isArray(values)?[...new Set(values.filter(value=>typeof value==='string').map(value=>value.slice(0,160)))].slice(0,80):[];
           selectedStep={part,index,matched:names(result.matched),missing:names(result.missing)};
@@ -339,9 +355,7 @@
         button.addEventListener('click',()=>continueSolution(button.dataset.solutionContinue==='all'?null:Number(button.dataset.solutionContinue)));
       });
       element.querySelectorAll('[data-study-part]').forEach(button=>button.addEventListener('click',()=>{
-        api.state.activePart=button.dataset.studyPart==='all'?null:Number(button.dataset.studyPart);
-        api.partChanged?.();
-        renderSolution();api.refreshLayers();api.syncMotionButton?.();api.fitPart?.();api.render();api.remember();
+        selectPart(button.dataset.studyPart==='all'?null:Number(button.dataset.studyPart));
       }));
     }
     function renderSolution() {
@@ -1102,7 +1116,7 @@
     });
     api.question.addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')solve();});
     window.addEventListener('beforeunload',event=>{if(activeJob){event.preventDefault();event.returnValue='';}});
-    classroom=window.DongClassroom.attach({...api,renderSolution,typesetProblem(element,source){element.innerHTML=textBlock(source);typeset(element);},sendFeedback:followup,showLearning:()=>setInspectorView('lesson'),saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
+    classroom=window.DongClassroom.attach({...api,renderSolution,selectPart,typesetProblem(element,source){element.innerHTML=textBlock(source);typeset(element);},sendFeedback:followup,showLearning:()=>setInspectorView('lesson'),saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
     window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>saveBeforeSwitch(),showLearning:()=>setInspectorView('lesson')});
     renderDraftRecovery();
     return {refreshEngine,renderSolution,solve,clearStepHighlight,refreshFold:()=>foldView?.refresh()};

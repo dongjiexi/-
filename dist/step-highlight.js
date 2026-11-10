@@ -9,7 +9,7 @@
   function mentioned(text, label) {
     const target=name(label);if(!target)return false;
     const source=plain(text);
-    if(!/^[A-Za-z][0-9′]*(?:[A-Z][0-9′]*)*$/.test(target))return target.length>1&&source.includes(target);
+    if(!/^[A-Za-z][0-9′]*(?:[A-Z][0-9′]*)*$/.test(target))return target.length>1&&source.replace(/\s+/g,'').includes(target);
     const words=source.match(/[A-Za-z][A-Za-z0-9′]*/g)||[];
     const tokens=words.flatMap(word=>/^[A-Z0-9′]+$/.test(word)?word.match(/[A-Z][0-9]*′*/g)||[]:[word]);
     if(tokens.includes(target))return true;
@@ -51,7 +51,23 @@
       const ctx=api.ctx;ctx.save();ctx.strokeStyle='#d88708';ctx.fillStyle='rgba(235,166,36,.14)';ctx.lineWidth=4;ctx.lineJoin='round';
       for(const id of selection.ids){const entry=byId.get(id);if(!entry)continue;const shape=entry.shape;
         if(shape?.type==='point'){const q=api.xy(shape.x,shape.y);if(!Number.isFinite(q.x)||!Number.isFinite(q.y))continue;ctx.beginPath();ctx.arc(q.x,q.y,10,0,Math.PI*2);ctx.fill();ctx.stroke();}
-        else if(entry.paths){for(const path of entry.paths){ctx.beginPath();let first=true;for(const p of path){const q=api.xy(p.x,p.y);if(!Number.isFinite(q.x)||!Number.isFinite(q.y))continue;first?ctx.moveTo(q.x,q.y):ctx.lineTo(q.x,q.y);first=false;}ctx.stroke();}}
+        else if(entry.paths){
+          for(const path of entry.paths){
+            ctx.beginPath();let first=true;
+            for(const p of path){
+              const q=api.xy(p.x,p.y);if(!Number.isFinite(q.x)||!Number.isFinite(q.y))continue;
+              first?ctx.moveTo(q.x,q.y):ctx.lineTo(q.x,q.y);first=false;
+            }
+            ctx.stroke();
+          }
+          for(const marker of entry.markers||[]){
+            const q=api.xy(marker.x,marker.y);
+            ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);
+            ctx.fillStyle=marker.closed?'#d88708':'#fff';
+            ctx.fill();ctx.stroke();
+          }
+          ctx.fillStyle='rgba(235,166,36,.14)';
+        }
         else if(shape?.type==='line'){const ends=api.clip(shape);if(ends){const a=api.xy(ends.a.x,ends.a.y),b=api.xy(ends.b.x,ends.b.y);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}}
         else if(shape?.type==='circle'){ctx.beginPath();for(let i=0;i<=180;i++){const t=i*Math.PI/90,q=api.xy(shape.x+shape.r*Math.cos(t),shape.y+shape.r*Math.sin(t));i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y);}ctx.stroke();}
         else if(shape?.type==='polygon'&&shape.points?.length>=3){ctx.beginPath();shape.points.forEach((p,i)=>{const q=api.xy(p.x,p.y);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y);});ctx.closePath();ctx.fill();ctx.stroke();}

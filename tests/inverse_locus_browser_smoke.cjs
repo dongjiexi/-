@@ -24,6 +24,23 @@ module.exports=async({page,context,assert,screenshot})=>{
   const excluded=await page.evaluate(()=>{const record=JSON.parse(localStorage.getItem('zhigeometry:last')),scene=record.scene,obj=scene.objects.find(n=>n.id==='inverse-locus-circle'),driver=scene.objects.find(n=>n.id==='inverse-locus-P');return{geometry:window.DongMotionDomain.periodicGeometry(obj,window.DongMotionDomain.driver(driver,202)),labels:window.DongBoardLabels.snapshot().placements.flatMap(n=>n.names||[])};});
   assert.equal(excluded.geometry.markers.length,2);assert(excluded.geometry.markers.every(p=>!p.closed&&p.x===0));
   assert(excluded.labels.includes('不取'),'Actual locus drawing labels the excluded axis intersections');
+  await page.locator('[data-study-part="all"]').click();
+  await page.evaluate(()=>{
+    const ctx=document.querySelector('#canvas').getContext('2d'),fill=ctx.fill;
+    window.__highlightOpenEndpoints=0;
+    ctx.fill=function(...args){
+      if(this.strokeStyle==='#d88708'&&this.fillStyle==='#ffffff')window.__highlightOpenEndpoints++;
+      return fill.apply(this,args);
+    };
+  });
+  await page.locator('[data-step-graph-part="202"][data-step-graph-index="2"]').click();
+  assert.equal((await get()).active,202,'A step in the combined view uses its own motion profile');
+  assert((await page.evaluate(()=>window.DongBoardStep.snapshot().ids)).includes('inverse-locus-circle'),'Formula step locates the named locus');
+  assert(await page.evaluate(()=>window.__highlightOpenEndpoints>=2),'Highlight preserves both excluded points as open markers');
+  await page.locator('[data-study-part="201"]').click();
+  assert.equal(await page.evaluate(()=>window.DongBoardStep.snapshot()),null);
+  assert(await page.locator('#locusRangeAudit').isHidden(),'The next part does not keep the previous locus on screen');
+  await page.locator('[data-study-part="202"]').click();
   frame=await get();assert(Math.abs(frame.P.x**2+(frame.P.y+4)**2-18)<1e-7);assert(Math.abs(frame.R.y/frame.R.x-3*frame.P.y/frame.P.x)<1e-7);
   await page.locator('[data-inspector-view="geometry"]').click();await page.locator('[data-inverse-jump="0"]').click();frame=await get();assert(Math.abs(Math.hypot(frame.P.x-frame.M.x,frame.P.y-frame.M.y)-3*(Math.sqrt(2)+Math.sqrt(3)))<1e-7);
   assert.match(await page.locator('#metrics').textContent(),/已到达最大值/);await screenshot('inverse-locus-maximum-desktop.png',null);

@@ -92,7 +92,7 @@
       const signedRoot=n=>(n<0?'-':'')+sqrt(n*n),shiftedRoot=(center,offset)=>`${tex(center)}${offset<0?'-':'+'}${sqrt(offset*offset)}`;
       const equality=ex.pairs.map(({P:p,M:m})=>`$${M}=(${signedRoot(m.x)},${tex(m.y)})$，$${P}=(${signedRoot(p.x)},${shiftedRoot(ex.center,p.y-ex.center)})$`).join('；或 ');
       return{...part,status:'answered',answer:`$${P}$ 的轨迹为圆 $${locus}$，去掉与 $y$ 轴的两个交点。$|${P+M}|$ ${ex.attained?'的最大值':'的上确界'}为 $${maxTex}$。${ex.attained?'取等时 '+equality+'。':'仅在被排除的轴上点取到等号，因此没有最大值。'}`,steps:[...commonSteps,
-        `代入 $k_{O${R}}=${tex(spec.factor)}k_{O${P}}$：$(${tex(d)})D+${rho}${shift('n',d)}=${tex(spec.factor*power)}n$。利用 $m\\ne0$，化简并配方得 $${locus}$，且 $m\\ne0$。`,
+        `代入 $k_{O${R}}=${tex(spec.factor)}k_{O${P}}$：$(${tex(d)})D+${rho}${shift('n',d)}=${tex(spec.factor*power)}n$。利用 $m\\ne0$ 化简并配方，得到 $${P}$ 的轨迹方程 $${locus}$，其中 $m\\ne0$。`,
         `反过来，圆上任一点只要 $m\\ne0$，$D>0$ 且上述等式成立，代回反演坐标即可满足斜率关系。所以不是只证明必要条件。`,
         `记轨迹圆心为 $T=(0,${tex(ex.center)})$，半径 $r=${sqrt(ex.radius2)}$。三角不等式给出 $|${P+M}|\\le |${P}T|+|T${M}|=r+|T${M}|$。`,
         `设 $${M}=(x,y)$，由椭圆得 $x^2=${tex(a*a)}(1-y^2/${tex(b*b)})$，$- ${tex(b)}\\le y\\le ${tex(b)}$。故 $|T${M}|^2=${tex(ex.q)}y^2${-2*ex.center<0?'-':'+'}${tex(Math.abs(2*ex.center))}y+${tex(a*a+ex.center*ex.center)}$。`,

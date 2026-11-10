@@ -385,7 +385,7 @@
       if(key==='problemMotion'&&(scene.focalChoice||scene.boundedAlgebra)&&scene.showDynamic===false&&!scene.unrestrictedMotion&&(scene.objects||[]).every(o=>o.source==='question'&&o.op!=='point_on')&&!(scene.lines||[]).length)continue;
       if(scene[key]&&(!Array.isArray(scene[key])||scene[key].length))skipped.push('教学构造：'+key);
     }
-    const visible = item => item.visible !== false && (active == null || (item.part!=null?Number(item.part)===Number(active):!Array.isArray(item.parts)||item.parts.includes(Number(active))));
+    const visible = item => window.DongSceneAudit.visible(item,active);
     function object(expression, caption, color = [124, 90, 201], show = true, forcePoint = false) {
       let serialLabel;do{serialLabel='DG'+(++serial);}while(api.exists(serialLabel));
       const candidate = String(caption||'').replace(/₁/g,'1').replace(/₂/g,'2').replace(/（.*）/g,'');
@@ -465,6 +465,12 @@
         labels.set(name, label);
       }
       const objects = Array.isArray(scene.objects) ? scene.objects : [];
+      const restrictedTargets=new Set(objects.filter(item=>item.op==='point_on'&&
+        [item,...Object.values(item.motionByPart||{})].some(profile=>profile?.excludeAxis||Object.keys(profile?.motionDomain||{}).length)
+      ).map(item=>item.refs?.[0]));
+      // The online adapter draws whole implicit curves. Keep the native
+      // rendering when the answer needs arcs, excluded endpoints or branches.
+      for(const item of objects)if(item.role==='derived_locus'&&restrictedTargets.has(item.id))skipped.push('受限轨迹：'+item.label);
       for (const item of objects.filter(value => value.kind === 'point')) {
         const label = point(item.x, item.y, item.label || 'P', visible(item));
         if (item.id) ids.set(item.id, label);
@@ -479,6 +485,7 @@
         } else if (item.kind === 'circle') {
           const c = point(item.h, item.k, (item.label || '圆') + '心', visible(item));
           const edge = point(finite(item.h) + positive(item.r, 1), item.k, '半径点', visible(item));
+          visibility.push({label:c,item},{label:edge,item});
           label = object('Circle(' + c + ',' + edge + ')', item.label || '圆', [193, 91, 135], visible(item));
           if(label)paths.set(label,{x:'x('+c+')+Radius('+label+')*cos(tt)',y:'y('+c+')+Radius('+label+')*sin(tt)'});
         } else if(item.kind==='function'){
@@ -639,7 +646,7 @@
       if (skipped.length) info('已转换支持的图形；未转换对象：' + skipped.join('、') + '。可用 GeoGebra 工具栏补建。');
     } finally { api.setRepaintingActive(true); }
     return { skipped,drivers,owned:owned.filter(label=>api.exists(label)),ids,labels,refreshLabels,originCommands,update(next){
-      const show=item=>item.visible!==false&&(next.activePart==null||(item.part!=null?Number(item.part)===Number(next.activePart):!Array.isArray(item.parts)||item.parts.includes(Number(next.activePart))));
+      const show=item=>window.DongSceneAudit.visible(item,next.activePart);
       const moveSource=(label,x,y)=>{
         if(!label)return;
         const locked=!!teachingBinding&&!drivers.some(driver=>driver.label===label);

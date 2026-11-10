@@ -1,9 +1,9 @@
 module.exports=async({page,assert,screenshot})=>{
   await page.addInitScript(()=>{
-    const names=new Set(),values={},coords={};window.__unified={names,values,coords,commands:[]};
+    const names=new Set(),values={},coords={},shown={};window.__unified={names,values,coords,commands:[]};
     window.GGBApplet=class{constructor(params){this.params=params;window.__unified.params=params;}inject(id){
       document.getElementById(id).textContent='统一画板 API 测试替身';
-      const api=new Proxy({exists:n=>names.has(n),isDefined:()=>true,getVisible:()=>true,evalCommand:s=>{names.add(s.split(/[=:]/)[0]);window.__unified.commands.push(s);return true;},setValue:(n,v)=>values[n]=v,setCoords:(n,x,y)=>coords[n]=[x,y],getXcoord:n=>coords[n]?.[0]||0,getYcoord:n=>coords[n]?.[1]||0,getViewProperties:()=>({width:800,height:600}),getBase64:cb=>cb(btoa(JSON.stringify([...names]))),setBase64:(raw,cb)=>{names.clear();JSON.parse(atob(raw)).forEach(n=>names.add(n));cb();},newConstruction:()=>names.clear(),setMode:n=>window.__unified.mode=n},{get:(o,k)=>k in o?o[k]:()=>{}});setTimeout(()=>this.params.appletOnLoad(api),10);
+      const api=new Proxy({exists:n=>names.has(n),isDefined:()=>true,getVisible:n=>shown[n]!==false,setVisible:(n,value)=>shown[n]=value,evalCommand:s=>{names.add(s.split(/[=:]/)[0]);window.__unified.commands.push(s);return true;},setValue:(n,v)=>values[n]=v,setCoords:(n,x,y)=>coords[n]=[x,y],getXcoord:n=>coords[n]?.[0]||0,getYcoord:n=>coords[n]?.[1]||0,getViewProperties:()=>({width:800,height:600}),getBase64:cb=>cb(btoa(JSON.stringify([...names]))),setBase64:(raw,cb)=>{names.clear();JSON.parse(atob(raw)).forEach(n=>names.add(n));cb();},newConstruction:()=>names.clear(),setMode:n=>window.__unified.mode=n},{get:(o,k)=>k in o?o[k]:()=>{}});setTimeout(()=>this.params.appletOnLoad(api),10);
     }};
   });await page.reload();
   const scene={type:'ellipse',a:3,b:2,showDynamic:false,objects:[{id:'u',kind:'point',source:'user',label:'U',x:1,y:2}]};
@@ -55,4 +55,27 @@ module.exports=async({page,assert,screenshot})=>{
     await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).click();
   }
   await screenshot('unified-mobile.png',null);
+  // Legacy scopes can use numeric strings, empty arrays or the combined view 0.
+  const scoped={...scene,points:{N:[0,1]},pointParts:{N:['2']},objects:[
+    {...scene.objects[0],parts:[]},
+    {id:'scoped-mid',kind:'construction',op:'midpoint',refs:['feature:N','u'],label:'M',part:2},
+    {id:'scoped-circle',kind:'circle',h:2,k:1,r:1,label:'ScopeCircle',parts:['2']},
+    {id:'hidden-point',kind:'point',label:'H',x:1,y:0,visible:false}
+  ]};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},scoped);
+  await page.waitForFunction(()=>window.DongGeoGebra.getAPI().exists('ScopeCircle'));
+  const current=JSON.parse(await page.locator('#sceneJson').inputValue());
+  for(const part of [1,2,0,1]){
+    await page.evaluate(({scene,part})=>window.DongGeoGebra.syncTeaching({...scene,activePart:part}),{scene:current,part});
+    await page.waitForFunction(part=>JSON.parse(window.DongGeoGebra.getReport().signature).activePart===part,part);
+    const flags=await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return ['U','N','M','ScopeCircle','H'].map(n=>a.getVisible(n));});
+    assert.deepEqual(flags,[true,part!==1,part!==1,part!==1,false]);
+  }
+  const locus={...scene,objects:[
+    {id:'locus',kind:'circle',label:'P 的轨迹',role:'derived_locus',h:0,k:0,r:2},
+    {id:'driver',kind:'construction',op:'point_on',label:'P',refs:['locus'],t:.5,motionDomain:{parameter:{min:0,max:1}}}
+  ]};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},locus);
+  await page.waitForFunction(()=>window.DongGeoGebra.getReport().skipped.includes('受限轨迹：P 的轨迹')&&!window.DongUnifiedBoard.isActive());
+  assert.match(await page.locator('#locusRangeSummary').textContent(),/已按绑定范围显示/);
 };

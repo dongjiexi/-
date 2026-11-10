@@ -76,7 +76,7 @@
     }
     function changePart(part){
       if(!requireCurrent()||!part)return;
-      api.state.activePart=part.index;api.partChanged?.();api.renderSolution();api.refreshLayers();api.render();persist();
+      api.selectPart(part.index);api.saveStudy();
       if(casting)find('#solution .part-body')?.scrollIntoView({block:'nearest'});
     }
     previousPart.addEventListener('click',()=>changePart(api.state.solution?.parts[api.state.solution.parts.indexOf(currentPart())-1]));
@@ -95,7 +95,7 @@
       if(!requireCurrent())return;
       const part=currentPart();if(!part){api.setStatus('当前题稿没有可讲解的小问，请重新载入解析。',true);return;}api.state.activePart=part.index;api.partChanged?.();const data=study();data.mode='step';finishStroke();strokes=[];
       casting=true;document.body.classList.add('classroom-mode');castbar.hidden=false;ink.hidden=false;ink.style.pointerEvents='none';
-      api.showLearning();api.renderSolution();api.refreshLayers();api.render();updateCastBar();requestAnimationFrame(showInk);persist();
+      api.showLearning();api.renderSolution();api.refreshLayers();api.fitPart?.();api.render();updateCastBar();requestAnimationFrame(showInk);persist();
     }
     function decorate(){
       const solution=api.state.solution,data=study();controls.hidden=!solution;
