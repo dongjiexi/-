@@ -9,6 +9,11 @@
     const castbar=document.createElement('div');castbar.id='classroomBar';castbar.hidden=true;
     castbar.innerHTML='<strong>讲题模式</strong><select id="classroomPart" aria-label="讲解的小问"></select><button id="previousStep">← 上一步</button><button id="nextStep">下一步 →</button><span id="classroomProgress"></span><button id="classroomAnswer">显示 / 隐藏结论</button><select id="lectureFont" aria-label="讲题字号"><option value="18">大字</option><option value="22">特大字</option><option value="26">投影大字</option></select><button id="inkToggle" aria-pressed="false">红笔批注</button><button id="undoInk">撤销批注</button><button id="clearInk">清除批注</button><button id="classroomFullscreen">全屏</button><button id="exitClassroom">退出 · Esc</button>';
     document.body.prepend(castbar);
+    const previousPart=document.createElement('button'),nextPart=document.createElement('button');
+    previousPart.id='classroomPreviousPart';previousPart.textContent='上一问';
+    nextPart.id='classroomNextPart';nextPart.textContent='下一问';
+    find('#classroomPart').before(previousPart);find('#classroomPart').after(nextPart);
+    find('#classroomProgress').setAttribute('role','status');
     const ink=document.createElement('canvas');ink.id='classroomInk';ink.hidden=true;ink.setAttribute('aria-label','讲题屏幕批注');find('.canvas-wrap').append(ink);
     let casting=false,pen=false,strokes=[],activeStroke=null,activePointer=null,solutionRef=null,inkHost=null,inkPart=api.state.activePart;
     let fullscreenOwned=false,fullscreenPending=false,lectureSession=0;
@@ -60,10 +65,22 @@
       const part=currentPart(),data=study();if(!part||!data)return;
       find('#classroomPart').replaceChildren(...api.state.solution.parts.map(item=>{const option=document.createElement('option');option.value=item.index;option.textContent=item.label;return option;}));
       find('#classroomPart').value=String(part.index);
+      const position=api.state.solution.parts.indexOf(part);
+      previousPart.hidden=nextPart.hidden=api.state.solution.parts.length<2;
+      previousPart.disabled=position<=0;nextPart.disabled=position>=api.state.solution.parts.length-1;
       const count=Math.min(part.steps.length,Math.max(0,Number(data.counts[part.index])||0));
       find('#classroomProgress').textContent=`${count} / ${part.steps.length} 步`;
       find('#previousStep').disabled=count===0;find('#nextStep').disabled=count>=part.steps.length;
+      find('#classroomAnswer').textContent=data.answers[part.index]?'隐藏结论':'显示结论';
+      find('#classroomAnswer').setAttribute('aria-pressed',String(data.answers[part.index]));
     }
+    function changePart(part){
+      if(!requireCurrent()||!part)return;
+      api.state.activePart=part.index;api.partChanged?.();api.renderSolution();api.refreshLayers();api.render();persist();
+      if(casting)find('#solution .part-body')?.scrollIntoView({block:'nearest'});
+    }
+    previousPart.addEventListener('click',()=>changePart(api.state.solution?.parts[api.state.solution.parts.indexOf(currentPart())-1]));
+    nextPart.addEventListener('click',()=>changePart(api.state.solution?.parts[api.state.solution.parts.indexOf(currentPart())+1]));
     function changeStep(delta){
       if(!requireCurrent())return;
       const part=currentPart(),data=study();if(!part||!data)return;
@@ -76,7 +93,7 @@
     function enter(){
       if(!api.state.solution){api.setStatus('请先载入本题解析。',true);return;}
       if(!requireCurrent())return;
-      const part=currentPart();if(!part){api.setStatus('当前题稿没有可讲解的小问，请重新载入解析。',true);return;}api.state.activePart=part.index;api.partChanged?.();const data=study();data.mode='step';strokes=[];activeStroke=null;
+      const part=currentPart();if(!part){api.setStatus('当前题稿没有可讲解的小问，请重新载入解析。',true);return;}api.state.activePart=part.index;api.partChanged?.();const data=study();data.mode='step';finishStroke();strokes=[];
       casting=true;document.body.classList.add('classroom-mode');castbar.hidden=false;ink.hidden=false;ink.style.pointerEvents='none';
       api.showLearning();api.renderSolution();api.refreshLayers();api.render();updateCastBar();requestAnimationFrame(showInk);persist();
     }
@@ -105,7 +122,7 @@
         next.addEventListener('click',()=>{if(!requireCurrent())return;data.counts[index]=count+1;api.renderSolution();persist();});
         const previous=document.createElement('button');previous.textContent='收起上一步';previous.dataset.classroomStep='previous';previous.dataset.classroomAtEnd=String(count===0);previous.disabled=count===0;
         previous.addEventListener('click',()=>{if(!requireCurrent()||count===0)return;data.counts[index]=count-1;api.renderSolution();persist();});
-        const answer=document.createElement('button');answer.dataset.classroomStep='answer';answer.textContent=data.answers[index]?'隐藏结论':'显示结论';answer.addEventListener('click',()=>{if(!requireCurrent())return;data.answers[index]=!data.answers[index];api.renderSolution();persist();});
+        const answer=document.createElement('button');answer.dataset.classroomStep='answer';answer.textContent=data.answers[index]?'隐藏结论':'显示结论';answer.setAttribute('aria-pressed',String(data.answers[index]));answer.addEventListener('click',()=>{if(!requireCurrent())return;data.answers[index]=!data.answers[index];api.renderSolution();persist();});
         const reset=document.createElement('button');reset.dataset.classroomStep='reset';reset.textContent='重新尝试';reset.addEventListener('click',()=>{if(!requireCurrent())return;data.counts[index]=0;data.answers[index]=false;api.renderSolution();persist();});
         navigation.append(caption,next,previous,answer,reset);section.insertBefore(navigation,section.querySelector('ol'));
       });
@@ -117,7 +134,7 @@
     find('#reviewAttempt').addEventListener('click',()=>{if(!requireCurrent())return;const notes=study()?.notes?.trim();if(!notes){api.setStatus('请先写下你的解题尝试或卡住的地方。',true);return;}find('#followupInput').value='请点评我的解题思路，指出第一处错误或需要补充的依据，先给改进提示，不直接重写完整答案。我的尝试：\n'+notes;find('#followupInput').focus();find('#followupInput').scrollIntoView({block:'nearest'});api.sendFeedback();});
     find('#startClassroom').addEventListener('click',enter);find('#exitClassroom').addEventListener('click',leave);
     find('#previousStep').addEventListener('click',()=>changeStep(-1));find('#nextStep').addEventListener('click',()=>changeStep(1));find('#classroomAnswer').addEventListener('click',answerToggle);
-    find('#classroomPart').addEventListener('change',event=>{if(!requireCurrent())return;api.state.activePart=Number(event.target.value);api.partChanged?.();api.renderSolution();api.refreshLayers();api.render();persist();});
+    find('#classroomPart').addEventListener('change',event=>changePart(api.state.solution?.parts.find(part=>String(part.index)===event.target.value)));
     find('#lectureFont').addEventListener('change',event=>document.body.style.setProperty('--lecture-font',event.target.value+'px'));
     const fullscreenButton=find('#classroomFullscreen');
     function fullscreenState(){const on=!!document.fullscreenElement;fullscreenButton.textContent=on?'退出全屏':'全屏';fullscreenButton.setAttribute('aria-pressed',String(on));fullscreenButton.disabled=fullscreenPending;if(document.fullscreenElement!==document.documentElement)fullscreenOwned=false;}

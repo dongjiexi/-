@@ -26,10 +26,15 @@ module.exports=async({page,assert,screenshot})=>{
   assert(await page.locator('body').evaluate(el=>el.classList.contains('classroom-mode')));
   assert.equal(await shown(),2,'Entering lecture must resume the active part, not erase hints');
   assert.equal((await page.locator('#classroomProgress').textContent()).replace(/\s/g,''),`2/${second.steps.length}步`);
-  await page.locator('#classroomPart').selectOption(String(first.index));
+  assert(await page.locator('#classroomNextPart').isDisabled());
+  assert.equal(await page.locator('#classroomAnswer').getAttribute('aria-pressed'),'false');
+  await page.locator('#classroomPreviousPart').click();
+  assert(await page.locator('#classroomPreviousPart').isDisabled());
   assert.equal(await shown(),1,'Each part resumes its own saved step count');
   assert(await part().locator('.answer-summary').isVisible(),'A previously revealed conclusion remains revealed');
-  await page.locator('#classroomPart').selectOption(String(second.index));
+  assert.equal(await page.locator('#classroomAnswer').textContent(),'隐藏结论');
+  assert.equal(await page.locator('#classroomAnswer').getAttribute('aria-pressed'),'true');
+  await page.locator('#classroomNextPart').click();
   await page.locator('#nextStep').click();assert.equal(await shown(),Math.min(3,second.steps.length));
   await page.locator('#previousStep').click();assert.equal(await shown(),2);
   await screenshot('teaching-resumed-desktop.png',null);

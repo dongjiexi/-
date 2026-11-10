@@ -86,6 +86,7 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#openNotebook').click();await page.locator(`[data-open-lesson="${currentSaved.id}"]`).click();
   await page.waitForFunction(()=>!window.DongGeoGebra.getAPI().exists('UnsavedScratch'));
   assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().exists('BeforeSwitch')),'Reopening the same scene restores its saved auxiliary work');
+  assert(await page.evaluate(()=>JSON.parse(localStorage.getItem('dongjiexi:lesson-backups:v1')).some(r=>r.switchBackup&&r.boardDraft&&JSON.parse(atob(r.boardDraft.base64)).includes('UnsavedScratch'))),'Reopening an earlier copy preserves outgoing unsaved construction in a separate backup');
   assert.deepEqual(await page.evaluate(()=>{const match=window.DongGeoGebra.matchesScene;return[match('{"points":{"A":[1,2]},"type":"circle"}','{"type":"circle","points":{"A":[1,2]}}'),match('{"points":{"A":[1,2]}}','{"points":{"A":[2,1]}}'),match('{"r":1}','{"r":2}'),match('invalid','{}')];}),[true,false,false,false],'Object-key order may vary; coordinates, values and validity must still match');
   await screenshot('lesson-capture-preserved.png',null);
 };

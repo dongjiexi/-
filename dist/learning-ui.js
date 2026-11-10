@@ -538,6 +538,22 @@
       if(!api.question.value.trim()&&!api.state.model)throw new Error('请先输入题目或建立图形。');
       const record=await captureLesson();saveLesson(silent,record);
     }
+    async function saveBeforeSwitch(targetQuestion=null){
+      if(activeJob)throw new Error('正在处理当前题目，请完成或停止解题后再切换。');
+      if(!api.question.value.trim()&&!api.state.model&&!api.state.solution)return;
+      const stale=api.state.solution&&api.question.value.trim()!==String(api.state.solution.restatement||'').trim();
+      if(stale){
+        if(!saveDraft())throw new Error('新题草稿备份失败，未切换题目，请先复制输入内容。');
+        if(typeof api.state.solution.restatement!=='string'||!api.state.solution.restatement.trim())throw new Error('旧解析缺少原题文字，请先导出图稿保存。');
+      }
+      const record=await captureLesson({preserveAnswerQuestion:!!stale});
+      // Reopening an earlier copy of the same question must not replace that
+      // copy with current work. Keep the outgoing work as a separate backup.
+      if(stale||record.question===targetQuestion){
+        record.title='切题前备份 · '+record.title;record.switchBackup=true;
+        writeCollection(backupKey,[record,...readBackups()]);
+      }else saveLesson(true,record);
+    }
     const storedLesson=item=>item&&typeof item==='object'&&!Array.isArray(item)&&item.format==='dongjiexi-lesson'&&item.version===1&&typeof item.id==='string'&&typeof item.title==='string'&&typeof item.question==='string'&&item.question.length<=18000;
     function collection(key){
       const raw=localStorage.getItem(key);if(raw==null)return {entries:[],damaged:false,raw:null};
@@ -618,7 +634,7 @@
       if(!silent)api.setStatus('本题、全部解析和图形已存入“我的题本”。');
       renderNotebook();
     }
-    function restoreLesson(record,{externalFile=false}={}) {
+    function prepareLesson(record,{externalFile=false}={}) {
       if(!record||typeof record!=='object'||Array.isArray(record)||record.format!=='dongjiexi-lesson'||record.version!==1||typeof record.question!=='string'||record.question.length>18000)throw new Error('不是支持的董解析题稿。');
       if(record.solution!=null&&(typeof record.solution!=='object'||Array.isArray(record.solution)))throw new Error('解析数据格式无效。');
       if(record.solution&&(!Array.isArray(record.solution.parts)||record.solution.parts.length>12||record.solution.parts.some(part=>!part||!Array.isArray(part.steps)||part.steps.length>100)))throw new Error('解析数据格式不完整。');
@@ -641,6 +657,10 @@
       if(externalFile&&record.boardDraft&&restoredSolution)restoredSolution.scene_context_notice='附加画板来自导入文件，尚未逐项核对与解析的对应关系。';
       const parsedScene=record.scene?api.modelFromJson(JSON.stringify(record.scene)):null;
       const original=record.original?.model&&record.original?.values?api.modelFromJson(JSON.stringify({...record.original.model,...record.original.values})):null;
+      return {restoredSolution,parsedScene,original};
+    }
+    function restoreLesson(record,options={}) {
+      const {restoredSolution,parsedScene,original}=prepareLesson(record,options);
       window.DongUnifiedBoard?.stageDraft?.(record.boardDraft);
       clearTimeout(draftTimer);draftTimer=null;
       clearStepHighlight();
@@ -652,13 +672,43 @@
       api.state.exploring=!window.DongMotion.protectedScene(api.state.model)&&!!record.exploring;find('#exploreNotice').hidden=!api.state.exploring;
       renderSolution();api.refreshLayers();api.render();window.DongUnifiedBoard?.restoreStagedDraft?.();api.remember();api.setStatus('题目、解析、图形与追问已恢复。');
     }
+    let notebookOpening=false,notebookEpoch=0;
+    function notebookBusy(value){
+      notebookOpening=value;
+      find('#notebookList').setAttribute('aria-busy',String(value));
+      for(const element of find('#notebookDialog').querySelectorAll('[data-open-lesson],#importLesson,#notebookSearch,#reviewFilter,#notebookSort'))element.disabled=value;
+    }
+    async function openNotebookRecord(record,{externalFile=false}={}){
+      if(notebookOpening)return;
+      const epoch=notebookEpoch;
+      notebookBusy(true);find('#notebookNotice').textContent='正在保存当前工作并切换题稿…';
+      try{
+        // Validate first so a malformed import cannot change any saved index.
+        prepareLesson(record,{externalFile});
+        await saveBeforeSwitch(record.question);
+        if(epoch!==notebookEpoch||!find('#notebookDialog').open)return;
+        restoreLesson(record,{externalFile});find('#notebookDialog').close();
+      }catch(error){if(epoch===notebookEpoch){find('#notebookNotice').textContent=error.message||'切换未完成，当前题稿保留。';report(error);}}
+      finally{notebookBusy(false);}
+    }
     function renderNotebook() {
-      const query=find('#notebookSearch').value.toLowerCase();
+      const searchText=value=>(window.DongMathInput?.toPlain(String(value))??String(value)).toLowerCase();
+      const query=searchText(find('#notebookSearch').value.trim());
       const filter=find('#reviewFilter')?.value||'all';
       const damaged=collection(notebookKey).damaged||collection(backupKey).damaged;
-      const entries=[...readNotebook(),...readBackups()].filter(item=>(item.title+' '+item.question+' '+(item.solution?.study?.notes||'')).toLowerCase().includes(query)&&(filter==='all'||item.solution?.study?.review===filter));
-      find('#notebookList').innerHTML=(damaged?'<p role="status">部分题本记录无法读取，原数据已保留；仍可打开有效题稿。保存新题稿时会先备份异常原文。</p>':'')+(entries.length?entries.map(item=>`<article class="notebook-entry"><div><strong>${escapeText(item.title)}</strong><p>${escapeText(item.question.slice(0,100))}</p><small>${escapeText(new Date(item.savedAt).toLocaleString())}</small></div><button class="button secondary" data-open-lesson="${escapeText(item.id)}">打开</button></article>`).join(''):'<p>还没有符合条件的题目。解答后会自动保存，也可以点击“保存本题”。</p>');
-      find('#notebookList').querySelectorAll('[data-open-lesson]').forEach(button=>button.addEventListener('click',()=>{try{restoreLesson(entries.find(item=>item.id===button.dataset.openLesson));find('#notebookDialog').close();}catch(error){report(error);}}));
+      const all=[...readNotebook(),...readBackups()];
+      const review=item=>['review','mastered'].includes(item.solution?.study?.review)?item.solution.study.review:'new';
+      const backup=item=>!!(item.switchBackup||item.upgradeBackup);
+      const entries=all.filter(item=>searchText(item.title+' '+item.question+' '+(item.solution?.study?.notes||'')).includes(query)&&(filter==='all'||filter==='backup'&&backup(item)||review(item)===filter));
+      const order=find('#notebookSort')?.value||'newest',time=item=>Date.parse(item.savedAt)||0;
+      entries.sort((a,b)=>order==='title'?a.title.localeCompare(b.title,'zh-CN'):order==='oldest'?time(a)-time(b):time(b)-time(a));
+      find('#notebookSummary').textContent=`显示 ${entries.length} / ${all.length} 份题稿`;
+      find('#notebookList').innerHTML=(damaged?'<p role="status">部分题本记录无法读取，原数据已保留；仍可打开有效题稿。保存新题稿时会先备份异常原文。</p>':'')+(entries.length?entries.map((item,index)=>`<article class="notebook-entry"><div class="notebook-content"><strong>${escapeText(item.title)}</strong><p class="notebook-meta"><span>${{review:'需要复习',mastered:'已掌握',new:'尚未标记'}[review(item)]}</span>${backup(item)?'<span>备份</span>':''}<time>${Number.isFinite(Date.parse(item.savedAt))?escapeText(new Date(item.savedAt).toLocaleString()):'保存时间未知'}</time></p><div class="notebook-preview" id="notebookPreview${index}">${textBlock(item.question)}</div><button type="button" class="notebook-expand" data-notebook-preview="${index}" aria-controls="notebookPreview${index}" aria-expanded="false">展开题目</button></div><div class="notebook-actions"><button type="button" class="button secondary" data-open-lesson="${escapeText(item.id)}" data-notebook-entry="${index}">打开</button><button type="button" class="button secondary" data-export-saved="${index}">导出此题</button></div></article>`).join(''):'<p>没有符合条件的题稿。可以清空搜索或更换筛选条件；解答后也可点击“保存本题”。</p>');
+      const list=find('#notebookList');typeset(list);
+      list.querySelectorAll('[data-open-lesson]').forEach(button=>button.addEventListener('click',()=>openNotebookRecord(entries[Number(button.dataset.notebookEntry)])));
+      list.querySelectorAll('[data-export-saved]').forEach(button=>button.addEventListener('click',()=>{try{api.download('董解析-题稿.json',new Blob([JSON.stringify(entries[Number(button.dataset.exportSaved)],null,2)],{type:'application/json'}));}catch(error){report(error);}}));
+      list.querySelectorAll('[data-notebook-preview]').forEach(button=>button.addEventListener('click',()=>{const expanded=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(expanded));button.textContent=expanded?'收起题目':'展开题目';find('#'+button.getAttribute('aria-controls')).classList.toggle('expanded',expanded);}));
+      notebookBusy(notebookOpening);
     }
     function printLesson() {
       if(!api.state.solution)throw new Error('请先生成解析。');
@@ -1011,10 +1061,14 @@
     const rejectRecognition=message=>{recognitionFeedback.textContent=message;report(new Error(message));};
     find('#confirmRecognition').addEventListener('click',()=>{const recognized=find('#recognizedText').value.trim();if(!recognized||recognized.length>18000){rejectRecognition('请填写核对后的题目，长度须在 18000 字以内。');return;}if(hasUncertainty(recognized)){rejectRecognition('识别结果仍含“[看不清]”或其它未确认字段。请在此窗口补正后再确认。');return;}if(!find('#recognitionReview').hidden&&!find('#recognitionReviewed').checked){rejectRecognition('请对照原图补正模糊位置，并勾选“已核对上述位置”。');return;}clearStepHighlight();api.question.value=recognized;api.question.dispatchEvent(new Event('input',{bubbles:true}));find('#recognitionDialog').close();api.remember();api.setStatus('题面已确认，可以开始解题。');});
     document.querySelectorAll('[data-close-dialog]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
-    find('#openNotebook').addEventListener('click',()=>{try{renderNotebook();find('#notebookDialog').showModal();}catch(error){report(error);}});
+    find('#openNotebook').addEventListener('click',()=>{try{notebookEpoch++;find('#notebookNotice').textContent='';renderNotebook();find('#notebookDialog').showModal();}catch(error){report(error);}});
+    find('#notebookDialog').addEventListener('close',()=>{notebookEpoch++;});
     find('#saveLesson').addEventListener('click',async()=>{try{await saveCurrentLesson();}catch(error){report(error);}});
     find('#notebookSearch').addEventListener('input',renderNotebook);
-    const reviewFilter=document.createElement('select');reviewFilter.id='reviewFilter';reviewFilter.setAttribute('aria-label','题本掌握情况筛选');reviewFilter.innerHTML='<option value="all">全部题目</option><option value="review">错题 · 需要复习</option><option value="mastered">已掌握</option>';find('#notebookSearch').after(reviewFilter);reviewFilter.addEventListener('change',renderNotebook);
+    const reviewFilter=document.createElement('select');reviewFilter.id='reviewFilter';reviewFilter.setAttribute('aria-label','题本掌握情况筛选');reviewFilter.innerHTML='<option value="all">全部题目</option><option value="review">错题 · 需要复习</option><option value="mastered">已掌握</option><option value="new">尚未标记</option><option value="backup">切题与升级备份</option>';find('#notebookSearch').after(reviewFilter);reviewFilter.addEventListener('change',renderNotebook);
+    const notebookSort=document.createElement('select');notebookSort.id='notebookSort';notebookSort.setAttribute('aria-label','题本排序');notebookSort.innerHTML='<option value="newest">最近保存优先</option><option value="oldest">最早保存优先</option><option value="title">按标题排序</option>';reviewFilter.after(notebookSort);notebookSort.addEventListener('change',renderNotebook);
+    const notebookSummary=document.createElement('p');notebookSummary.id='notebookSummary';notebookSummary.className='help';notebookSummary.setAttribute('role','status');find('#notebookList').before(notebookSummary);
+    const notebookNotice=document.createElement('p');notebookNotice.id='notebookNotice';notebookNotice.className='help';notebookNotice.setAttribute('role','status');notebookSummary.before(notebookNotice);
     const shareButton=document.createElement('button');shareButton.type='button';shareButton.id='exportSharedLesson';shareButton.className='button secondary';shareButton.textContent='导出分享题稿';find('#exportLesson').after(shareButton);
     const shareDialog=document.createElement('dialog');shareDialog.id='shareLessonDialog';shareDialog.className='study-dialog';shareDialog.setAttribute('aria-labelledby','shareLessonTitle');
     shareDialog.innerHTML='<header><h2 id="shareLessonTitle">预览分享题稿</h2><button type="button" data-share-close>取消</button></header><p>包含题目、当前小问、解析和图形构造。追问、学习笔记和原始 AI 回复默认移除。图形标签和解析本身仍可能含个人信息，请检查下方内容后下载。对方可用“我的题本 → 导入题稿”打开。</p><label><input type="checkbox" data-share-board>附加高级画板完整图稿（可能包含自定义文字和手工对象）</label><pre data-share-preview style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:45dvh;overflow:auto"></pre><button type="button" data-share-download>下载分享文件</button>';
@@ -1026,7 +1080,7 @@
     shareDialog.querySelector('[data-share-download]').addEventListener('click',()=>{if(shareContent)api.download('董解析-分享题稿.json',new Blob([shareContent],{type:'application/json'}));});
     shareDialog.addEventListener('close',()=>{shareSnapshot=null;shareContent='';shareDialog.querySelector('[data-share-preview]').textContent='';});
     find('#exportLesson').addEventListener('click',async()=>{try{const record=await captureLesson();api.download('董解析-题稿.json',new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));}catch(error){report(error);}});
-    find('#importLesson').addEventListener('change',async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>5*1024*1024)throw new Error('题稿超过 5 MB。');restoreLesson(JSON.parse(await file.text()),{externalFile:true});find('#notebookDialog').close();}catch(error){report(error);}finally{event.target.value='';}});
+    find('#importLesson').addEventListener('change',async event=>{const epoch=notebookEpoch;try{const file=event.target.files[0];if(!file)return;if(file.size>5*1024*1024)throw new Error('题稿超过 5 MB。');const record=JSON.parse(await file.text());if(epoch!==notebookEpoch||!find('#notebookDialog').open)return;await openNotebookRecord(record,{externalFile:true});}catch(error){find('#notebookNotice').textContent=error.message;report(error);}finally{event.target.value='';}});
     find('#sendFollowup').addEventListener('click',followup);
     document.querySelectorAll('[data-followup]').forEach(button=>button.addEventListener('click',()=>{find('#followupInput').value=button.dataset.followup;find('#followupInput').focus();}));
     find('#followupInput').addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')followup();});
@@ -1049,13 +1103,7 @@
     api.question.addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')solve();});
     window.addEventListener('beforeunload',event=>{if(activeJob){event.preventDefault();event.returnValue='';}});
     classroom=window.DongClassroom.attach({...api,renderSolution,typesetProblem(element,source){element.innerHTML=textBlock(source);typeset(element);},sendFeedback:followup,showLearning:()=>setInspectorView('lesson'),saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
-    window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:async()=>{
-      if(api.state.solution&&api.question.value.trim()!==String(api.state.solution.restatement||'').trim()){
-        if(!saveDraft())throw new Error('新题草稿备份失败，未切换题目，请先复制输入内容。');
-        if(typeof api.state.solution.restatement!=='string'||!api.state.solution.restatement.trim())throw new Error('旧解析缺少原题文字，请先导出图稿保存。');
-        const backup=await captureLesson({preserveAnswerQuestion:true});backup.title='切题前备份 · '+backup.title;backup.switchBackup=true;writeCollection(backupKey,[backup,...readBackups()]);
-      }else await saveCurrentLesson(true);
-    },showLearning:()=>setInspectorView('lesson')});
+    window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>saveBeforeSwitch(),showLearning:()=>setInspectorView('lesson')});
     renderDraftRecovery();
     return {refreshEngine,renderSolution,solve,clearStepHighlight,refreshFold:()=>foldView?.refresh()};
   }
