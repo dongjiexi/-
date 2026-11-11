@@ -38,13 +38,15 @@
     const solveProgress=find('#solveProgress');
     function progress(state,message){solveProgress.dataset.state=state;solveProgress.textContent=message;}
     api.question.addEventListener('input',()=>{progress('idle','题目已修改，等待重新解题。');document.querySelectorAll('[data-solution-continue]').forEach(button=>{button.disabled=processing||api.question.value.trim()!==api.state.solution?.restatement;});});
-    mobileNav.querySelectorAll('[data-mobile-panel]').forEach(button=>button.addEventListener('click',()=>{
-      workspace.dataset.mobileView=button.dataset.mobilePanel;
-      mobileNav.querySelectorAll('button').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
-      if(button.dataset.mobilePanel==='lesson')setInspectorView('lesson');
+    function setMobilePanel(panel,{scroll=true}={}){
+      if(panel==='input'&&document.body.classList.contains('classroom-mode'))return;
+      workspace.dataset.mobileView=panel;
+      mobileNav.querySelectorAll('button').forEach(item=>item.setAttribute('aria-pressed',String(item.dataset.mobilePanel===panel)));
+      if(panel==='lesson')setInspectorView('lesson');
       // Hidden canvas dimensions are zero; redraw only after the selected panel is laid out.
-      requestAnimationFrame(()=>{api.render();window.scrollTo({top:Math.max(0,workspace.getBoundingClientRect().top+window.scrollY-mobileNav.offsetHeight),behavior:'instant'});});
-    }));
+      if(scroll)requestAnimationFrame(()=>{api.render();window.scrollTo({top:Math.max(0,workspace.getBoundingClientRect().top+window.scrollY-mobileNav.offsetHeight),behavior:'instant'});});
+    }
+    mobileNav.querySelectorAll('[data-mobile-panel]').forEach(button=>button.addEventListener('click',()=>setMobilePanel(button.dataset.mobilePanel)));
     const notebookKey = 'dongjiexi:notebook:v1';
     const backupKey = 'dongjiexi:lesson-backups:v1';
     const draftKey = 'dongjiexi:draft:v1';
@@ -347,19 +349,26 @@
       const stepLinks=!all&&typeof api.highlightStep==='function';
       const linkToolbar=stepLinks?'<div class="step-graph-toolbar" hidden><span data-step-graph-status role="status" aria-live="polite"></span><button type="button" data-step-graph-clear>清除高亮</button></div>':'';
       const partMarkup=visible.map(part=>{const partTrust=part.verification||(solution.mode==='symbolic-fallback'&&part.status==='answered'?{status:report.status||'generated',message:'内置确定性复算'}:{status:'generated',message:'仅生成'});const derivation=part.derivation||{};const obligations=derivation.proof_obligations||[];return `<section class="part-body" data-part-index="${escapeText(part.index)}"><h3>${escapeText(part.label||'本问')}</h3><span class="answer-status ${['answered','partial','needs_information'].includes(part.status)?part.status:'partial'}">${escapeText(statusNames[part.status]||'请核对解答')}</span><span class="verification-status ${escapeText(partTrust.status||'generated')}">${escapeText(verificationNames[partTrust.status]||partTrust.message||'待核验')}</span>${retryable&&!window.DongSolutionReview.complete(part)?`<button type="button" class="button secondary" data-solution-continue="${Number(part.index)}">继续解答本问</button>`:''}<div class="answer-summary">${textBlock(part.answer)}</div><ol>${(part.steps||[]).map((step,index)=>'<li>'+textBlock(step)+(stepLinks?`<button type="button" class="step-graph-link" data-step-graph-part="${Number(part.index)||0}" data-step-graph-index="${index}" aria-pressed="false" aria-label="高亮第 ${index+1} 步对应图形">对应图形</button>`:'')+'</li>').join('')}</ol>${obligations.length?`<details class="proof-obligations"><summary>尚需完成的证明义务（${obligations.length}）</summary><ul>${obligations.map(item=>'<li>'+textBlock(item)+'</li>').join('')}</ul></details>`:''}${part.quality_notice?`<p class="verification-conflict">${escapeText(part.quality_notice)}</p>`:''}${part.model_answer||part.model_steps?.length?`<details class="model-original"><summary>查看 AI 原始判断与步骤（未证实）</summary>${part.model_answer?textBlock(part.model_answer):''}<ol>${(part.model_steps||[]).map(step=>'<li>'+textBlock(step)+'</li>').join('')}</ol></details>`:''}${checkList(part)}</section>`;}).join('');
-      return `<h3>${escapeText(solution.title||'解题结果')}</h3><p>${escapeText(summary)}${solution.model?' · '+escapeText(solution.model):''}</p>${reviewMarkup}${trust}${imported}${provenance}${stale}${pendingDraft}${solution.quality_notice?`<p class="verification-conflict">${escapeText(solution.quality_notice)}</p>`:''}<details><summary>查看原题</summary>${textBlock(solution.restatement)}</details>${modelDetails}${tabs}${solution.knowns?.length?`<details><summary>已知条件</summary><ul>${solution.knowns.map(value=>'<li>'+textBlock(value)+'</li>').join('')}</ul></details>`:''}${solution.strategy?`<div class="method-overview"><p><strong>解题方法</strong></p>${textBlock(solution.strategy)}</div>`:''}${linkToolbar}${partMarkup}${diagramReport}${externalReply}${solution.assumptions?.length?`<p class="lesson-assumptions">使用的假设：${escapeText(solution.assumptions.join('；'))}</p>`:''}<div class="proof">${escapeText(report.message||'尚未核验')}${solution.scene_notice?'<p>'+escapeText(solution.scene_notice)+'</p>':''}</div>`;
+      return `<h3>${escapeText(solution.title||'解题结果')}</h3><p>${escapeText(summary)}${solution.model?' · '+escapeText(solution.model):''}</p>${reviewMarkup}${trust}${imported}${provenance}${stale}${pendingDraft}${solution.quality_notice?`<p class="verification-conflict">${escapeText(solution.quality_notice)}</p>`:''}<details data-lesson-detail="problem"><summary>查看原题</summary>${textBlock(solution.restatement)}</details>${modelDetails}${tabs}${solution.knowns?.length?`<details data-lesson-detail="knowns"><summary>已知条件</summary><ul>${solution.knowns.map(value=>'<li>'+textBlock(value)+'</li>').join('')}</ul></details>`:''}${solution.strategy?`<div class="method-overview"><p><strong>解题方法</strong></p>${textBlock(solution.strategy)}</div>`:''}${linkToolbar}${partMarkup}${diagramReport}${externalReply}${solution.assumptions?.length?`<p class="lesson-assumptions">使用的假设：${escapeText(solution.assumptions.join('；'))}</p>`:''}<div class="proof">${escapeText(report.message||'尚未核验')}${solution.scene_notice?'<p>'+escapeText(solution.scene_notice)+'</p>':''}</div>`;
     }
     function bindTabs(element) {
       element.querySelectorAll('[data-solution-continue]').forEach(button=>{
         button.disabled=processing||api.question.value.trim()!==api.state.solution?.restatement;
         button.addEventListener('click',()=>continueSolution(button.dataset.solutionContinue==='all'?null:Number(button.dataset.solutionContinue)));
       });
-      element.querySelectorAll('[data-study-part]').forEach(button=>button.addEventListener('click',()=>{
-        selectPart(button.dataset.studyPart==='all'?null:Number(button.dataset.studyPart));
-      }));
+      element.querySelectorAll('[data-study-part]').forEach(button=>{
+        button.setAttribute('aria-pressed',String(button.classList.contains('active')));
+        button.addEventListener('click',()=>{
+          const key=button.dataset.studyPart;
+          selectPart(key==='all'?null:Number(key));
+          element.querySelector(`[data-study-part="${CSS.escape(key)}"]`)?.focus({preventScroll:true});
+        });
+      });
     }
     function renderSolution() {
       const solution=api.state.solution;
+      const panel=find('#solution');
+      const openDetails=new Set(solution===lastSolution?[...panel.querySelectorAll('details[open][data-lesson-detail]')].map(item=>item.dataset.lessonDetail):[]);
       checkReferenceUpgrade();
       foldView?.mount(solution);
       if(solution!==lastSolution||api.state.activePart!==lastStepPart||api.question.value!==lastStepQuestion)clearStepHighlight();
@@ -367,8 +376,8 @@
       if(solution!==lastSolution){lastSolution=solution;inspectorView=solution?.mode==='local-ollama'?'lesson':'geometry';inspector.scrollTop=0;}
       setInspectorView(inspectorView);
       if(!solution){find('#solution').hidden=true;renderChat();classroom?.decorate();return;}
-      const panel=find('#solution');
       panel.innerHTML=`<div class="lesson-actions"><button data-lesson-action="read">展开解析</button><button data-lesson-action="copy">复制解析</button><button data-lesson-action="print">打印 / PDF</button><button data-lesson-action="save">保存本题</button></div>`+markup(solution);
+      for(const item of panel.querySelectorAll('details[data-lesson-detail]'))item.open=openDetails.has(item.dataset.lessonDetail);
       panel.hidden=false;bindTabs(panel);bindStepLinks(panel,solution);typeset(panel);renderChat();classroom?.decorate();
       panel.querySelector('[data-restore-answer-question]')?.addEventListener('click',()=>{
         try{
@@ -1117,7 +1126,7 @@
     });
     api.question.addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')solve();});
     window.addEventListener('beforeunload',event=>{if(activeJob){event.preventDefault();event.returnValue='';}});
-    classroom=window.DongClassroom.attach({...api,renderSolution,selectPart,typesetProblem(element,source){element.innerHTML=textBlock(source);typeset(element);},sendFeedback:followup,showLearning:()=>setInspectorView('lesson'),saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
+    classroom=window.DongClassroom.attach({...api,renderSolution,selectPart,typesetProblem(element,source){element.innerHTML=textBlock(source);typeset(element);},sendFeedback:followup,showLearning:()=>setMobilePanel('lesson',{scroll:false}),saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
     window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>saveBeforeSwitch(),showLearning:()=>setInspectorView('lesson')});
     renderDraftRecovery();
     return {refreshEngine,renderSolution,solve,clearStepHighlight,refreshFold:()=>foldView?.refresh()};

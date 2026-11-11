@@ -33,6 +33,10 @@ module.exports=async({page,assert,screenshot})=>{
   assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /);
   await page.keyboard.press('PageDown');assert.match(await page.locator('#classroomProgress').textContent(),/^2 \/ /,'Inline GGB must not swallow lecture navigation');
   await page.keyboard.press('PageUp');assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /);
+  await page.locator('#zoomIn').focus();
+  await page.keyboard.press('PageDown');
+  assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /,'Board-focused keys do not change the explanation');
+  await page.locator('#nextStep').focus();
   for(const key of ['Control+ArrowRight','Alt+ArrowRight','Shift+ArrowRight']){
     await page.keyboard.press(key);assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /,'Modified shortcuts must not reveal another step');
   }

@@ -46,4 +46,19 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#undoInk').click();await page.locator('#clearInk').click();
   assert.equal(await page.locator('#classroomInk').evaluate(el=>el.getContext('2d').getImageData(0,0,el.width,el.height).data.some((v,i)=>i%4===3&&v)),false);
   await screenshot('classroom-controls-mobile.png',null);
+
+  const cdp=await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+  await page.setViewportSize({width:844,height:390});
+  assert(await page.evaluate(()=>matchMedia('(pointer:coarse)').matches));
+  assert.equal(await page.locator('.workspace').evaluate(el=>getComputedStyle(el).display),'flex');
+  assert(await page.locator('[data-mobile-panel="input"]').isHidden());
+  await page.locator('[data-mobile-panel="input"]').evaluate(el=>el.click());
+  assert.equal(await page.locator('.workspace').getAttribute('data-mobile-view'),'board');
+  await page.locator('[data-mobile-panel="lesson"]').click();
+  assert(await page.locator('#solution').isVisible());assert(await page.locator('.board-shell').isHidden());
+  await page.locator('#exitClassroom').click();
+  await page.locator('[data-mobile-panel="input"]').click();
+  assert(await page.locator('#question').isVisible());
+  await cdp.detach();
 };

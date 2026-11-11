@@ -84,25 +84,45 @@
     function changeStep(delta){
       if(!requireCurrent())return;
       const part=currentPart(),data=study();if(!part||!data)return;
-      data.mode='step';data.counts[part.index]=Math.max(0,Math.min(part.steps.length,(Number(data.counts[part.index])||0)+delta));
+      const count=data.counts[part.index];
+      const next=Math.max(0,Math.min(part.steps.length,count+delta));
+      if(next===count)return;
+      data.counts[part.index]=next;
       api.renderSolution();persist();
       const shown=[...document.querySelectorAll('#solution .part-body > ol > li:not([hidden])')].at(-1);if(casting)shown?.scrollIntoView({block:'nearest'});
     }
     function answerToggle(){if(!requireCurrent())return;const part=currentPart(),data=study();if(!part||!data)return;data.answers[part.index]=!data.answers[part.index];api.renderSolution();persist();}
-    function leave(){casting=false;lectureSession++;pen=false;finishStroke();document.body.classList.remove('classroom-mode');castbar.hidden=true;ink.hidden=true;ink.style.pointerEvents='none';find('#inkToggle').setAttribute('aria-pressed','false');if(fullscreenOwned&&document.fullscreenElement===document.documentElement)document.exitFullscreen().catch(()=>{});fullscreenOwned=false;api.render();}
+    function leave(refresh=true){
+      if(!casting)return;
+      casting=false;lectureSession++;pen=false;finishStroke();
+      document.body.classList.remove('classroom-mode');castbar.hidden=true;ink.hidden=true;ink.style.pointerEvents='none';
+      find('#inkToggle').setAttribute('aria-pressed','false');
+      if(fullscreenOwned&&document.fullscreenElement===document.documentElement)document.exitFullscreen().catch(()=>{});
+      fullscreenOwned=false;
+      if(refresh){
+        api.renderSolution();api.render();
+        const start=find('#startClassroom');
+        if(!start.disabled&&start.getClientRects().length)start.focus({preventScroll:true});
+      }
+    }
     function enter(){
       if(!api.state.solution){api.setStatus('请先载入本题解析。',true);return;}
       if(!requireCurrent())return;
-      const part=currentPart();if(!part){api.setStatus('当前题稿没有可讲解的小问，请重新载入解析。',true);return;}api.state.activePart=part.index;api.partChanged?.();const data=study();data.mode='step';finishStroke();strokes=[];
+      const part=currentPart();if(!part){api.setStatus('当前题稿没有可讲解的小问，请重新载入解析。',true);return;}
+      api.state.activePart=part.index;api.partChanged?.();finishStroke();strokes=[];
       casting=true;document.body.classList.add('classroom-mode');castbar.hidden=false;ink.hidden=false;ink.style.pointerEvents='none';
       api.showLearning();api.renderSolution();api.refreshLayers();api.fitPart?.();api.render();updateCastBar();requestAnimationFrame(showInk);persist();
+      const next=find('#nextStep');
+      (next.disabled?find('#classroomAnswer'):next).focus({preventScroll:true});
     }
     function decorate(){
-      const solution=api.state.solution,data=study();controls.hidden=!solution;
-      if(!solution){if(casting)leave();return;}
-      if(solution!==solutionRef){if(casting)leave();solutionRef=solution;strokes=[];showInk();}
+      const solution=api.state.solution;
+      if(casting&&(solution!==solutionRef||!currentQuestion()))leave(false);
+      const data=study();controls.hidden=!solution;
+      if(!solution)return;
+      if(solution!==solutionRef){solutionRef=solution;strokes=[];showInk();}
       if(inkPart!==api.state.activePart){inkPart=api.state.activePart;clearInk();}
-      const stepped=data.mode==='step';find('#learningStyle').value=stepped?'step':'full';
+      const stepped=casting||data.mode==='step';find('#learningStyle').value=data.mode==='step'?'step':'full';
       find('#studentAttempt').value=typeof data.notes==='string'?data.notes:'';
       find('#reviewState').value=['review','mastered'].includes(data.review)?data.review:'new';
       const panel=find('#solution');panel.classList.toggle('step-learning',stepped);
@@ -116,14 +136,24 @@
         section.querySelectorAll('.model-original').forEach(original=>{original.hidden=stepped;});
         if(!stepped)return;
         const navigation=document.createElement('div');navigation.className='step-navigation';
-        const caption=document.createElement('span');caption.textContent=`已展开 ${count} / ${steps.length} 步`;
+        const caption=document.createElement('span');caption.textContent=`已展开 ${count} / ${steps.length} 步`;caption.tabIndex=-1;
+        const update=(action,change)=>()=>{
+          if(api.state.solution!==solution||!requireCurrent())return;
+          change();api.renderSolution();persist();
+          const current=[...panel.querySelectorAll('.part-body')].find(node=>node.dataset.partIndex===index);
+          const replacement=current?.querySelector(`[data-classroom-step="${action}"]`);
+          const target=replacement?.disabled?current.querySelector('.step-navigation span'):replacement;
+          target?.focus({preventScroll:true});
+        };
         const next=document.createElement('button');next.textContent=count===0?'给我第一步提示':'展开下一步';next.disabled=count>=steps.length;
         next.dataset.classroomStep='next';next.dataset.classroomAtEnd=String(count>=steps.length);
-        next.addEventListener('click',()=>{if(!requireCurrent())return;data.counts[index]=count+1;api.renderSolution();persist();});
+        next.addEventListener('click',update('next',()=>{data.counts[index]=count+1;}));
         const previous=document.createElement('button');previous.textContent='收起上一步';previous.dataset.classroomStep='previous';previous.dataset.classroomAtEnd=String(count===0);previous.disabled=count===0;
-        previous.addEventListener('click',()=>{if(!requireCurrent()||count===0)return;data.counts[index]=count-1;api.renderSolution();persist();});
-        const answer=document.createElement('button');answer.dataset.classroomStep='answer';answer.textContent=data.answers[index]?'隐藏结论':'显示结论';answer.setAttribute('aria-pressed',String(data.answers[index]));answer.addEventListener('click',()=>{if(!requireCurrent())return;data.answers[index]=!data.answers[index];api.renderSolution();persist();});
-        const reset=document.createElement('button');reset.dataset.classroomStep='reset';reset.textContent='重新尝试';reset.addEventListener('click',()=>{if(!requireCurrent())return;data.counts[index]=0;data.answers[index]=false;api.renderSolution();persist();});
+        previous.addEventListener('click',update('previous',()=>{data.counts[index]=count-1;}));
+        const answer=document.createElement('button');answer.dataset.classroomStep='answer';answer.textContent=data.answers[index]?'隐藏结论':'显示结论';answer.setAttribute('aria-pressed',String(data.answers[index]));
+        answer.addEventListener('click',update('answer',()=>{data.answers[index]=!data.answers[index];}));
+        const reset=document.createElement('button');reset.dataset.classroomStep='reset';reset.textContent='重新尝试';
+        reset.addEventListener('click',update('reset',()=>{data.counts[index]=0;data.answers[index]=false;}));
         navigation.append(caption,next,previous,answer,reset);section.insertBefore(navigation,section.querySelector('ol'));
       });
       updateCastBar();refreshContext();
@@ -132,7 +162,7 @@
     find('#studentAttempt').addEventListener('input',event=>{if(!requireCurrent()){event.target.value=study()?.notes||'';return;}const data=study();if(data){data.notes=event.target.value;persist();}});
     find('#reviewState').addEventListener('change',event=>{if(!requireCurrent()){event.target.value=study()?.review||'new';return;}const data=study();if(data){data.review=event.target.value;persist();}});
     find('#reviewAttempt').addEventListener('click',()=>{if(!requireCurrent())return;const notes=study()?.notes?.trim();if(!notes){api.setStatus('请先写下你的解题尝试或卡住的地方。',true);return;}find('#followupInput').value='请点评我的解题思路，指出第一处错误或需要补充的依据，先给改进提示，不直接重写完整答案。我的尝试：\n'+notes;find('#followupInput').focus();find('#followupInput').scrollIntoView({block:'nearest'});api.sendFeedback();});
-    find('#startClassroom').addEventListener('click',enter);find('#exitClassroom').addEventListener('click',leave);
+    find('#startClassroom').addEventListener('click',enter);find('#exitClassroom').addEventListener('click',()=>leave());
     find('#previousStep').addEventListener('click',()=>changeStep(-1));find('#nextStep').addEventListener('click',()=>changeStep(1));find('#classroomAnswer').addEventListener('click',answerToggle);
     find('#classroomPart').addEventListener('change',event=>changePart(api.state.solution?.parts.find(part=>String(part.index)===event.target.value)));
     find('#lectureFont').addEventListener('change',event=>document.body.style.setProperty('--lecture-font',event.target.value+'px'));
@@ -168,6 +198,7 @@
         if(document.querySelector('.unified-tools[open],.dong-ggb-tools[open],#boardPointFinder:not([hidden])'))return;
         event.preventDefault();leave();return;
       }
+      if(event.composedPath().includes(board))return;
       if(['ArrowRight','PageDown'].includes(event.key)){event.preventDefault();changeStep(1);}
       if(['ArrowLeft','PageUp'].includes(event.key)){event.preventDefault();changeStep(-1);}
     });
