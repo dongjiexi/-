@@ -30,6 +30,9 @@ assert.deepEqual(Array.from(link.select('直线tP',named.slice(1)).ids),[],'Hidd
 const conflict=link.select('直线tP',[...named,{id:'other',label:'tP'}]);
 assert.deepEqual(Array.from(conflict.ids),[],'Alias collision must not select unrelated lines');
 assert.deepEqual(Array.from(conflict.missing),['tP（名称不唯一）']);
+const duplicate=link.select('点 P 与点 Q。',[{id:'p1',label:'P'},{id:'p2',label:'P'},{id:'q',label:'Q'}]);
+assert.deepEqual(Array.from(duplicate.ids),['q']);
+assert.deepEqual(Array.from(duplicate.missing),['P（名称不唯一）']);
 assert.deepEqual(Array.from(link.select('直线tP',[named[0],{...named[0]}]).ids),['tp'],'Repeated entry for the same object is not a collision');
 assert.deepEqual(Array.from(link.select('ellipse and application',[{id:'bad',label:'辅助线',aliases:['ellipse','application','<img src=x>']}]).ids),[]);
 console.log('PASS: step links use existing object names, preserve primes/subscripts, report missing names, ignore English words and clear stale scenes.');

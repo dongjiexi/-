@@ -81,8 +81,29 @@
     const objects=()=>[...(api.model()?.lines||[]),...(api.model()?.objects||[])];
     function ensureIds(){let seq=0;const used=new Set(objects().map(o=>o.id).filter(Boolean));for(const obj of objects())if(!obj.id){let id;do{id='native-'+(++seq);}while(used.has(id));obj.id=id;used.add(id);}}
     const getObject=id=>objects().find(o=>o.id===id);
-    const driver=object=>window.DongMotionDomain?.driver(object,api.part?api.part():api.model()?.activePart)||object;
+    const part=()=>api.part?api.part():api.model()?.activePart;
+    const driver=object=>window.DongMotionDomain?.driver(object,part())||object;
     const pointValue=p=>finitePoint(p)?{type:'point',x:p.x,y:p.y}:null;
+    function namedPointRef(name,{displayed=false}={}){
+      const model=api.model(),active=part();
+      const inPart=item=>window.DongSceneAudit?.visible({...item,visible:true},active)??true;
+      const points=objects().filter(item=>item.label===name&&pointObject(item)&&inPart(item));
+      if(points.length){
+        const [point]=points;
+        if(points.length!==1||displayed&&(api.visible?!api.visible(point):point.visible===false))return null;
+        return point.id;
+      }
+      const feature=api.features().find(item=>item.name===name);
+      if(!feature)return null;
+      const dynamic=feature.nativeDynamic&&name!==model?.fixedPoint?.name;
+      const scope=dynamic?{part:model?.dynamicLinePart,parts:model?.dynamicLineParts}:{parts:model?.pointParts?.[name]};
+      if(!inPart(scope)||displayed&&dynamic&&(model.showDynamic===false||model.showConic===false))return null;
+      return 'feature:'+name;
+    }
+    function resolveNamedPoint(name,options){
+      const ref=namedPointRef(name,options);
+      return ref?resolve(ref):null;
+    }
     function resolve(id,seen=new Set(),cache=new Map()){
       if(cache.has(id))return cache.get(id);if(seen.has(id)||seen.size>80)return null;seen.add(id);
       let result=null;
@@ -96,16 +117,16 @@
         else{
           const obj=getObject(id);if(!obj)return null;
           const refs=(obj.refs||[]).map(ref=>resolve(ref,seen,cache));
-          const named=name=>{
-            const custom=objects().find(o=>o.label===name&&['point','construction'].includes(o.kind));
-            return custom?resolve(custom.id,seen,cache):resolve('feature:'+name,seen,cache);
-          };
           if(linkedCurveLine(obj))result=curveLine(refs[0],refs[1],obj.role==='normal');
           else if(obj.kind==='point')result=pointValue(obj);
           else if(obj.kind==='circle')result={type:'circle',x:obj.h,y:obj.k,r:obj.r};
           else if(obj.kind==='conic')result=conicShape(obj);
           else if(['line','slope','vertical'].includes(obj.kind))result=obj.m!=null?{type:'line',o:{x:0,y:+(obj.b||0)},d:{x:1,y:+obj.m}}:{type:'line',o:{x:+obj.x,y:0},d:{x:0,y:1}};
-          else if(obj.kind==='through_points'){const a=named(obj.a),b=named(obj.b);if(a&&b)result={type:'line',o:a,d:sub(b,a),segment:!obj.infinite};}
+          else if(obj.kind==='through_points'){
+            const first=namedPointRef(obj.a),second=namedPointRef(obj.b);
+            const a=first&&resolve(first,seen,cache),b=second&&resolve(second,seen,cache);
+            if(a?.type==='point'&&b?.type==='point')result={type:'line',o:a,d:sub(b,a),segment:!obj.infinite};
+          }
           else if(obj.kind==='construction'){
             const [a,b]=refs;
             if(['line','segment','ray','vector'].includes(obj.op)&&a?.type==='point'&&b?.type==='point')result={type:'line',o:a,d:sub(b,a),segment:obj.op==='segment'||obj.op==='vector',ray:obj.op==='ray',vector:obj.op==='vector'};
@@ -210,12 +231,12 @@
       }
       object.label=name;return true;
     }
-    return {objects,ensureIds,getObject,resolve,project,pointOn,driver,moveDriver,dragDriver,freePoint,descendants,intersect,invalidReason,renameObject};
+    return {objects,ensureIds,getObject,resolve,resolveNamedPoint,project,pointOn,driver,moveDriver,dragDriver,freePoint,descendants,intersect,invalidReason,renameObject};
   }
 
   function attach(api){
     const {state,canvas,ctx,xy}=api,$=id=>document.getElementById(id);
-    const engine=createEngine({model:()=>state.model,part:()=>state.activePart,features:api.features,coeffs:api.coeffs,origin:api.origin,angle:()=>state.p.theta,angle2:api.angle2,conicPoint:api.conicPoint,conicProject:api.conicProject});
+    const engine=createEngine({model:()=>state.model,part:()=>state.activePart,features:api.features,visible:api.visible,coeffs:api.coeffs,origin:api.origin,angle:()=>state.p.theta,angle2:api.angle2,conicPoint:api.conicPoint,conicProject:api.conicProject});
     let tool=null,pending=[],staged=[],selected=null,hover=null,pointer=null,snapPreview=null;
     const titles={perp_bisector:'垂直平分线',circumcircle:'三点定圆',point:'点',line:'直线',line_angle:'过点直线',segment:'线段',ray:'射线',circle:'圆',midpoint:'中点',reflect_x:'x 轴对称点',reflect_y:'y 轴对称点',parallel:'平行线',perpendicular:'垂线',intersection:'交点',foot:'垂足',distance:'测距',tangent:'切线',normal:'法线'};
     const hint=text=>$('dragHint').textContent=text;
@@ -483,5 +504,7 @@
     inspector();objectList();
     return {engine,draw,hit,begin,move,active:()=>!!tool,select,selectedId:()=>selected,refreshObjects:objectList,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();tool=null;selected=null;document.querySelectorAll('[data-construct]').forEach(b=>b.setAttribute('aria-pressed','false'));inspector();objectList();}};
   }
-  window.DongConstruct={createEngine,intersect,conicShape,attach};
+  const pointOps=new Set(['point_on','inverse','midpoint','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection']);
+  const pointObject=item=>item.kind==='point'||item.kind==='construction'&&pointOps.has(item.op);
+  window.DongConstruct={createEngine,intersect,conicShape,pointObject,attach};
 })();

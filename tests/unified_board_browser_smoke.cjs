@@ -78,4 +78,14 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},locus);
   await page.waitForFunction(()=>window.DongGeoGebra.getReport().skipped.includes('受限轨迹：P 的轨迹')&&!window.DongUnifiedBoard.isActive());
   assert.match(await page.locator('#locusRangeSummary').textContent(),/已按绑定范围显示/);
+  const duplicate={...scene,objects:[
+    {id:'p1',kind:'point',label:'P',x:1,y:1,part:1},
+    {id:'p2',kind:'point',label:'P',x:1,y:2,part:2}
+  ],points:{A:[0,0]},lines:[{id:'ap',kind:'through_points',a:'A',b:'P',label:'AP',infinite:true}]};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},duplicate);
+  await page.waitForFunction(()=>window.DongGeoGebra.getReport().skipped.includes('分问同名点：P')&&!window.DongUnifiedBoard.isActive());
+  assert(await page.locator('#canvas').isVisible());
+  const single={...duplicate,objects:[duplicate.objects[1]]};
+  await page.locator('#sceneJson').evaluate((el,s)=>{el.value=JSON.stringify(s);document.querySelector('#applyJson').click();},single);
+  await page.waitForFunction(()=>window.DongGeoGebra.getReport().skipped.includes('分问端点：P')&&!window.DongUnifiedBoard.isActive());
 };

@@ -679,7 +679,8 @@
       clearTimeout(draftTimer);draftTimer=null;
       clearStepHighlight();
       api.clear();api.question.value=record.question;
-      api.state.solution=window.DongSolutionReview?.restoreReferenceScene(restoredSolution,parsedScene?record.scene:null,record.question)??restoredSolution;api.state.activePart=record.activePart??null;
+      api.state.solution=window.DongSolutionReview?.restoreReferenceScene(restoredSolution,parsedScene?record.scene:null,record.question)??restoredSolution;
+      api.state.activePart=window.DongSolutionReview.restoredPart(record);
       // An explicitly manual saved scene stays manual even when its lesson has text.
       // Legacy lessons without this flag still receive the existing question constraints.
       if(parsedScene)api.installScene(parsedScene,record.scene.problemMotion===false?'图稿文件':'题本',{original,exploring:!!record.exploring});

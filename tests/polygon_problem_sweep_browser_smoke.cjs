@@ -55,4 +55,44 @@ module.exports=async({page,assert,screenshot})=>{
   assert.match(await page.locator('#solution').innerText(),/顶点共线/);
   assert.match(await page.locator('#metrics').innerText(),/∠B（△ABD）\s*退化，未定义/);
   await screenshot('polygon-question-sweep.png','.board-shell');
+
+  // Legacy name-based dependencies in an imported construction.
+  const question='分问图稿：分别查看两问的点 P、直线 AP 和三角形 ABP。';
+  const scoped={
+    format:'dongjiexi-lesson',version:1,question,activePart:99,
+    solution:{title:'分问图稿',restatement:question,parts:[1,2].map(index=>({index,label:'第 '+index+' 问',answer:'',steps:['连接点 A 与点 P，得到直线 AP。']}))},
+    scene:{type:'circle',r:4,showDynamic:false,problemMotion:false,activePart:2,points:{A:[0,0],B:[2,0]},objects:[
+      {id:'p1',kind:'point',label:'P',x:1,y:1,part:1},
+      {id:'p2',kind:'point',label:'P',x:1,y:3,parts:['2']},
+      {id:'w',kind:'construction',op:'intersection',refs:['ap','horizontal'],label:'W'}
+    ],lines:[
+      {id:'ap',kind:'through_points',a:'A',b:'P',label:'AP',infinite:true},
+      {id:'horizontal',kind:'slope',m:0,b:1,label:'h'}
+    ],polygons:[{id:'triangle',labels:['A','B','P'],label:'△ABP'}]}
+  };
+  const importRecord=async record=>{
+    await page.locator('#importLesson').setInputFiles({name:'scoped-lesson.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(record))});
+    await page.waitForFunction(()=>!document.querySelector('#notebookDialog').open&&document.querySelector('#question').value.startsWith('分问图稿'));
+    await page.locator('[data-inspector-view="lesson"]').click();
+  };
+  const triangleArea=()=>page.locator('#metrics .metric').filter({hasText:'△ABP · 面积'}).locator('.metric-value').textContent();
+  const position=()=>page.evaluate(()=>window.DongBoardLabels.snapshot().placements.find(row=>row.names?.includes('W'))?.worldX);
+  await importRecord(scoped);
+  assert.equal(await page.locator('#solution .part-body').count(),2,'An obsolete part number restores the combined explanation');
+  assert.match(await triangleArea(),/暂未定位.*P/,'Combined view never guesses between the two point definitions');
+  await page.locator('[data-study-part="1"]').click();
+  assert.equal(await triangleArea(),'1');assert(Math.abs(await position()-1)<1e-8);
+  await page.locator('[data-study-part="2"]').click();
+  assert.equal(await triangleArea(),'3');assert(Math.abs(await position()-1/3)<1e-8);
+  await page.locator('[data-step-graph-part="2"][data-step-graph-index="0"]').click();
+  const ids=await page.evaluate(()=>window.DongBoardStep.snapshot().ids);
+  assert(ids.includes('p2')&&ids.includes('ap')&&!ids.includes('p1'));
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('[data-inspector-view="lesson"]').click();
+  assert(await page.locator('[data-study-part="2"]').evaluate(el=>el.classList.contains('active')));
+  assert.equal(await triangleArea(),'3');
+  assert.equal(await page.evaluate(()=>window.DongBoardStep.snapshot()),null);
+  delete scoped.activePart;
+  await importRecord(scoped);
+  assert(await page.locator('[data-study-part="2"]').evaluate(el=>el.classList.contains('active')),'Older imports can recover the part from their saved scene');
 };

@@ -465,6 +465,33 @@
         labels.set(name, label);
       }
       const objects = Array.isArray(scene.objects) ? scene.objects : [];
+      const namedDependencies=new Map();
+      const recordUse=(name,item)=>{
+        if(!namedDependencies.has(name))namedDependencies.set(name,[]);
+        namedDependencies.get(name).push(item);
+      };
+      for(const item of [...(scene.lines||[]),...objects]){
+        if(item.kind==='through_points'){recordUse(item.a,item);recordUse(item.b,item);}
+      }
+      for(const polygon of scene.polygons||[])for(const name of polygon.labels||[])recordUse(name,polygon);
+      // A fixed GeoGebra reference cannot switch between two identically
+      // named points, or follow a point whose question scope can disappear.
+      const pointNames=new Set();
+      const features=Object.keys(scene.points||{}).map(label=>({label,parts:scene.pointParts?.[label]}));
+      for(const item of [...features,...objects.filter(window.DongConstruct.pointObject)]){
+        const uses=namedDependencies.get(item.label);
+        if(!uses)continue;
+        if(pointNames.has(item.label))skipped.push('分问同名点：'+item.label);
+        else if(item.part!=null||item.parts?.length){
+          const sourceScope={...item,visible:true};
+          const incompatible=uses.some(use=>{
+            const parts=use.part!=null?[use.part]:use.parts;
+            return !parts?.length||parts.some(part=>!window.DongSceneAudit.visible(sourceScope,part));
+          });
+          if(incompatible)skipped.push('分问端点：'+item.label);
+        }
+        pointNames.add(item.label);
+      }
       const restrictedTargets=new Set(objects.filter(item=>item.op==='point_on'&&
         [item,...Object.values(item.motionByPart||{})].some(profile=>profile?.excludeAxis||Object.keys(profile?.motionDomain||{}).length)
       ).map(item=>item.refs?.[0]));

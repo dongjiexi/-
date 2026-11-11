@@ -4,6 +4,14 @@
   'use strict';
   const complete=p=>!!(p?.status==='answered'&&typeof p.answer==='string'&&p.answer.trim()&&Array.isArray(p.steps)&&p.steps.some(s=>typeof s==='string'&&s.trim())&&!(p.derivation?.proof_obligations||[]).some(s=>typeof s==='string'&&s.trim()));
   const clone=x=>JSON.parse(JSON.stringify(x));
+  function restoredPart(record){
+    const value=Object.hasOwn(record,'activePart')?record.activePart:record.scene?.activePart;
+    if(typeof value!=='number'&&!(typeof value==='string'&&/^\d+$/.test(value)))return null;
+    const index=Number(value),parts=record.solution?.parts;
+    if(!Number.isSafeInteger(index)||index<0)return null;
+    if(Array.isArray(parts)&&parts.length&&!parts.some(part=>part?.index!=null&&Number(part.index)===index))return null;
+    return value;
+  }
   function restoreReferenceScene(solution,scene,question){
     // Older notebook records kept reference diagrams only at record.scene.
     // Recover display presence, not proof trust or stale diagram audits.
@@ -134,5 +142,5 @@
     }
     return result;
   }
-  root.DongSolutionReview=Object.freeze({complete,inspect,request,merge,algebraConflicts,restoreReferenceScene,importedSolution,shareRecord});
+  root.DongSolutionReview=Object.freeze({complete,inspect,request,merge,algebraConflicts,restoredPart,restoreReferenceScene,importedSolution,shareRecord});
 })(typeof window==='object'?window:globalThis);
