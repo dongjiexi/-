@@ -4,6 +4,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const box={window:{}};for(const f of ['math-input','number-display','equation-builder','question-parts','ellipse-distance','motion-domain','construction-board','scene-audit','basic-conditions','ellipse-area-chord'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/'+f+'.js'),'utf8'),box);
 const {DongBasicConditions:basic,DongEllipseAreaChord:chord,DongSceneAudit:audit,DongConstruct:construct}=box.window;
 const bank=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8')).items,q=id=>bank.find(q=>q.id===id).question,copy=x=>JSON.parse(JSON.stringify(x)),close=(a,b)=>assert(Math.abs(a-b)<1e-7*Math.max(1,Math.abs(a),Math.abs(b)));let count=0;
+const ellipseExcerpt=q('2025-beijing-19-1').split('\n（2）')[0].replace('\n（1）求椭圆 $E$ 的方程；','求椭圆方程。');
 const original=q('2025-ii-16'),split=box.window.DongQuestionParts.splitParts(original),head=split[0].question.slice(0,-split[0].body.length),sourceBody=basic.plain(split[1].body);
 const bodyClauses=['过点(0,-2)的直线l与C交于A,B两点','O为坐标原点','若S△OAB=sqrt(2)','求|AB|'];
 const wrap=body=>head+'\n（1）求C的方程；\n（2）'+body+'。';
@@ -23,7 +24,7 @@ const header=basic.plain(head),decl='椭圆C:x^2/a^2+y^2/b^2=1(a>b>0)',e='离心
 for(const h of [decl+'的'+e+'，'+L,decl+'，'+L+'；其'+e,decl+'的'+L+'。'+e,decl+'，长轴的长度为4且'+e]){
  const r=basic.solve(h+'，求出椭圆C的标准方程。');assert(r);close(r.scene.a**2,4);close(r.scene.b**2,2);verify(wrap(bodyClauses.join(',')).replace(head,h+'。'));count++;
 }
-assert(basic.solve(q('2025-beijing-19-1').replace('椭圆上的点到两焦点','椭圆上任意一点到两个焦点').replace('求椭圆方程','写出椭圆的标准方程')));count++;
+assert(basic.solve(ellipseExcerpt.replace('椭圆上的点到两焦点','椭圆上任意一点到两个焦点').replace('求椭圆方程','写出椭圆的标准方程')));count++;
 for(const clause of ['l斜率大于2','l斜率小于-2','A在第一象限且B在第一象限','A在第二象限且B在第四象限','m的斜率大于0','P在第一象限','A在第一象限且A在第二象限','A在坐标轴上','OA垂直OB','直线l不经过原点','若三角形OAB的周长为8','求AB长度与斜率','求圆D的方程','l斜率>k','l斜率大于0且l斜率小于0',bodyClauses[0],bodyClauses[1],bodyClauses[2],bodyClauses[3]]){assert.equal(chord.solve(wrap(bodyClauses.join(',')+','+clause)),null,'Do not certify ambiguous/unsupported/inconsistent clause: '+clause);count++;}
 for(const extra of ['且经过点(1,1)','且短轴长为3','且离心率为1/2','且长轴长为6','且焦点在y轴','且求椭圆周长']){assert.equal(basic.solve(header+extra+'，求C的方程。'),null);assert.equal(chord.solve(wrap(bodyClauses.join(',')).replace(head,header+extra+'。')),null);count++;}
 for(const [input,invalid] of [['过点(0,-2)的直线l与C交于A,B两点',false],['若S△OAB=sqrt(2),O为坐标原点',false],['过点(0,-2的直线l',true],['S△OAB=sqrt(2))',true]]){assert.equal(basic.clauses(input)===null,invalid);count++;}

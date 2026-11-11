@@ -92,14 +92,14 @@ class QuestionPartsTests(unittest.TestCase):
         bank = json.loads((ROOT/"dist/question-bank.json").read_text(encoding="utf-8"))
         multi = {"2022-beijing-19-1": [1, 2], "2023-i-22": [1, 2], "2024-ii-19": [1, 2, 3], "2026-i-18": [1, 201, 202],
                  "2022-i-21": [1, 2], "2023-ii-21": [1, 2], "2024-i-16": [1, 2],
-                 "2025-i-18": [1, 201, 202], "2025-ii-16": [1, 2]}
+                 "2025-i-18": [1, 201, 202], "2025-ii-16": [1, 2], "2025-beijing-19-1": [1, 2]}
         for item in bank["items"]:
             with self.subTest(id=item["id"]):
                 self.assertEqual(self.indexes(item["question"]), multi.get(item["id"], [0]))
         sourced = json.loads((ROOT/"tests/fixtures/sourced-exam-additions.json").read_text(encoding="utf-8"))
         for item in sourced["items"]:
             with self.subTest(id=item["id"]):
-                self.assertEqual(self.indexes(item["question"]), [1, 2] if item["id"] == "2022-beijing-19-full" else [0])
+                self.assertEqual(self.indexes(item["question"]), [1, 2] if item["id"] in {"2022-beijing-19-full", "2025-beijing-19-full"} else [0])
 
     def test_offsets_are_original_tokens(self):
         q = "前提\n（1）求x；（2）根据（1）的结果求y。"

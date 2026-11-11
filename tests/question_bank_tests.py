@@ -42,7 +42,8 @@ class QuestionBankTests(unittest.TestCase):
         self.assertEqual(2 * circle['h'] - 1, 0)
         hyperbola = ITEMS['2022-ii-21-1']['scene']
         self.assertAlmostEqual(hyperbola['a'] ** 2 + hyperbola['b'] ** 2, 4)
-        self.assertEqual(hyperbola['a'], hyperbola['b'])
+        self.assertAlmostEqual(hyperbola['a'], 1)
+        self.assertAlmostEqual(hyperbola['b'] / hyperbola['a'], math.sqrt(3))
         ellipse = ITEMS['2022-beijing-19-1']['scene']
         self.assertAlmostEqual(ellipse['a'] ** 2 - ellipse['b'] ** 2, 3)
 

@@ -32,11 +32,10 @@ module.exports=async({page,context,assert,screenshot})=>{
       assert(result.scene.objects.some(o=>o.op==='circle'));assert.equal(diagram.invalid.length,0);
       assert.equal(diagram.missing.length,0);assert.equal(diagram.missingLines.length,0);
     }
-    if(!process.env.DONG_EXAM_BASELINE&&['2022-beijing-3','2025-beijing-11','2025-beijing-19-1','2025-ii-16'].includes(item.id)){
+    if(!process.env.DONG_EXAM_BASELINE&&['2022-beijing-3','2025-beijing-11','2025-ii-16'].includes(item.id)){
       assert.equal(result.completion.answered,result.completion.total);assert.equal(diagram.invalid.length,0);
       if(item.id==='2022-beijing-3'){assert.match(result.parts[0].answer,/a=\\frac\{1\}\{2\}/);assert.equal(result.scene.h,.5);assert(result.scene.lines.some(l=>l.kind==='slope'&&l.m===-2));}
       if(item.id==='2025-beijing-11'){assert.match(result.parts[0].answer,/p=6/);assert.equal(result.scene.p,3);}
-      if(item.id==='2025-beijing-19-1'){assert(Math.abs(result.scene.a**2-4)<1e-8&&Math.abs(result.scene.b**2-2)<1e-8);}
       if(item.id==='2025-ii-16'){assert.match(result.parts[1].answer,/\\sqrt\{5\}/);assert.equal(result.scene.areaChord.solutions.length,2);assert(result.scene.objects.some(o=>o.label==='B'&&o.op==='second_intersection'));assert(result.scene.polygons.some(p=>p.labels.join('')==='OAB'));assert.match(result.parts[1].steps.join(' '),/判别式|韦达/);}
     }
     if(item.testOracle&&typeof item.testOracle==='object'&&result.scene){
@@ -64,7 +63,15 @@ module.exports=async({page,context,assert,screenshot})=>{
       assert(Math.abs(result.scene.a**2-2)<1e-8&&Math.abs(result.scene.b**2-1)<1e-8);assert(result.scene.objects.some(o=>o.label==='Q'&&o.op==='second_intersection'));assert(result.scene.polygons.some(o=>o.labels.includes('P')&&o.labels.includes('Q')));
     }
     if(item.id==='2022-beijing-10'&&!process.env.DONG_EXAM_BASELINE){assert.equal(result.completion.answered,1);assert.match(result.parts[0].answer,/\[-4,6\]/);assert.equal(diagram.missing.length,0);assert.equal(diagram.invalid.length,0);assert.equal(result.scene.dotExtrema.moving,'P');}
-    if(item.id==='2022-ii-21-1'&&!process.env.DONG_EXAM_BASELINE){assert.equal(result.completion.answered,1);assert(Math.abs(result.scene.a**2-2)<1e-9&&Math.abs(result.scene.b**2-2)<1e-9);}
+    if(item.id==='2025-beijing-19-full'&&!process.env.DONG_EXAM_BASELINE){
+      assert.equal(result.completion.answered,2,JSON.stringify(rows.at(-1)));
+      assert(result.engineExtensions.includes('ellipse-tangent-ratio'));
+      assert(parameterChecks.every(p=>p.passed));
+      for(const k of ['missing','invalid','missingLines','answerMissing','answerMissingLines','missingPolygons'])assert.equal(diagram[k].length,0,k);
+      assert.equal(result.scene.objects.filter(o=>o.op==='intersection').length,2);
+      assert.equal(result.scene.polygons.length,2);
+    }
+    if(item.id==='2022-ii-21-1'&&!process.env.DONG_EXAM_BASELINE){assert.equal(result.completion.answered,1);assert(Math.abs(result.scene.a**2-1)<1e-9&&Math.abs(result.scene.b**2-3)<1e-9);}
     if(item.id==='2023-i-22'&&!process.env.DONG_EXAM_BASELINE){
       assert.equal(result.completion.answered,2,JSON.stringify(rows.at(-1)));
       assert.equal(diagram.missing.length,0,JSON.stringify(diagram));

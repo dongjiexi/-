@@ -1,7 +1,9 @@
 /* Bounded equation/parameter models. Read premises, not bank IDs or answers. */
 (function(root){
  'use strict';
- const plain=s=>root.DongMathInput.toPlain(String(s)).replace(/[$\s_{}]/g,'').replace(/[（），：；]/g,c=>({'（':'(', '）':')','，':',','：':':','；':';'}[c]));
+ const plain=s=>root.DongMathInput.toPlain(String(s)).replace(/[$\s_{}]/g,'')
+  .replace(/[₀-₉]/g,d=>String(d.charCodeAt(0)-'₀'.charCodeAt(0))).replace(/²/g,'^2').replace(/−/g,'-')
+  .replace(/[（），：；]/g,c=>({'（':'(', '）':')','，':',','：':':','；':';'}[c]));
  const scalar=s=>{try{const n=root.DongEquationBuilder.scalar(s);return Number.isFinite(n)&&Math.abs(n)<=10000?n:null;}catch{return null;}};
  const tex=n=>root.DongNumber.tex(n);
  // Split only top-level prose; keep coordinates, radicals and named point pairs.

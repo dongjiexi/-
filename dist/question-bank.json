@@ -26,12 +26,12 @@
       "scene": {"type": "circle", "r": 1, "h": 0.5, "showDynamic": false, "points": {"O": [0.5,0]}, "lines": [{"id": "axis", "label": "对称轴", "a": 2, "b": 1, "c": -1}]}
     },
     {
-      "id": "2022-ii-21-1", "kind": "gaokao", "year": 2022, "paper": "新高考全国Ⅱ卷", "number": "21（1）", "scope": "第（1）问节选", "title": "焦点与渐近线确定双曲线", "curve": "双曲线", "tags": ["标准方程", "渐近线"], "knowledge": [{"name":"焦点与渐近线","description":"把焦点坐标、渐近线斜率分别转成半焦距和半轴比例。"},{"name":"双曲线标准方程","description":"联立半轴与半焦距的关系，确定标准方程。"}], "level": "基础",
-      "question": "已知双曲线 $C:\\dfrac{x^2}{a^2}-\\dfrac{y^2}{b^2}=1\\ (a>0,b>0)$ 的右焦点为 $F(2,0)$，渐近线方程为 $y=\\pm x$。求 $C$ 的方程。（选取原题第（1）问。）",
-      "sources": [{"title": "2022 新高考全国Ⅱ卷原题整理", "url": "https://zy.21cnjy.com/12414515"}],
+      "id": "2022-ii-21-1", "kind": "gaokao", "year": 2022, "paper": "新高考全国Ⅱ卷", "number": "21（1）", "scope": "第（1）问节选", "title": "焦点与渐近线确定双曲线", "curve": "双曲线", "tags": ["标准方程", "渐近线"], "knowledge": [{"name": "焦点与渐近线", "description": "把焦点坐标、渐近线斜率分别转成半焦距和半轴比例。"}, {"name": "双曲线标准方程", "description": "联立半轴与半焦距的关系，确定标准方程。"}], "level": "基础",
+      "question": "已知双曲线 $C:\\dfrac{x^2}{a^2}-\\dfrac{y^2}{b^2}=1\\ (a>0,b>0)$ 的右焦点为 $F(2,0)$，渐近线方程为 $y=\\pm\\sqrt{3}x$。求 $C$ 的方程。（选取原题第（1）问。）",
+      "sources": [{"title": "2022 新高考全国Ⅱ卷原卷", "url": "https://gaokao.eol.cn/shiti/zhenti/202206/t20220608_2230674.shtml"}],
       "pitfall": "双曲线满足 c²=a²+b²；不要套用椭圆的减法。",
-      "parts": [{"index": 1, "label": "标准方程", "answer": "$\\dfrac{x^2}{2}-\\dfrac{y^2}{2}=1$。", "steps": ["焦点给出 $c=2$；渐近线斜率给出 $\\dfrac ba=1$，即 $b=a$。", "由 $c^2=a^2+b^2$，得 $4=2a^2$。", "所以 $a^2=b^2=2$，方程为 $\\dfrac{x^2}{2}-\\dfrac{y^2}{2}=1$。"]}],
-      "scene": {"type": "hyperbola", "a": 1.4142135623730951, "b": 1.4142135623730951, "showDynamic": false, "points": {"F": [2,0]}, "lines": [{"id": "asym1", "label": "y=x", "a": 1, "b": -1, "c": 0}, {"id": "asym2", "label": "y=-x", "a": 1, "b": 1, "c": 0}]}
+      "parts": [{"index": 1, "label": "标准方程", "answer": "$x^2-\\dfrac{y^2}{3}=1$。", "steps": ["右焦点给出 $c=2$；渐近线斜率给出 $\\dfrac ba=\\sqrt{3}$。", "联立 $c^2=a^2+b^2$ 和 $b^2=3a^2$，得到 $4=4a^2$。", "所以 $a^2=1$、$b^2=3$，方程为 $x^2-\\dfrac{y^2}{3}=1$。"]}],
+      "scene": {"type": "hyperbola", "a": 1, "b": 1.7320508075688772, "showDynamic": false, "points": {"F": [2, 0]}, "lines": [{"id": "asym1", "label": "y=√3 x", "kind": "slope", "m": 1.7320508075688772, "b": 0}, {"id": "asym2", "label": "y=−√3 x", "kind": "slope", "m": -1.7320508075688772, "b": 0}]}
     },
     {
       "id": "2022-beijing-19-1", "kind": "gaokao", "year": 2022, "paper": "北京卷", "number": "19", "scope": "完整题目", "title": "椭圆方程与过定点弦的截距", "curve": "椭圆", "tags": ["标准方程", "焦距", "韦达定理", "截距"], "knowledge": [{"name":"顶点与焦距","description":"区分短轴顶点、半焦距和两焦点之间的距离。"},{"name":"截距与韦达定理","description":"把两条连线在横轴上的截距差转化为弦端点的根与系数关系。"}], "level": "综合", "solver": "axis-intercept-chord",
@@ -84,12 +84,15 @@
       "scene": {"type": "parabola", "p": 3, "showDynamic": false, "points": {"F": [3,0]}}
     },
     {
-      "id": "2025-beijing-19-1", "kind": "gaokao", "year": 2025, "paper": "北京卷", "number": "19（1）", "scope": "第（1）问节选", "title": "椭圆定义与离心率", "curve": "椭圆", "tags": ["标准方程", "离心率", "椭圆定义"], "knowledge": [{"name":"椭圆定义","description":"由到两焦点的距离之和确定长轴长。"},{"name":"离心率与半轴","description":"把离心率转成半焦距，再确定短半轴和标准方程。"}], "level": "基础",
-      "question": "已知椭圆 $E:\\dfrac{x^2}{a^2}+\\dfrac{y^2}{b^2}=1\\ (a>b>0)$ 的离心率为 $\\dfrac{\\sqrt2}2$，椭圆上的点到两焦点的距离之和为 $4$。求椭圆方程。（选取原题第（1）问。）",
-      "sources": [{"title": "2025 北京卷第19题题面", "url": "https://gaokaohub.com/q/math/2025.html"}],
-      "pitfall": "距离之和为 2a，不是 a；离心率取平方后再求 b²。",
-      "parts": [{"index": 1, "label": "标准方程", "answer": "$\\dfrac{x^2}{4}+\\dfrac{y^2}{2}=1$。", "steps": ["椭圆定义给出 $2a=4$，因此 $a=2$。", "$c=ae=\\sqrt2$，再由 $b^2=a^2-c^2=2$。", "所以椭圆方程为 $\\dfrac{x^2}{4}+\\dfrac{y^2}{2}=1$。"]}],
-      "scene": {"type": "ellipse", "a": 2, "b": 1.4142135623730951, "showDynamic": false}
+      "id": "2025-beijing-19-1", "kind": "gaokao", "year": 2025, "paper": "北京卷", "number": "19", "scope": "完整题目", "title": "椭圆切线上的面积比与距离比", "curve": "椭圆", "tags": ["标准方程", "离心率", "切线", "面积比"], "knowledge": [{"name": "椭圆定义与离心率", "description": "由两焦点距离之和及离心率推出椭圆的两个半轴。"}, {"name": "切线与共高", "description": "用切线交点构成共高三角形，再通过距离平方比较两组比值。"}], "level": "综合",
+      "question": "已知椭圆 $E:\\dfrac{x^2}{a^2}+\\dfrac{y^2}{b^2}=1\\ (a>b>0)$ 的离心率为 $\\dfrac{\\sqrt2}2$，椭圆上的点到两焦点的距离之和为 $4$。\n（1）求椭圆 $E$ 的方程；\n（2）设 $O$ 为原点，点 $M(x_0,y_0)\\ (x_0\\ne0)$ 为椭圆 $E$ 上一点，直线 $x_0x+2y_0y-4=0$ 与直线 $y=2$ 和 $y=-2$ 分别交于点 $A$ 和 $B$。设三角形 $OMA$ 和三角形 $OMB$ 的面积分别为 $S_1$ 和 $S_2$，比较 $\\dfrac{S_1}{S_2}$ 与 $\\dfrac{|OA|}{|OB|}$ 的大小。",
+      "sources": [{"title": "2025 北京卷第 19 题题面", "url": "https://static-gkcx.gaokao.cn/upload/zhenti/20250612/1749718697_6797.pdf"}],
+      "pitfall": "第二问比较的是两个比值。共高只能先将面积比化为切线上两段长度之比，还需要计算到原点的距离。",
+      "parts": [{"index": 1, "label": "标准方程", "answer": "$\\dfrac{x^2}{4}+\\dfrac{y^2}{2}=1$。", "steps": ["椭圆定义给出 $2a=4$，因此 $a=2$。", "$c=ae=\\sqrt2$，再由 $b^2=a^2-c^2=2$。", "所以椭圆方程为 $\\dfrac{x^2}{4}+\\dfrac{y^2}{2}=1$。"]}, {"index": 2, "label": "比较比值", "answer": "$\\dfrac{S_1}{S_2}=\\dfrac{|OA|}{|OB|}$。", "steps": ["以切线上两段为底，两个三角形共用原点到切线的距离作为高。", "用 $y=2$、$y=-2$ 代入切线求交点坐标。结合椭圆方程，得到 $\\dfrac{|OA|^2}{|OB|^2}=\\dfrac{(2-y_0)^2}{(2+y_0)^2}$。", "两比值均为正，开平方后与共高面积比相同。"]}],
+      "scene": {"type": "ellipse", "a": 2, "b": 1.4142135623730951, "showDynamic": false},
+      "solver": true,
+      "sceneRevision": 2,
+      "sceneNote": "切换到第（2）问后拖动点 M。切线、A、B、辅助垂足和两组三角形会随之变化。"
     },
     {
       "id": "2026-i-18", "kind": "gaokao", "year": 2026, "paper": "新高考全国Ⅰ卷", "number": "18", "scope": "完整题目", "title": "椭圆焦点弦与夹角最值", "curve": "椭圆", "tags": ["焦点弦", "中心对称", "面积比", "最值"], "knowledge": [{"name":"焦点弦与中心对称","description":"根据椭圆对称性建立第三点与原交点的关系。"},{"name":"面积比与分点","description":"把三角形面积比例转成同一直线上的线段比例。"},{"name":"夹角最值","description":"运用联立、韦达定理和基本不等式，并检查取等时的直线是否合法。"}], "level": "综合", "solver": "ellipse-focal-chord",

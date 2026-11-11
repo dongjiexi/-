@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '0.70.13';
+const VERSION = '0.70.14';
 // Final release review refreshes connectivity-status fixes without losing drafts.
 const CACHE = `dongjiexi-app-${VERSION}`;
 const CORE = [
@@ -15,7 +15,7 @@ const CORE = [
   './vertex-secant.js',
   './inverse-locus.js',
   './symmetric-chord.js',
-  './basic-conditions.js', './ellipse-area-chord.js', './parabola-focal-choice.js', './algebra-geometry.js',
+  './basic-conditions.js', './ellipse-area-chord.js', './ellipse-tangent-ratio.js', './parabola-focal-choice.js', './algebra-geometry.js',
   './circle-dot.js',
   './parabola-locus.js',
   './label-layout.js', './step-highlight.js',
