@@ -550,11 +550,15 @@
       if(requireBoardReady&&window.DongUnifiedBoard?.isSynchronized?.()===false)throw new Error('画板正在同步当前题图，请稍后保存或分享。');
       return {format:'dongjiexi-lesson',version:1,id:crypto.randomUUID(),savedAt:new Date().toISOString(),title:api.state.solution?.title||api.question.value.slice(0,32)||'未命名图稿',question:preserveAnswerQuestion?api.state.solution.restatement:api.question.value,scene:api.state.model?api.sceneData():null,boardDraft:window.DongUnifiedBoard?.snapshot?.()||null,original:api.state.original||null,solution:api.state.solution||null,activePart:api.state.activePart,exploring:!!api.state.exploring};
     }
+    let captureSequence=0,savedCaptureSequence=0;
+    const captureOrder=new WeakMap();
     async function captureLesson(options={}){
+      const sequence=++captureSequence;
       const context=()=>JSON.stringify([api.question.value,api.state.solution,api.state.model?api.sceneData():null,api.state.activePart,!!api.state.exploring]);
       const before=context(),record=JSON.parse(JSON.stringify(snapshot({...options,requireBoardReady:true})));
       if(window.DongUnifiedBoard?.capture)record.boardDraft=await window.DongUnifiedBoard.capture();
       if(before!==context())throw new Error('保存期间题目、解析或图形已变化，本次操作已取消，请重试。');
+      captureOrder.set(record,sequence);
       return record;
     }
     async function saveCurrentLesson(silent=false){
@@ -649,9 +653,20 @@
     function saveLesson(silent=false,prepared=null) {
       if(!api.question.value.trim()&&!api.state.model)throw new Error('请先输入题目或建立图形。');
       const record=prepared||snapshot({requireBoardReady:!silent});
-      const entries=readNotebook().filter(item=>item.question!==record.question);
+      const sequence=captureOrder.get(record);
+      if(sequence&&sequence<savedCaptureSequence)throw new Error('本题已有较新的图稿保存完成，已保留新稿。');
+      const notebook=readNotebook();
+      if(!prepared&&record.scene){
+        const previous=notebook.find(item=>item.question===record.question)?.boardDraft;
+        // Saving study metadata may run before the applet's debounced save.
+        // Retain a compatible notebook snapshot if the cache is older or empty.
+        if(previous&&window.DongGeoGebra?.matchesScene?.(previous.sceneSignature,JSON.stringify(record.scene))&&
+          (!record.boardDraft||Date.parse(previous.savedAt)>Date.parse(record.boardDraft.savedAt)))record.boardDraft=previous;
+      }
+      const entries=notebook.filter(item=>item.question!==record.question);
       const combined=[record,...entries].slice(0,50);
       try{writeCollection(notebookKey,combined);}catch{throw new Error('题本空间不足或异常记录未能备份，当前结果仍在页面中；请导出题稿保存。');}
+      if(sequence)savedCaptureSequence=sequence;
       try{if(readDraft()?.question.trim()===record.question.trim())localStorage.removeItem(draftKey);}catch{}
       const draftBox=find('#draftRecovery');if(draftBox)draftBox.hidden=true;
       if(!silent)api.setStatus('本题、全部解析和图形已存入“我的题本”。');

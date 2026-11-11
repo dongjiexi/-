@@ -1,7 +1,7 @@
 /* Saved lessons must contain the current construction, even with slow snapshots. */
 module.exports=async({page,assert,screenshot})=>{
   await page.addInitScript(()=>{
-    const names=new Set();window.__capture={pending:[],hold:false,fail:false};
+    const names=new Set();window.__capture={pending:[],hold:false,fail:false,restores:[],holdRestore:false};
     const nativeSet=Storage.prototype.setItem;
     Storage.prototype.setItem=function(key,value){if(window.__capture.fail&&key==='dongjiexi:geogebra:v1:teaching')throw new DOMException('full','QuotaExceededError');return nativeSet.call(this,key,value);};
     window.GGBApplet=class{constructor(params){this.params=params;}inject(id){
@@ -9,7 +9,10 @@ module.exports=async({page,assert,screenshot})=>{
       const api=new Proxy({exists:n=>names.has(n),isDefined:n=>names.has(n),getVisible:()=>true,getAllObjectNames:()=>[...names],
         evalCommand:command=>{names.add(command.split(/[=:]/)[0].trim());return true;},newConstruction:()=>names.clear(),
         getBase64:callback=>{const raw=btoa(JSON.stringify([...names]));if(window.__capture.hold)window.__capture.pending.push(()=>callback(raw));else setTimeout(()=>callback(raw),10);},
-        setBase64:(raw,callback)=>{names.clear();JSON.parse(atob(raw)).forEach(n=>names.add(n));callback();},
+        setBase64:(raw,callback)=>{
+          const restore=()=>{names.clear();JSON.parse(atob(raw)).forEach(n=>names.add(n));callback();};
+          if(window.__capture.holdRestore)window.__capture.restores.push(restore);else restore();
+        },
         getViewProperties:()=>({width:800,height:600})
       },{get:(target,key)=>key in target?target[key]:()=>{}});
       setTimeout(()=>this.params.appletOnLoad(api),10);
@@ -34,6 +37,17 @@ module.exports=async({page,assert,screenshot})=>{
   await release();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('已存入'));
   let saved=(await entries()).find(r=>r.question===original);
   assert(JSON.parse(Buffer.from(saved.boardDraft.base64,'base64')).includes('LatestAuxiliary'),'The answer-panel save includes just-drawn objects');
+
+  // The notebook has its own write order as the applet returns captured data.
+  await add('EarlierLesson');await hold();
+  await page.locator('[data-lesson-action="save"]').click();await pending();
+  await add('LaterLesson');await page.locator('[data-lesson-action="save"]').click();
+  await page.waitForFunction(()=>window.__capture.pending.length===2);
+  await page.evaluate(()=>window.__capture.pending.pop()());
+  const hasLater=()=>page.waitForFunction(question=>JSON.parse(atob(JSON.parse(localStorage.getItem('dongjiexi:notebook:v1')).find(row=>row.question===question).boardDraft.base64)).includes('LaterLesson'),original);
+  await hasLater();await release();
+  await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('较新的图稿'));
+  await hasLater();
 
   await add('BeforeSwitch');await select('2022-beijing-19-1');await hold();
   await page.locator('[data-bank-action="full"]').click();await pending();
@@ -83,10 +97,37 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#closeQuestionBank').click();
   const currentSaved=(await entries()).find(r=>r.question===original);
   await add('UnsavedScratch');
+  await page.evaluate(()=>window.__capture.holdRestore=true);
   await page.locator('#openNotebook').click();await page.locator(`[data-open-lesson="${currentSaved.id}"]`).click();
+  await page.waitForFunction(()=>window.__capture.restores.length===1);
+  assert.equal(await page.evaluate(()=>window.DongUnifiedBoard.isSynchronized()),false,'An unfinished restore cannot be captured as synchronized');
+  await page.locator('#saveLesson').click();
+  assert.match(await page.locator('#status').textContent(),/正在同步/);
+  assert.equal((await entries()).find(r=>r.question===original).id,currentSaved.id,'An early save cannot replace the saved notebook entry');
+  await page.evaluate(()=>{window.__capture.holdRestore=false;window.__capture.restores.shift()();});
+  await ready();
   await page.waitForFunction(()=>!window.DongGeoGebra.getAPI().exists('UnsavedScratch'));
   assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().exists('BeforeSwitch')),'Reopening the same scene restores its saved auxiliary work');
   assert(await page.evaluate(()=>JSON.parse(localStorage.getItem('dongjiexi:lesson-backups:v1')).some(r=>r.switchBackup&&r.boardDraft&&JSON.parse(atob(r.boardDraft.base64)).includes('UnsavedScratch'))),'Reopening an earlier copy preserves outgoing unsaved construction in a separate backup');
   assert.deepEqual(await page.evaluate(()=>{const match=window.DongGeoGebra.matchesScene;return[match('{"points":{"A":[1,2]},"type":"circle"}','{"type":"circle","points":{"A":[1,2]}}'),match('{"points":{"A":[1,2]}}','{"points":{"A":[2,1]}}'),match('{"r":1}','{"r":2}'),match('invalid','{}')];}),[true,false,false,false],'Object-key order may vary; coordinates, values and validity must still match');
   await screenshot('lesson-capture-preserved.png',null);
+
+  // A phone can reopen a lesson and make progress before opening its board.
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>{
+    localStorage.removeItem('dongjiexi:geogebra:v1:teaching');
+    localStorage.removeItem('dongjiexi:geogebra:v1:teaching:archive');
+  });
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('[data-mobile-panel="input"]').click();
+  assert.equal(await page.evaluate(()=>!!window.DongGeoGebra.getAPI()),false);
+  await page.locator('#openNotebook').click();await page.locator(`[data-open-lesson="${currentSaved.id}"]`).click();
+  await page.locator('[data-mobile-panel="lesson"]').click();
+  await page.locator('#learningStyle').selectOption('step');
+  await page.locator('[data-classroom-step="next"]').click();
+  const progress=(await entries()).find(r=>r.question===original);
+  assert(JSON.parse(Buffer.from(progress.boardDraft.base64,'base64')).includes('BeforeSwitch'),'Saving hints before opening the mobile board retains the attached construction');
+  assert.equal(progress.solution.study.mode,'step');
+  await page.locator('[data-mobile-panel="board"]').click();await ready();
+  assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().exists('BeforeSwitch')));
 };

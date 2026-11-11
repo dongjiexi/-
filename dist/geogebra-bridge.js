@@ -15,7 +15,7 @@
   let narrowLayout=null;
   const highlighted=new Map();
   let highlightSnapshotDepth=0;
-  let teachingBinding=null,linkedTimer=null,linkedRunning=false,linkedSignature='',linkedStructure='';
+  let teachingBinding=null,linkedTimer=null,linkedRunning=false,linkedRefresh=false,linkedSignature='',linkedStructure='';
   const draftKey=()=>KEY+(teachingBinding?':teaching':'');
   function archiveSnapshot(){
     let raw;try{raw=localStorage.getItem(KEY+':teaching:archive');}catch{return{raw:null,records:[],invalid:false};}
@@ -225,16 +225,16 @@
                 info('已恢复上次的 GeoGebra 图稿。点击“导入当前画板”可载入董解析当前题目。');
               } else {
                 const initial=copy(latestScene),teachingDraft=teachingBinding?savedScene(JSON.stringify(latestScene)):null;
-                busy=true;importReport=populate(initial);
+                busy=true;linkedRunning=!!teachingBinding;importReport=populate(initial);
                 if(teachingBinding){linkedSignature=JSON.stringify(initial);linkedStructure=structureKey(initial);}
                 // Restore auxiliary work only for this exact scene and binding map.
                 await restoreMatching(teachingDraft);
-                busy=false;
-                await save();
+                if(!await notifyReady())await save();
                 info(importedMessage());
               }
-              listen();notifyReady(); resolve(api);
-            } catch (error) { busy=false;reject(error); }
+              listen();resolve(api);
+            } catch (error) { reject(error); }
+            finally{busy=false;linkedRunning=false;}
           }
         };
         if (saved && saved.base64) params.ggbBase64 = saved.base64;
@@ -773,25 +773,28 @@
     if(inlineSlot){inlineSlot.hidden=true;inlineSlot.closest('.board-shell').removeAttribute('data-ggb-active');inlineSlot=null;window.dispatchEvent(new Event('resize'));}
     if (previousFocus && previousFocus.isConnected) previousFocus.focus();
   }
-  function syncTeaching(scene){
+  function syncTeaching(scene,{refresh=false}={}){
     if(!teachingBinding||!dialog?.open)return;
-    latestScene=copy(scene);if(linkedTimer)return;
+    latestScene=copy(scene);linkedRefresh||=refresh;if(linkedTimer)return;
     linkedTimer=setTimeout(()=>{linkedTimer=null;flushTeaching();},120);
   }
   async function flushTeaching(){
     if(linkedRunning||!api||!teachingBinding||!dialog?.open)return;
     const scene=copy(latestScene),signature=JSON.stringify(scene),structure=structureKey(scene);
-    if(signature===linkedSignature)return;
+    const refresh=linkedRefresh;linkedRefresh=false;
+    if(signature===linkedSignature&&!refresh)return;
     linkedRunning=true;busy=true;
     try{
-      if(structure===linkedStructure&&importReport.update)importReport.update(scene);
-      else {const saved=savedScene(signature),extras=additiveExtras(scene);await backupCurrent();if(!dialog?.open)return;api.newConstruction();importReport=populate(scene);linkedSignature=signature;linkedStructure=structure;if(!await restoreMatching(saved))restoreExtras(extras);}
+      if(signature!==linkedSignature){
+        if(structure===linkedStructure&&importReport.update)importReport.update(scene);
+        else {const saved=savedScene(signature),extras=additiveExtras(scene);await backupCurrent();if(!dialog?.open)return;api.newConstruction();importReport=populate(scene);linkedSignature=signature;linkedStructure=structure;if(!await restoreMatching(saved))restoreExtras(extras);}
+      }
       linkedSignature=signature;linkedStructure=structure;
-      notifyReady();
+      const saved=await notifyReady();
       info(importReport.skipped.length?importedMessage():'题目与画板已同步；参数请在董解析参数区调整。');
-      await save();
+      if(!saved)await save();
     }catch(error){info('画板同步未完成：'+error.message+'。请返回原画板核对。');teachingBinding?.failed?.(error);}
-    finally{busy=false;linkedRunning=false;if(JSON.stringify(latestScene)!==signature)syncTeaching(latestScene);}
+    finally{busy=false;linkedRunning=false;if(linkedRefresh||JSON.stringify(latestScene)!==signature)syncTeaching(latestScene);}
   }
   function applyHighlightStyles(emphasized){
     if(!api)return;
