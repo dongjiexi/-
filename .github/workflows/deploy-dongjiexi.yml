@@ -94,7 +94,12 @@ jobs:
           DONG_TEST_OUTPUT: ${{ runner.temp }}/dongjiexi-browser
         run: |
           npm install --no-save --no-package-lock playwright@1.62.1
-          npx playwright install --with-deps chromium
+          if chrome_path="$(command -v google-chrome)"; then
+            "$chrome_path" --version
+            export DONG_BROWSER_EXECUTABLE="$chrome_path"
+          else
+            npx playwright install --with-deps chromium
+          fi
           node tests/run_browser_smoke.cjs
       - name: Preserve test screenshots
         uses: actions/upload-artifact@v4
