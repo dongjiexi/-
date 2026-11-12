@@ -29,7 +29,7 @@
   const termJoin=new RegExp('('+squareTerm+')'+acrossLine('[+＋−-]')+'(?='+squareTerm+')','g');
   const equationJoin=new RegExp('('+squareTerm+')'+acrossLine('[=＝]')+'(?=[+-]?[0-9]+(?:\\.[0-9]+)?(?![0-9A-Za-z_.]))','g');
   const divisionJoin=new RegExp('([xy](?:\\^2|²))'+acrossLine('[/／]')+'(?=(?:[ab](?:\\^2|²)|[0-9]+(?:\\.[0-9]+)?)(?![0-9A-Za-z_.]))','g');
-  const stackedFraction=/(?:^|[：:=＋+−-])[ \t]*[xy](?:\^2|²)[ \t]*(?:\r\n|\r|\n)[ \t]*(?:[ab](?:\^2|²)|[0-9０-９]+(?:\.[0-9０-９]+)?)[ \t]*(?=(?:(?:\r\n|\r|\n)[ \t]*)?[+＋−=＝-])/m;
+  const stackedFraction=/(?:^|[：:=＋+−-])[ \t]*([xy](?:\^2|²)[ \t]*(?:\r\n|\r|\n)[ \t]*(?:[ab](?:\^2|²)|[0-9０-９]+(?:\.[0-9０-９]+)?))[ \t]*(?=(?:(?:\r\n|\r|\n)[ \t]*)?[+＋−=＝-])/gm;
   const compactJoin=(match,left,bridge)=>left+bridge.replace(/\s/g,'');
   function removePageFurniture(text){
     const lines=text.replace(/\f/g,'\n').split(/(\r\n|\r|\n)/),kept=[];
@@ -53,7 +53,14 @@
     return pieces.join('');
   }
   function needsFractionReview(value){
-    return typeof value==='string'&&value.length<=MAX_TEXT&&stackedFraction.test(removePageFurniture(value));
+    return typeof value==='string'&&value.length<=MAX_TEXT&&fractionReviewRanges(removePageFurniture(value)).length>0;
+  }
+  function fractionReviewRanges(value){
+    if(typeof value!=='string'||value.length>MAX_TEXT)return [];
+    return Array.from(value.matchAll(stackedFraction),match=>{
+      const start=match.index+match[0].indexOf(match[1]);
+      return {start,end:start+match[1].length};
+    });
   }
   const stripWrap=value=>value.replace(/(?:\$|\\\(|\\\)|\\\[|\\\])+/g,'');
   function fail(code,message){const error=new Error(message);error.code=code;throw error;}
@@ -128,5 +135,5 @@
     if(parts.length>MAX_PARTS)fail('QUESTION_PARTS_MAX',`题目共有 ${parts.length} 个小问，超过最多 ${MAX_PARTS} 个的限制，请分题输入。`);
     return parts;
   }
-  return {splitParts,headings,examContent,needsFractionReview,MAX_TEXT,MAX_PARTS};
+  return {splitParts,headings,examContent,needsFractionReview,fractionReviewRanges,MAX_TEXT,MAX_PARTS};
 });

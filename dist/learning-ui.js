@@ -993,9 +993,41 @@
       const value=parts&&source.length<=parts.MAX_TEXT?parts.examContent(source):source;
       window.DongMathInput?.preview({value},target);
     }
+    function locateRecognitionFinding(input,{start,end}){
+      if(imagePages.length>1){
+        const fragment=input.value.slice(start,end).trim().replace(/\s+/g,' ');
+        const matches=imagePages.map((page,index)=>({text:page.result?.text||'',index}))
+          .filter(page=>page.text.replace(/\s+/g,' ').includes(fragment));
+        if(matches.length===1){
+          find('#recognitionPageSelect').value=String(matches[0].index);
+          showReviewPage();
+        }
+      }
+      input.focus({preventScroll:true});
+      input.setSelectionRange(start,end);
+      input.scrollIntoView({block:'nearest'});
+    }
+    function renderRecognitionFindings(input){
+      const findings=window.DongRecognitionReview.inspect(input.value);
+      const list=find('#recognitionFindingList');
+      find('#recognitionFindings').hidden=findings.length===0;
+      list.replaceChildren(...findings.map(finding=>{
+        const item=document.createElement('li'),button=document.createElement('button'),snippet=document.createElement('strong');
+        button.type='button';
+        button.dataset.reviewKind=finding.kind;
+        const text=input.value.slice(finding.start,finding.end).replace(/\s+/g,' ');
+        snippet.textContent=text.length>52?text.slice(0,49)+'…':text;
+        button.append(snippet,document.createTextNode(finding.message));
+        button.addEventListener('click',()=>locateRecognitionFinding(input,finding));
+        item.append(button);
+        return item;
+      }));
+      find('#recognitionFractionReview').hidden=findings.some(finding=>finding.kind==='fraction')||
+        !window.DongQuestionParts.needsFractionReview(input.value);
+    }
     function previewRecognition(){
       const input=find('#recognizedText'),duplicate=find('#recognitionDuplicateNotice');
-      updateFractionReview(input,find('#recognitionFractionReview'));
+      renderRecognitionFindings(input);
       const issue=imagePages.length>1?window.DongRecognitionPages.inspectParts(input.value):null;
       duplicate.textContent=issue?.message||'';
       duplicate.hidden=!duplicate.textContent;
@@ -1022,7 +1054,8 @@
       find('#recognitionFeedback').textContent='';
       find('#recognitionHelp').textContent=multi?'按页核对题图和识别原文。可直接编辑合并题面，确认后会填入题目栏。':
         first.cloud?'请对照题图核对公式、点名、角度和全部小问；确认后才会写入题目。':'当前使用浏览器 OCR。请对照题图补全分数、向量和上下标后确认。';
-      find('#recognitionPageControl').hidden=find('#recognitionPageSource').hidden=!multi;
+      find('#recognitionPageControl').hidden=!multi;
+      find('#recognitionPageSource').hidden=false;
       find('#recognitionPageSource').open=false;
       const select=find('#recognitionPageSelect');
       select.replaceChildren(...imagePages.map((page,i)=>new Option('第 '+(i+1)+' 页 · '+page.file.name,String(i))));

@@ -4,7 +4,28 @@ class D1{constructor(){this.db=new DatabaseSync(':memory:');this.db.exec(fs.read
 (async()=>{
   const questionParts=require('../dist/question-parts.js');
   const {merge,inspectParts}=require('../dist/recognition-pages.js');
-  const source=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8')).items.find(q=>q.id==='2022-ii-21-1').question;
+  const {inspect}=require('../dist/recognition-review.js');
+  const {raw,checked}=require('./fixtures/ocr-math-review.json');
+  const bank=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8')).items;
+  const source=bank.find(q=>q.id==='2022-ii-21-1').question;
+  assert.deepEqual(inspect(raw).map(({kind,start,end})=>[kind,raw.slice(start,end)]),[
+    ['polygon','A4BC'],['segment','4C'],['angle','ZC=90"'],['vector','1 PA-PB'],['choices','SC 44 D. [4,6]']
+  ]);
+  assert.deepEqual(inspect(checked),[]);
+  for(const item of bank)assert.deepEqual(inspect(item.question),[],item.id+' intact exam text');
+  for(const intact of [
+    '点 F1(2,0)，取点 P_1 使得 x²/4+y²=1。',
+    '△ABC 中，设 4C=3，已知 BC=4，求 |AB-CD|。',
+    '求向量 AB-CD 与向量 AC 的数量积。',
+    '方程 x²/\n4+y²/2=1。',
+    '题目的结论为（ ）\nA. 否 B. 是 C. 仅正数 D. 任意\n11. 已知直线，求交点。'
+  ])assert.deepEqual(inspect(intact),[],intact);
+  const selection=(value,kind)=>inspect(value).filter(f=>f.kind===kind).map(f=>value.slice(f.start,f.end));
+  assert.deepEqual(selection('定点 0(0,0)，过点 1A。','point'),['0','1A']);
+  assert.deepEqual(selection('数量积：PA-PB','vector'),['PA-PB']);
+  assert.deepEqual(selection('C：x²\r\n4\r\n+y²=1，或 $\\dfrac{x^2}{}$','fraction'),['x²\r\n4','\\dfrac{x^2}{}']);
+  assert.deepEqual(selection('结果是（ ）\nB. 1 A. 2 C. 3 D. 4','choices'),['B. 1 A. 2 C. 3 D. 4']);
+  assert.deepEqual(inspect('定点 0(0,0)。'.repeat(2000)),[],'Reject oversized review input');
   const first=source.indexOf('\n（1）'),second=source.indexOf('\n（2）');
   const setup=source.slice(0,first),page1=source.slice(0,second),page2=source.slice(second).trimStart();
   assert.deepEqual(merge([page1,'数学试题 第 2 页（共 2 页）\n'+setup+'\n'+page2]),{text:source,removed:1});

@@ -27,11 +27,13 @@ module.exports=async({page,context,assert,screenshot})=>{
   await screenshot('deepseek-vision-mobile.png','#recognitionDialog');
   const ambiguous='数学试题\n已知椭圆 C：x²\n4\n+\ny²/2=1。';
   await page.locator('#recognizedText').fill(ambiguous);
-  assert(await page.locator('#recognitionFractionReview').isVisible());
+  assert(await page.locator('[data-review-kind="fraction"]').isVisible());
+  await page.locator('[data-review-kind="fraction"]').click();
+  assert.equal(await page.locator('#recognizedText').evaluate(el=>el.value.slice(el.selectionStart,el.selectionEnd)),'x²\n4');
   assert.equal(await page.locator('#recognizedText').inputValue(),ambiguous,'A missing fraction bar is never guessed');
   const repaired='数学试题\n已知椭圆 C：$x^2/4\n+\n y^2/2=1$。\n第 3 页（共 6 页）';
   await page.locator('#recognizedText').fill(repaired);
-  assert(!await page.locator('#recognitionFractionReview').isVisible());
+  assert(!await page.locator('#recognitionFindings').isVisible());
   assert(await page.locator('#recognitionFormulaPreview .katex').count()>0);
   assert.doesNotMatch(await page.locator('#recognitionFormulaPreview').textContent(),/数学试题|共 6 页/);
   assert.equal(await page.locator('#recognizedText').inputValue(),repaired);
