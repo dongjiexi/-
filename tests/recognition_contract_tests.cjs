@@ -2,6 +2,22 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {DatabaseSync}=require('node:sqlite');
 class D1{constructor(){this.db=new DatabaseSync(':memory:');this.db.exec(fs.readFileSync(path.join(__dirname,'../deploy/cloudflare/schema.sql'),'utf8'));}prepare(sql){const db=this.db;return{bind(...args){return{async first(){return db.prepare(sql).get(...args)||null;},async run(){return db.prepare(sql).run(...args);}};}};}}
 (async()=>{
+  const questionParts=require('../dist/question-parts.js');
+  const {merge,inspectParts}=require('../dist/recognition-pages.js');
+  const source=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8')).items.find(q=>q.id==='2022-ii-21-1').question;
+  const first=source.indexOf('\n（1）'),second=source.indexOf('\n（2）');
+  const setup=source.slice(0,first),page1=source.slice(0,second),page2=source.slice(second).trimStart();
+  assert.deepEqual(merge([page1,'数学试题 第 2 页（共 2 页）\n'+setup+'\n'+page2]),{text:source,removed:1});
+  assert.deepEqual(merge([page1,page1+'\n'+page2]),{text:source,removed:1});
+  const changed=merge([page1,setup.replace('F(2,0)','F(3,0)')+'\n'+page2]).text;
+  assert(changed.includes('F(2,0)')&&changed.includes('F(3,0)'), 'Conflicting conditions remain reviewable');
+  assert.match(inspectParts(merge([page1,'（1）求椭圆方程。']).text).message,/重复小问编号/);
+  assert.equal(inspectParts(merge([page2,page1]).text).blocking,false);
+  assert.match(inspectParts(source.replace('（2）','（3）')).message,/跳号/);
+  const wrapped=merge(['已知椭圆 C：$x^2/4','数学试题 第 2 页（共 2 页）\n+y^2/2=1$。\n（1）求焦点。']);
+  assert.equal(wrapped.text,'已知椭圆 C：$x^2/4 +y^2/2=1$。\n（1）求焦点。');
+  assert.deepEqual(questionParts.splitParts(wrapped.text).map(part=>part.index),[1]);
+  assert.throws(()=>merge(['甲'.repeat(12000),'乙'.repeat(12000)]),/18000/);
   const {recognitionResult,validateImage,VISION_SYSTEM,IMAGE_LIMIT}=await import('../dist/recognition-contract.mjs');
   const {modelPayload,createHandler}=await import('../deploy/cloudflare/worker.mjs');
   const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1kAAAAASUVORK5CYII=';

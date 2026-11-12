@@ -167,7 +167,6 @@
     let streamController = null;
     let cloudTransport = 'jobs';
     let processing = false;
-    let imageURL = null;
     let draftTimer = null;
     let lastModel = localStorage.getItem(modelKey) || '';
     let engineReady = false;
@@ -175,7 +174,7 @@
     let visionAvailable = true;
     let visionModel = '';
     let engineRefreshId = 0;
-    let selectedImage = null;
+    let imagePages=[],previewPage=null,nextImageId=0,recognitionBatch=null,reviewDraft=null;
     let ocrScriptPromise = null;
     function modelOwner(name){const value=String(name||'').toLowerCase();if(value.includes('deepseek'))return 'DeepSeek';if(value.includes('qwen'))return '通义千问';if(value.includes('gemini'))return 'Gemini';if(value.includes('gpt'))return 'OpenAI';return 'AI';}
     function renderEngineRoute(){
@@ -514,32 +513,42 @@
         find('#engineStatus').textContent=cloudOnly?'云端暂不可用；画板和草稿仍可使用。':remote?'内置浏览器解题可用；在线增强暂不可用。':'无法连接本机服务；浏览器内置解题仍可使用。';renderEngineRoute();if(start)report(error);
       }
     }
-    async function runJob(body,done) {
+    async function runJob(body,done,{pageLabel=''}={}) {
       if(activeJob)return;
       let rateLimited=false;
       activeJob='pending';find('#cancelJob').disabled=true;
-      busy(true);find('#jobPhase').textContent='正在连接解题引擎…';
+      const phase=message=>{find('#jobPhase').textContent=pageLabel?pageLabel+' · '+message:message;};
+      busy(true);phase('正在连接解题引擎…');
       try{
         if(body.kind==='solve')body={...body,text:window.DongQuestionParts.examContent(body.text)};
         if(solveMode==='cloud'&&cloudTransport==='sse'&&['solve','chat','recognize'].includes(body.kind)){
           streamController=new AbortController();activeJob='stream';find('#cancelJob').disabled=false;
-          const result=await runtime.streamJob(body,{signal:streamController.signal,onProgress:count=>{find('#jobPhase').textContent=`${body.kind==='recognize'?'DeepSeek 正在读取原图与公式':'云端正在整理解答'} · ${count} 字符`;}});
-          await done(result);return;
+          const result=await runtime.streamJob(body,{signal:streamController.signal,onProgress:count=>phase(`${body.kind==='recognize'?'DeepSeek 正在读取原图与公式':'云端正在整理解答'} · ${count} 字符`)});
+          return await done(result);
         }
         const job=await request('/api/jobs',body);
         activeJob=job.id;
         find('#cancelJob').disabled=false;
         let current=job;
         while(current.status==='running'||current.status==='cancelling'){
-          find('#jobPhase').textContent=`${current.phase} · ${current.elapsed||0} 秒`;
+          phase(`${current.phase} · ${current.elapsed||0} 秒`);
           await new Promise(resolve=>setTimeout(resolve,800));
           current=await request('/api/jobs/'+job.id);
         }
         if(current.status==='failed')throw new Error(current.error||'解题任务未完成。');
-        if(current.status==='cancelled'){if(body.kind==='solve')progress('error','本次解题已停止。');api.setStatus('任务已停止，已有题目和解析仍保留。');return;}
-        await done(current.result);
-      }catch(error){if(error.name==='AbortError'){if(body.kind==='solve')progress('error','本次解题已停止。');api.setStatus('任务已停止，当前题稿保留。');return;}rateLimited=error.code==='rate_limited';if(body.kind==='solve')progress('error','解题未完成：'+(error.message||String(error)));cloudFailure(error);report(error);}
-      finally{streamController=null;activeJob=null;busy(false);if(!rateLimited)refreshEngine();}
+        if(current.status==='cancelled'){if(pageLabel)throw new DOMException('识图已停止。','AbortError');if(body.kind==='solve')progress('error','本次解题已停止。');api.setStatus('任务已停止，已有题目和解析仍保留。');return;}
+        return await done(current.result);
+      }catch(error){
+        if(error.name!=='AbortError'){rateLimited=error.code==='rate_limited';cloudFailure(error);}
+        if(pageLabel)throw error;
+        if(error.name==='AbortError'){if(body.kind==='solve')progress('error','本次解题已停止。');api.setStatus('任务已停止，当前题稿保留。');return;}
+        if(body.kind==='solve')progress('error','解题未完成：'+(error.message||String(error)));
+        report(error);
+      }finally{
+        streamController=null;activeJob=null;
+        if(pageLabel)find('#cancelJob').disabled=false;
+        else{busy(false);if(!rateLimited)refreshEngine();}
+      }
     }
     function assertLessonContext(){
       if(api.state.solution&&api.question.value.trim()!==String(api.state.solution.restatement||'').trim()){
@@ -927,7 +936,7 @@
       if(solveMode==='cloud'&&!runtime.config.requiresAuth&&Date.now()<cloudRetryAt){progress('error','当前云端额度限制尚未解除，请等待页面提示的额度恢复时间。');api.setStatus('服务并非掉线；限额恢复前不重复发送模型请求。',true);return;}
       if(!solveMode){showModes(true);api.setStatus('请先选择云端解题或本机解题。');return;}
       let original=api.question.value.trim();
-      if(!original){report(new Error(find('#imageFile').files[0]?'请先点击“识别题图”，核对文字后解答。':'请先输入完整题目。'));return;}
+      if(!original){report(new Error(imagePages.length?'请先点击“识别题图”，核对文字后解答。':'请先输入完整题目。'));return;}
       if(hasUncertainty(original)){report(new Error('题面仍含“[看不清]”或其它未确认字段。请先补正后再解题。'));return;}
       const repair=questionRepairSuggestion(original);
       if(repair){
@@ -985,18 +994,42 @@
       window.DongMathInput?.preview({value},target);
     }
     function previewRecognition(){
-      const input=find('#recognizedText');
+      const input=find('#recognizedText'),duplicate=find('#recognitionDuplicateNotice');
       updateFractionReview(input,find('#recognitionFractionReview'));
+      const issue=imagePages.length>1?window.DongRecognitionPages.inspectParts(input.value):null;
+      duplicate.textContent=issue?.message||'';
+      duplicate.hidden=!duplicate.textContent;
       previewExamText(input,find('#recognitionFormulaPreview'));
     }
-    function showRecognition(text,{cloud=false,uncertainties=[]}={}){
-      if(typeof text!=='string'||text.length>18000)throw new Error('识别题面格式无效或过长，请换一张题图。');
-      find('#recognizedText').value=text;
+    function showReviewPage(){
+      const select=find('#recognitionPageSelect'),index=Number(select.value)||0,page=imagePages[index];
+      if(!page)return;
+      const image=find('#recognitionOriginal');
+      image.src=page.url;image.alt='第 '+(index+1)+' 页原图';
+      find('#recognitionPageText').textContent=page.result?.text||'';
+    }
+    function showRecognition(){
+      const multi=imagePages.length>1,first=imagePages[0]?.result;
+      if(!first)return;
+      const merged=multi?window.DongRecognitionPages.merge(imagePages.map(page=>page.result.text)):{text:first.text,removed:0};
+      if(typeof merged.text!=='string'||merged.text.length>18000)throw new Error('识别题面格式无效或过长，请换一张题图。');
+      find('#recognizedText').value=multi&&reviewDraft!=null?reviewDraft:merged.text;
       find('#recognitionFeedback').textContent='';
-      find('#recognitionOriginal').src=imageURL;
-      find('#recognitionHelp').textContent=cloud?'DeepSeek 直接读取原图。请对照原图核对公式、点名、角度和全部小问；识图也可能有误，确认后才会写入题目。':'当前使用浏览器 OCR，未上传原图；它不擅长数学公式，请对照原图补全分数、向量和上下标后确认。';
+      find('#recognitionHelp').textContent=multi?'按页核对原图和识别原文。可直接编辑合并题面，确认后会填入题目栏。':
+        first.cloud?'DeepSeek 直接读取原图。请对照原图核对公式、点名、角度和全部小问；确认后才会写入题目。':'当前使用浏览器 OCR，未上传原图；请对照原图补全分数、向量和上下标后确认。';
+      find('#recognitionPageControl').hidden=find('#recognitionPageSource').hidden=!multi;
+      find('#recognitionPageSource').open=false;
+      const select=find('#recognitionPageSelect');
+      select.replaceChildren(...imagePages.map((page,i)=>new Option('第 '+(i+1)+' 页 · '+page.file.name,String(i))));
+      showReviewPage();
+      const join=find('#recognitionJoinNotice');
+      join.hidden=!merged.removed;join.textContent=merged.removed?'已合并 '+merged.removed+' 处相同的题干或跨页重叠文字。':'';
       const warnings=find('#recognitionWarnings');warnings.replaceChildren();
-      for(const warning of uncertainties.slice(0,30)){const item=document.createElement('li');item.textContent=String(warning).slice(0,500);warnings.append(item);}
+      imagePages.forEach((page,index)=>{
+        for(const warning of page.result.uncertainties){
+          const item=document.createElement('li');item.textContent=(multi?'第 '+(index+1)+' 页 · ':'')+warning;warnings.append(item);
+        }
+      });
       find('#recognitionReview').hidden=warnings.childElementCount===0;
       find('#recognitionReviewed').checked=false;
       previewRecognition();
@@ -1014,45 +1047,87 @@
         return image;
       }finally{bitmap.close();}
     }
-    async function recognize() {
+    async function recognizeLocally(worker,file,phase){
+      let result=await worker.recognize(file,{rotateAuto:true});
+      if(!recognitionBatch.cancelled&&((result.data?.confidence||0)<72||String(result.data?.text||'').trim().length<40)){
+        try{
+          const processed=await preprocessOcrImage(file);
+          if(!recognitionBatch.cancelled){
+            phase('正在复核增强后的题图…');
+            const second=await worker.recognize(processed,{rotateAuto:true});
+            if((second.data?.confidence||0)>(result.data?.confidence||0)+3)result=second;
+          }
+        }catch{/* Keep the initial result if image enhancement fails. */}
+      }
+      return {text:String(result.data?.text||'').trim(),uncertainties:[],confidence:result.data?.confidence||0,cloud:false};
+    }
+    async function recognize(){
       if(processing)return;
-      const file=selectedImage;
-      if(!file){report(new Error('请先添加题图。'));return;}
-      if(file.size>8*1024*1024){report(new Error('题图请压缩至 8 MB 以内。'));return;}
+      if(!imagePages.length){report(new Error('请先添加题图。'));return;}
+      const multi=imagePages.length>1;
+      const pending=multi?imagePages.filter(page=>!page.result):imagePages;
+      if(!pending.length){showRecognition();return;}
       if(cloudOnly&&runtime.config.apiEnabled&&find('#preferCloudVision').checked&&find('#cloudVisionChoice').hidden){
         find('#cloudVisionChoice').hidden=false;
         if(runtime.config.requiresAuth&&!runtime.hasSession())openCloudAuthDialog('DeepSeek 图片识题需要先连接云端；验证口令后再点击识别。');
         else report(new Error('云端识图尚未就绪，请先检测连接；如需浏览器 OCR，请取消勾选“DeepSeek 直接识图”。'));
         return;
       }
-      if(find('#preferCloudVision').checked&&!find('#cloudVisionChoice').hidden){
-        busy(true);find('#jobPhase').textContent='正在准备题图，保留公式细节…';
-        try{
-          const image=await prepareVisionImage(file);
-          if(selectedImage!==file){api.setStatus('题图已更换，旧图片的识别任务未提交。');return;}
-          await runJob({kind:'recognize',image,model:visionModel||find('#modelName').value},result=>{if(selectedImage!==file){api.setStatus('题图已更换，旧图片的识别结果未应用。');return;}showRecognition(result.text,{cloud:true,uncertainties:Array.isArray(result.uncertainties)?result.uncertainties:[]});api.setStatus('DeepSeek 原图识题完成，请对照原图核对后确认。');});
-        }finally{busy(false);}
-        return;
-      }
-      busy(true);
-      find('#jobPhase').textContent='正在加载浏览器 OCR…';
-      let worker;
-      try {
-        const tesseract=await loadBrowserOcr();
-        worker=await tesseract.createWorker(['chi_sim','eng'],1,{logger:progress=>{
-          if(progress.status==='recognizing text')find('#jobPhase').textContent=`正在识别题图 ${Math.round((progress.progress||0)*100)}%`;
-        }});
-        let result=await worker.recognize(file,{rotateAuto:true});
-        if((result.data?.confidence||0)<72||String(result.data?.text||'').trim().length<40){
-          try{const processed=await preprocessOcrImage(file);find('#jobPhase').textContent='正在复核增强后的题图…';const second=await worker.recognize(processed,{rotateAuto:true});if((second.data?.confidence||0)>(result.data?.confidence||0)+3)result=second;}catch(error){/* Unsupported image decoding leaves the first OCR result available. */}
+      const cloud=find('#preferCloudVision').checked&&!find('#cloudVisionChoice').hidden,batch={cancelled:false};
+      recognitionBatch=batch;
+      busy(true);renderImagePages();
+      find('#cancelJob').hidden=false;find('#cancelJob').disabled=false;
+      let worker,current,rateLimited=false;
+      const pageLabel=()=>current?'第 '+(imagePages.indexOf(current)+1)+' / '+imagePages.length+' 页':'';
+      const phase=message=>{if(!batch.cancelled)find('#jobPhase').textContent=(current?pageLabel()+' · ':'')+message;};
+      try{
+        if(!cloud){
+          phase('正在加载浏览器 OCR…');
+          const tesseract=await loadBrowserOcr();
+          if(batch.cancelled)return;
+          worker=await tesseract.createWorker(['chi_sim','eng'],1,{logger:event=>{
+            if(event.status==='recognizing text')phase('正在识别题图 '+Math.round((event.progress||0)*100)+'%');
+          }});
         }
-        const recognized=String(result.data?.text||'').trim();
-        if(selectedImage!==file){api.setStatus('题图已更换，旧图片的识别结果未应用。');return;}
-        showRecognition(recognized);
-        api.setStatus(recognized?`题图已在浏览器内识别（文字置信度约 ${Math.round(result.data?.confidence||0)}%）。请认真核对数学公式后确认。`:'图片未识别出文字；可在核对框中手动输入，或换更清晰的照片。',!recognized);
-      } finally {
-        if(worker)await worker.terminate();
-        busy(false);
+        for(const page of pending){
+          if(batch.cancelled)return;
+          current=page;
+          page.error='';page.result=null;
+          reviewDraft=null;
+          renderImagePages();
+          let result;
+          if(cloud){
+            phase('正在准备题图…');
+            const image=await prepareVisionImage(page.file);
+            if(batch.cancelled)return;
+            const reply=await runJob({kind:'recognize',image,model:visionModel||find('#modelName').value},value=>value,{pageLabel:pageLabel()});
+            if(batch.cancelled)return;
+            result={text:reply.text,uncertainties:Array.isArray(reply.uncertainties)?reply.uncertainties:[],cloud:true};
+          }else result=await recognizeLocally(worker,page.file,phase);
+          if(typeof result.text!=='string'||result.text.length>18000)throw new Error('识别文字无效或过长。');
+          if(multi&&!result.text.trim()&&!batch.cancelled)throw new Error('未读出文字，请换清晰图片或重试。');
+          if(result.text.trim()||!multi)page.result=result;
+          renderImagePages();
+        }
+        if(batch.cancelled)return;
+        current=null;
+        showRecognition();
+        api.setStatus(multi?'全部题图已识别，请逐页核对并确认合并题面。':cloud?'DeepSeek 原图识题完成，请对照原图核对后确认。':
+          imagePages[0].result.text?'题图已在浏览器内识别（文字置信度约 '+Math.round(imagePages[0].result.confidence)+'%）。请核对数学公式后确认。':'图片未识别出文字，可在核对框中手动输入。');
+      }catch(error){
+        if(error.name==='AbortError'||batch.cancelled)batch.cancelled=true;
+        else{
+          rateLimited=error.code==='rate_limited';
+          if(current)current.error=error.message||'识别失败。';
+          report(new Error((current&&multi?pageLabel()+'识别失败。已识别的页会保留，可继续识别。':'')+(error.message||String(error))));
+        }
+      }finally{
+        try{if(worker)await worker.terminate();}
+        finally{
+          recognitionBatch=null;busy(false);renderImagePages();
+          if(batch.cancelled)api.setStatus('已停止识图，已完成的页和当前题稿均保留。');
+          if(cloud&&!rateLimited)void refreshEngine();
+        }
       }
     }
     async function followup() {
@@ -1095,22 +1170,103 @@
     find('#clearButton').addEventListener('click',renderSolution);
     find('#modelName').addEventListener('change',event=>{lastModel=event.target.value;localStorage.setItem(modelKey,lastModel);renderEngineRoute();refreshEngine();});
     find('#pullModel').addEventListener('click',()=>runJob({kind:'pull',model:find('#modelName').value},result=>api.setStatus(result.message)));
-    find('#cancelJob').addEventListener('click',async()=>{if(streamController){streamController.abort();find('#jobPhase').textContent='正在停止，请稍候…';return;}if(activeJob){try{await request('/api/jobs/'+activeJob+'/cancel',{});find('#jobPhase').textContent='正在停止，请稍候…';}catch(error){report(error);}}});
+    find('#cancelJob').addEventListener('click',async()=>{
+      if(recognitionBatch){
+        recognitionBatch.cancelled=true;
+        find('#jobPhase').textContent='正在停止识图…';
+      }
+      if(streamController){streamController.abort();return;}
+      if(activeJob&&activeJob!=='pending'){
+        try{await request('/api/jobs/'+activeJob+'/cancel',{});find('#jobPhase').textContent='正在停止，请稍候…';}catch(error){report(error);}
+      }
+    });
     find('#recognizeButton').addEventListener('click',()=>recognize().catch(report));
-    function selectImage(file){
-      if(find('#recognitionDialog').open)find('#recognitionDialog').close();
-      if(imageURL)URL.revokeObjectURL(imageURL);
-      selectedImage=file||null;imageURL=file?URL.createObjectURL(file):null;
-      find('#imagePreview').hidden=!file;
-      if(file){find('#questionImage').src=imageURL;api.setStatus('已添加题图。点击“识别题图”，核对文字后再解答。');}
-      else find('#questionImage').removeAttribute('src');
+    function renderImagePages(){
+      const multi=imagePages.length>1,locked=!!recognitionBatch;
+      const image=find('#questionImage'),list=find('#imagePageList');
+      find('#imagePreview').hidden=!imagePages.length;
+      find('#imagePageControls').hidden=!multi;
+      find('#removeImage').textContent=multi?'清空题图':'移除题图';
+      find('#removeImage').disabled=locked;
+      for(const id of ['imageFile','cameraFile'])find('#'+id).disabled=locked;
+      find('#recognizeButton').textContent=multi?
+        imagePages.every(page=>page.result)?'核对合并题面':imagePages.some(page=>page.error||page.result)?'继续识别':'识别全部题图':'识别题图';
+      if(previewPage){
+        if(image.getAttribute('src')!==previewPage.url)image.src=previewPage.url;
+        image.alt='第 '+(imagePages.indexOf(previewPage)+1)+' 页待识别题图';
+      }else image.removeAttribute('src');
+      list.replaceChildren();
+      if(!multi)return;
+      imagePages.forEach((page,index)=>{
+        const row=document.createElement('li'),actions=document.createElement('div'),label='第 '+(index+1)+' 页',name=page.file.name;
+        actions.className='page-actions';
+        const button=(caption,action,aria,disabled=false)=>{
+          const element=document.createElement('button');element.type='button';element.className='button secondary';
+          element.textContent=caption;element.dataset.pageAction=action;element.dataset.pageId=String(page.id);
+          element.setAttribute('aria-label',aria);element.disabled=disabled;return element;
+        };
+        const preview=button(label+' · '+name,'preview','预览'+label+' '+name);
+        preview.classList.add('page-preview');preview.setAttribute('aria-pressed',String(page===previewPage));
+        actions.append(button('↑','up','上移'+label,locked||index===0),button('↓','down','下移'+label,locked||index===imagePages.length-1),button('×','remove','移除'+label,locked));
+        const status=document.createElement('small');status.textContent=page.error?'识别失败 · '+page.error:page.result?'已识别':'待识别';
+        row.append(preview,actions,status);list.append(row);
+      });
     }
-    for(const id of ['imageFile','cameraFile'])find('#'+id).addEventListener('change',event=>selectImage(event.target.files[0]));
-    find('#removeImage').addEventListener('click',()=>{find('#imageFile').value='';find('#cameraFile').value='';selectImage(null);});
-    find('#recognizedText').addEventListener('input',previewRecognition);
+    function resetRecognitionReview(){
+      reviewDraft=null;
+      const dialog=find('#recognitionDialog');
+      if(dialog.open)dialog.close();
+    }
+    function addImages(files){
+      if(!files.length||recognitionBatch)return;
+      if(files.some(file=>file.size>8*1024*1024)){report(new Error('每张题图请压缩至 8 MB 以内。'));return;}
+      resetRecognitionReview();
+      const added=files.map(file=>({id:++nextImageId,file,url:URL.createObjectURL(file),result:null,error:''}));
+      imagePages.push(...added);previewPage=added[0];
+      renderImagePages();
+      api.setStatus(imagePages.length>1?'已添加 '+imagePages.length+' 页题图。核对页序后点击“识别全部题图”。':'已添加题图。点击“识别题图”，核对文字后再解答。');
+    }
+    for(const id of ['imageFile','cameraFile'])find('#'+id).addEventListener('change',event=>{
+      const files=Array.from(event.target.files);event.target.value='';addImages(files);
+    });
+    find('#removeImage').addEventListener('click',()=>{
+      if(recognitionBatch)return;
+      resetRecognitionReview();
+      imagePages.forEach(page=>URL.revokeObjectURL(page.url));
+      imagePages=[];previewPage=null;renderImagePages();
+      api.setStatus('题图已清空，已填写的题面仍保留。');
+    });
+    find('#imagePageList').addEventListener('click',event=>{
+      const button=event.target.closest('[data-page-action]');
+      if(!button)return;
+      const index=imagePages.findIndex(page=>String(page.id)===button.dataset.pageId),page=imagePages[index],action=button.dataset.pageAction;
+      if(!page)return;
+      if(action==='preview')previewPage=page;
+      else{
+        if(recognitionBatch)return;
+        resetRecognitionReview();
+        if(action==='remove'){
+          URL.revokeObjectURL(page.url);imagePages.splice(index,1);
+          if(previewPage===page)previewPage=imagePages[Math.min(index,imagePages.length-1)]||null;
+        }else{
+          const target=index+(action==='up'?-1:1);
+          if(target<0||target>=imagePages.length)return;
+          [imagePages[index],imagePages[target]]=[imagePages[target],imagePages[index]];
+          previewPage=page;
+        }
+      }
+      renderImagePages();
+      if(previewPage&&imagePages.length>1)find('.page-preview[data-page-id="'+previewPage.id+'"]')?.focus();
+      else find('#removeImage').focus();
+    });
+    find('#recognitionPageSelect').addEventListener('change',showReviewPage);
+    find('#recognizedText').addEventListener('input',()=>{
+      if(imagePages.length>1)reviewDraft=find('#recognizedText').value;
+      previewRecognition();
+    });
     const recognitionFeedback=document.createElement('p');recognitionFeedback.id='recognitionFeedback';recognitionFeedback.setAttribute('role','alert');find('#confirmRecognition').before(recognitionFeedback);
     const rejectRecognition=message=>{recognitionFeedback.textContent=message;report(new Error(message));};
-    find('#confirmRecognition').addEventListener('click',()=>{const recognized=find('#recognizedText').value.trim();if(!recognized||recognized.length>18000){rejectRecognition('请填写核对后的题目，长度须在 18000 字以内。');return;}if(hasUncertainty(recognized)){rejectRecognition('识别结果仍含“[看不清]”或其它未确认字段。请在此窗口补正后再确认。');return;}if(!find('#recognitionReview').hidden&&!find('#recognitionReviewed').checked){rejectRecognition('请对照原图补正模糊位置，并勾选“已核对上述位置”。');return;}clearStepHighlight();api.question.value=recognized;api.question.dispatchEvent(new Event('input',{bubbles:true}));find('#recognitionDialog').close();api.remember();api.setStatus('题面已确认，可以开始解题。');});
+    find('#confirmRecognition').addEventListener('click',()=>{const recognized=find('#recognizedText').value.trim();if(!recognized||recognized.length>18000){rejectRecognition('请填写核对后的题目，长度须在 18000 字以内。');return;}if(hasUncertainty(recognized)){rejectRecognition('识别结果仍含“[看不清]”或其它未确认字段。请在此窗口补正后再确认。');return;}const issue=imagePages.length>1?window.DongRecognitionPages.inspectParts(recognized):null;if(issue?.blocking){rejectRecognition(issue.message);return;}if(!find('#recognitionReview').hidden&&!find('#recognitionReviewed').checked){rejectRecognition('请对照原图补正模糊位置，并勾选“已核对上述位置”。');return;}clearStepHighlight();api.question.value=recognized;api.question.dispatchEvent(new Event('input',{bubbles:true}));find('#recognitionDialog').close();api.remember();api.setStatus('题面已确认，可以开始解题。');});
     document.querySelectorAll('[data-close-dialog]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
     find('#openNotebook').addEventListener('click',()=>{try{notebookEpoch++;find('#notebookNotice').textContent='';renderNotebook();find('#notebookDialog').showModal();}catch(error){report(error);}});
     find('#notebookDialog').addEventListener('close',()=>{notebookEpoch++;});
