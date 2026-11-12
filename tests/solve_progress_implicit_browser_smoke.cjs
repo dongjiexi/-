@@ -24,7 +24,7 @@ module.exports=async({page,assert,errors})=>{
   await solve('已知圆 C：4x²+4y²=100，求圆的半径。',{state:'complete',type:'circle',r2:25});
   await solve('椭圆 C：4(x-1)²+9(y+2)²=36，求焦点坐标。',{state:'complete',type:'ellipse',a2:9,b2:4,h:1,k:-2});
   await solve('已知椭圆 C：4x²+9y²=36，证明任意直线都与一个定圆相切。',{state:'partial',type:'ellipse',a2:9,b2:4});
-  const copied='7．（本小题满分5分）\n已知椭圆 C：4x²+9y²=36，求顶点。';
+  const copied='2025年普通高等学校招生全国统一考试\n数学试题\n7．（本小题满分5分）\n已知椭圆 C：$4x^2\n数学试题 第 3 页（共 6 页）\n+9y^2\n=36$，求顶点。';
   await page.locator('#question').fill(copied);
   await page.locator('#parseButton').click();
   await page.locator('#scenePreviewDialog').waitFor({state:'visible'});

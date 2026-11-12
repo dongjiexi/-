@@ -68,10 +68,11 @@ test('heading offsets point to the original tokens without changing text',()=>{
 
 test('exam paste layouts isolate printed marks while preserving maths and offsets',()=>{
   const cases=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/exam-copy-layouts.json'),'utf8'));
-  for(const {input,content,parts} of cases){
+  for(const {input,content,parts,needsReview} of cases){
     assert.equal(api.examContent(input),content,input);
     assert.equal(api.examContent(content),content,'Exam content must be idempotent');
     assert.deepEqual(indexes(input),parts,input);
+    assert.equal(api.needsFractionReview(input),needsReview===true,input);
     for(const marker of api.headings(input))assert.equal(input.slice(marker.index,marker.end),marker.raw);
   }
 });

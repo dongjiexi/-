@@ -19,7 +19,7 @@
     const argument=(text,start,depth=0)=>{
       if(depth>30)return null;
       while(start<text.length&&/\s/.test(text[start]))start++;
-      const braced=group(text,start);if(braced)return braced;
+      const braced=group(text,start);if(braced)return {body:braced.body.trim(),end:braced.end};
       if(/[a-z0-9]/i.test(text[start]||''))return {body:text[start],end:start+1};
       const command=/^\\(sqrt|[dt]?frac|pi)\b|^\\(sqrt|[dt]?frac)(?=[0-9{\\])/i.exec(text.slice(start));
       if(!command)return null;
@@ -48,7 +48,7 @@
   function prepare(value){
     const source=String(value??'').replace(/```(?:latex|math|tex)\s*\n?([\s\S]*?)```/gi,(_,body)=>'$$'+body.trim()+'$$');
     // Protect complete display blocks before processing lines; never nest $ inside $$.
-    return source.split(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|(?<!\\)\$(?:\\[\s\S]|[^$])*?(?<!\\)\$)/g).map((part,index)=>{
+    return source.split(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|(?<!\\)\$(?:\\[\s\S]|[^$\\])*?\$)/g).map((part,index)=>{
       if(index%2)return part;
       return part.replace(/[^\u3400-\u9fff。；：\n]+/g,chunk=>/\\(?:[dt]?frac|sqrt|begin|sum|int|vec|overline|alpha|beta|theta|left)\b/.test(chunk)?'$'+chunk.trim()+'$':chunk);
     }).join('');

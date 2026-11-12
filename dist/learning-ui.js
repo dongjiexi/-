@@ -976,8 +976,18 @@
         api.setStatus(`内置引擎已完成 ${completion.answered}/${completion.total} 问；其余小问待推导。${solveMode==='cloud'?'云端服务当前未就绪，请检查连接。':'如需智能增强，请在电脑本机版下载模型。'}`);
       }
     }
+    function updateFractionReview(input,notice){
+      if(notice)notice.hidden=!window.DongQuestionParts?.needsFractionReview(input.value);
+    }
+    function previewExamText(input,target){
+      const parts=window.DongQuestionParts,source=input.value;
+      const value=parts&&source.length<=parts.MAX_TEXT?parts.examContent(source):source;
+      window.DongMathInput?.preview({value},target);
+    }
     function previewRecognition(){
-      window.DongMathInput?.preview(find('#recognizedText'),find('#recognitionFormulaPreview'));
+      const input=find('#recognizedText');
+      updateFractionReview(input,find('#recognitionFractionReview'));
+      previewExamText(input,find('#recognitionFormulaPreview'));
     }
     function showRecognition(text,{cloud=false,uncertainties=[]}={}){
       if(typeof text!=='string'||text.length>18000)throw new Error('识别题面格式无效或过长，请换一张题图。');
@@ -1129,12 +1139,16 @@
     const previewTitle=document.createElement('summary');previewTitle.textContent='题目公式预览 · 支持 LaTeX';
     const previewBody=document.createElement('div');previewBody.className='math-content';
     formulaPreview.append(previewTitle,previewBody);api.question.after(formulaPreview);
-    const refreshFormula=()=>window.DongMathInput?.preview(api.question,previewBody);
+    const refreshFormula=()=>{
+      updateFractionReview(api.question,find('#questionFractionReview'));
+      previewExamText(api.question,previewBody);
+    };
     formulaPreview.addEventListener('toggle',()=>{if(formulaPreview.open)refreshFormula();});
     refreshFormula();
     api.question.addEventListener('input',()=>{
       clearStepHighlight();
       if(formulaPreview.open)refreshFormula();
+      else updateFractionReview(api.question,find('#questionFractionReview'));
       api.remember();
       clearTimeout(draftTimer);
       const draftQuestion=api.question.value;

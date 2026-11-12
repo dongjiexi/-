@@ -20,6 +20,41 @@
   const stripLeadingScore=value=>value.replace(leadingScore,'$1');
   const stripTrailingScore=value=>value.replace(trailingScore,'$1');
   const canonicalToken=value=>value.normalize('NFKC').toLowerCase();
+  const examBanner=/^(?:(?:20[0-9０-９]{2}[ \t　]*年[ \t　]*)?普通高等学校招生全国统一考试(?:[ \t　]*[（(](?:新课标|新高考)?(?:全国)?[ⅠⅡⅢI一二三]+卷[）)])?(?:[ \t　]*数学(?:试题|试卷)?)?|数学(?:试题|试卷)|绝密[★☆]启用前)$/;
+  const pageNumber=/^(?:数学(?:试题|试卷)[ \t　]*第[ \t　]*[0-9０-９]{1,3}[ \t　]*页|(?:数学(?:试题|试卷)[ \t　]*)?第[ \t　]*[0-9０-９]{1,3}[ \t　]*页[ \t　]*(?:[（(/／][ \t　]*)?共[ \t　]*[0-9０-９]{1,3}[ \t　]*页[）)]?)$/;
+  const mathBlock=/(?<!\\)\$\$[\s\S]*?(?<!\\)\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|(?<![\\$])\$(?:\\[\s\S]|[^$\\])*?\$(?!\$)/g;
+  const squareTerm='[xy](?:\\^2|²)(?:[ \\t]*[/／][ \\t]*(?:[ab](?:\\^2|²)|\\d+(?:\\.\\d+)?))?';
+  const lineBreak='[ \\t]*(?:\\r\\n|\\n|\\r)[ \\t]*';
+  const acrossLine=op=>'([ \\t]*'+op+lineBreak+'|'+lineBreak+op+'(?:'+lineBreak+'|[ \\t]*))';
+  const termJoin=new RegExp('('+squareTerm+')'+acrossLine('[+＋−-]')+'(?='+squareTerm+')','g');
+  const equationJoin=new RegExp('('+squareTerm+')'+acrossLine('[=＝]')+'(?=[+-]?[0-9]+(?:\\.[0-9]+)?(?![0-9A-Za-z_.]))','g');
+  const divisionJoin=new RegExp('([xy](?:\\^2|²))'+acrossLine('[/／]')+'(?=(?:[ab](?:\\^2|²)|[0-9]+(?:\\.[0-9]+)?)(?![0-9A-Za-z_.]))','g');
+  const stackedFraction=/(?:^|[：:=＋+−-])[ \t]*[xy](?:\^2|²)[ \t]*(?:\r\n|\r|\n)[ \t]*(?:[ab](?:\^2|²)|[0-9０-９]+(?:\.[0-9０-９]+)?)[ \t]*(?=(?:(?:\r\n|\r|\n)[ \t]*)?[+＋−=＝-])/m;
+  const compactJoin=(match,left,bridge)=>left+bridge.replace(/\s/g,'');
+  function removePageFurniture(text){
+    const lines=text.replace(/\f/g,'\n').split(/(\r\n|\r|\n)/),kept=[];
+    for(let i=0;i<lines.length;i+=2){
+      const label=lines[i].trim();
+      if(!examBanner.test(label)&&!pageNumber.test(label))kept.push(lines[i],lines[i+1]||'');
+    }
+    return kept.join('');
+  }
+  // Physical line breaks inside complete TeX delimiters are whitespace.
+  // Bare equations need an explicit operator across the break.
+  function foldFormulaLines(text){
+    const pieces=[];
+    let start=0;
+    const joinPlain=part=>part.replace(divisionJoin,compactJoin).replace(termJoin,compactJoin).replace(equationJoin,compactJoin);
+    for(const match of text.matchAll(mathBlock)){
+      pieces.push(joinPlain(text.slice(start,match.index)),match[0].replace(/[ \t]*(?:\r\n|\r|\n)[ \t]*/g,' '));
+      start=match.index+match[0].length;
+    }
+    pieces.push(joinPlain(text.slice(start)));
+    return pieces.join('');
+  }
+  function needsFractionReview(value){
+    return typeof value==='string'&&value.length<=MAX_TEXT&&stackedFraction.test(removePageFurniture(value));
+  }
   const stripWrap=value=>value.replace(/(?:\$|\\\(|\\\)|\\\[|\\\])+/g,'');
   function fail(code,message){const error=new Error(message);error.code=code;throw error;}
   function checkedText(value){
@@ -58,7 +93,7 @@
   // Keep offsets in headings() relative to the submitted text. Only the copy
   // sent for solving loses grade labels and gains canonical heading tokens.
   function examContent(value){
-    const original=checkedText(value),withoutNumber=original.replace(examNumber,'');
+    const original=foldFormulaLines(removePageFurniture(checkedText(value))),withoutNumber=original.replace(examNumber,'');
     const text=withoutNumber===original?stripLeadingScore(original):stripLeadingScore(withoutNumber).trimStart();
     const numeric=scan(text),all=[];
     numeric.forEach((part,i)=>{
@@ -93,5 +128,5 @@
     if(parts.length>MAX_PARTS)fail('QUESTION_PARTS_MAX',`题目共有 ${parts.length} 个小问，超过最多 ${MAX_PARTS} 个的限制，请分题输入。`);
     return parts;
   }
-  return {splitParts,headings,examContent,MAX_TEXT,MAX_PARTS};
+  return {splitParts,headings,examContent,needsFractionReview,MAX_TEXT,MAX_PARTS};
 });

@@ -15,6 +15,21 @@ HEAD_START = rf"(?:{LEAD}|\$|\\[\[(]|[（(][ \t　]*{TOKEN}[ \t　]*[）)])"
 EXAM_NUMBER = re.compile(rf"^\s*(?:第[ \t　]*{NUMBER}[ \t　]*题[：:、．.]?|{NUMBER}[.．、](?![0-9０-９]))(?=[ \t　]*(?:[\r\n]|{SCORE}|{HEAD_START}))", re.I)
 LEADING_SCORE = re.compile(rf"^(\s*){SCORE}(?=\s*(?:{HEAD_START}|$))", re.I)
 TRAILING_SCORE = re.compile(rf"([。；;！!？?]|\r?\n)[ \t　]*{SCORE}(?=\s*$)")
+EXAM_BANNER = re.compile(r"(?:(?:20[0-9０-９]{2}[ \t　]*年[ \t　]*)?普通高等学校招生全国统一考试(?:[ \t　]*[（(](?:新课标|新高考)?(?:全国)?[ⅠⅡⅢI一二三]+卷[）)])?(?:[ \t　]*数学(?:试题|试卷)?)?|数学(?:试题|试卷)|绝密[★☆]启用前)")
+PAGE_NUMBER = re.compile(r"(?:数学(?:试题|试卷)[ \t　]*第[ \t　]*[0-9０-９]{1,3}[ \t　]*页|(?:数学(?:试题|试卷)[ \t　]*)?第[ \t　]*[0-9０-９]{1,3}[ \t　]*页[ \t　]*(?:[（(/／][ \t　]*)?共[ \t　]*[0-9０-９]{1,3}[ \t　]*页[）)]?)")
+MATH_BLOCK = re.compile(r"(?<!\\)\$\$[\s\S]*?(?<!\\)\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|(?<![\\$])\$(?:\\[\s\S]|[^$\\])*?\$(?!\$)")
+SQUARE_TERM = r"[xy](?:\^2|²)(?:[ \t]*[/／][ \t]*(?:[ab](?:\^2|²)|[0-9]+(?:\.[0-9]+)?))?"
+LINE_BREAK = r"[ \t]*(?:\r\n|\n|\r)[ \t]*"
+
+
+def _across_line(op: str) -> str:
+    return rf"([ \t]*{op}{LINE_BREAK}|{LINE_BREAK}{op}(?:{LINE_BREAK}|[ \t]*))"
+
+
+TERM_JOIN = re.compile(rf"({SQUARE_TERM}){_across_line('[+＋−-]')}(?={SQUARE_TERM})")
+EQUATION_JOIN = re.compile(rf"({SQUARE_TERM}){_across_line('[=＝]')}(?=[+-]?[0-9]+(?:\.[0-9]+)?(?![0-9A-Za-z_.]))")
+DIVISION_JOIN = re.compile(rf"([xy](?:\^2|²)){_across_line('[/／]')}(?=(?:[ab](?:\^2|²)|[0-9]+(?:\.[0-9]+)?)(?![0-9A-Za-z_.]))")
+
 
 
 class QuestionPartsError(ValueError):
@@ -74,9 +89,33 @@ def headings(text: str) -> list[dict]:
     return _scan(_checked_text(text))
 
 
+def _remove_page_furniture(text: str) -> str:
+    lines = re.split(r"(\r\n|\r|\n)", text.replace("\f", "\n"))
+    kept = []
+    for index in range(0, len(lines), 2):
+        label = lines[index].strip()
+        if not EXAM_BANNER.fullmatch(label) and not PAGE_NUMBER.fullmatch(label):
+            kept.extend((lines[index], lines[index+1] if index+1 < len(lines) else ""))
+    return "".join(kept)
+
+
+def _fold_formula_lines(text: str) -> str:
+    def join_plain(segment: str) -> str:
+        for rule in (DIVISION_JOIN, TERM_JOIN, EQUATION_JOIN):
+            segment = rule.sub(lambda m: m[1]+re.sub(r"\s", "", m[2]), segment)
+        return segment
+
+    pieces, start = [], 0
+    for match in MATH_BLOCK.finditer(text):
+        pieces.extend((join_plain(text[start:match.start()]), re.sub(LINE_BREAK, " ", match[0])))
+        start = match.end()
+    pieces.append(join_plain(text[start:]))
+    return "".join(pieces)
+
+
 def exam_content(value: str) -> str:
     """Return mathematical content while headings() keeps original source offsets."""
-    original = _checked_text(value)
+    original = _fold_formula_lines(_remove_page_furniture(_checked_text(value)))
     without_number = EXAM_NUMBER.sub("", original)
     text = (LEADING_SCORE.sub(r"\1", original) if without_number == original
             else LEADING_SCORE.sub(r"\1", without_number).lstrip())

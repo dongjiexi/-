@@ -1,11 +1,23 @@
 const fs=require('node:fs'),path=require('node:path');
-function examCopy(item){
+function examCopy(item, paged=false){
   const number=String(item.number).match(/\d+/)?.[0];
   const body=item.question.replace(/^([ \t]*)[（(](\d{1,2}|ii|i)[）)]/gm,(_,indent,index)=>{
     const token=index==='i'?'ⅰ':index==='ii'?'ⅱ':index.replace(/\d/g,d=>String.fromCharCode(0xFF10+Number(d)));
     return indent+'（'+token+'）（5分）';
   });
-  return (number?number+'．':'')+'（本小题满分12分）\n'+body;
+  const source=(number?number+'．':'')+'（本小题满分12分）\n'+body;
+  if(!paged)return source;
+  const wrap=(line,i)=>{
+    if(i===0)return line;
+    return line.replace(/\$([^$\n]+)\$/g,(all,formula)=>{
+      const wrapped=formula.replace(/(?<=[}\da-z²])([+=−])(?=[^=])/i,'\n$1');
+      return '$'+wrapped+'$';
+    }).replace(/([xy]²\/[ab\d²^]+)([+−-][xy]²\/)/,'$1\n$2');
+  };
+  const lines=source.split('\n').map(wrap);
+  const page=Math.max(2,lines.length-1);
+  lines.splice(page,0,'数学试题 第 3 页（共 6 页）');
+  return item.year+'年普通高等学校招生全国统一考试\n数学试题\n'+lines.join('\n');
 }
 module.exports=async({page,context,assert,screenshot})=>{
   const bank=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8'));
@@ -28,11 +40,13 @@ module.exports=async({page,context,assert,screenshot})=>{
   };
   const rows=[];
   for(const item of cases){
-    const plain=await solve(item.question),submitted=examCopy(item),result=await solve(submitted);
+    const plain=await solve(item.question),graded=await solve(examCopy(item)),submitted=examCopy(item,true),result=await solve(submitted);
     const conclusions=solution=>solution.parts.map(p=>[p.index,p.status,p.answer]);
-    assert.deepEqual(conclusions(result),conclusions(plain),item.id+' copy layout preserves every conclusion');
-    const objects=solution=>['points','pointParts','lines','objects','polygons'].map(key=>solution.scene?.[key]??null);
-    assert.deepEqual(objects(result),objects(plain),item.id+' copy layout preserves named geometry and part scopes');
+    const objects=solution=>['type','a','b','p','r','orientation','points','pointParts','lines','objects','polygons'].map(key=>solution.scene?.[key]??null);
+    for(const variant of [graded,result]){
+      assert.deepEqual(conclusions(variant),conclusions(plain),item.id+' copy layout preserves every conclusion');
+      assert.deepEqual(objects(variant),objects(plain),item.id+' copy layout preserves named geometry and part scopes');
+    }
     assert.notEqual(result.verification?.status,'reference-reviewed');
     assert(result.parts.every(p=>p.status!=='needs_information'),'Uncovered rules do not certify missing conditions');
     const diagram=await page.evaluate(({scene,q,parts})=>window.DongSceneAudit?.inspect(scene,q,parts,window.DongConstruct)||null,{scene:result.scene,q:submitted,parts:result.parts});
@@ -148,7 +162,7 @@ module.exports=async({page,context,assert,screenshot})=>{
       await screenshot('sourced-2022-beijing-19.png',null);
     }
   }
-  const report={version:await page.evaluate(()=>document.querySelector('#versionButton').textContent),engine:'native; no inference API and no reference-answer dispatch',questions:rows.length,layoutsTested:rows.length*2,parts:rows.reduce((n,r)=>n+r.completion.total,0),answeredFlags:rows.reduce((n,r)=>n+r.completion.answered,0),note:'Answered flags are NOT a general correctness rate. Known oracle checks, partial answers and missing objects remain separately reported.',rows};
+  const report={version:await page.evaluate(()=>document.querySelector('#versionButton').textContent),engine:'native; no inference API and no reference-answer dispatch',questions:rows.length,layoutsTested:rows.length*3,parts:rows.reduce((n,r)=>n+r.completion.total,0),answeredFlags:rows.reduce((n,r)=>n+r.completion.answered,0),note:'Answered flags are NOT a general correctness rate. Known oracle checks, partial answers and missing objects remain separately reported.',rows};
   const folder=process.env.DONG_TEST_OUTPUT;
   if(folder)fs.writeFileSync(path.join(folder,'sourced-exam-sweep.json'),JSON.stringify(report,null,2));
   console.log('SOURCED EXAM SWEEP '+JSON.stringify({questions:report.questions,parts:report.parts,answeredFlags:report.answeredFlags,missingDiagrams:rows.filter(r=>!r.diagram||r.diagram.missing.length).map(r=>r.id)}));
