@@ -71,7 +71,13 @@ module.exports=async({page,context,assert,screenshot})=>{
       assert.equal(result.scene.objects.filter(o=>o.op==='intersection').length,2);
       assert.equal(result.scene.polygons.length,2);
     }
-    if(item.id==='2022-ii-21-1'&&!process.env.DONG_EXAM_BASELINE){assert.equal(result.completion.answered,1);assert(Math.abs(result.scene.a**2-1)<1e-9&&Math.abs(result.scene.b**2-3)<1e-9);}
+    if(item.id==='2022-ii-21-full'&&!process.env.DONG_EXAM_BASELINE){
+      assert.equal(result.completion.answered,2,JSON.stringify(rows.at(-1)));
+      assert(result.engineExtensions.includes('hyperbola-asymptote-midpoint'));
+      assert(parameterChecks.every(p=>p.passed));
+      assert.equal(result.parts[1].steps.filter(s=>s.includes('⇒')).length,3);
+      for(const k of ['missing','invalid','missingLines','answerMissing','answerMissingLines','unavailable'])assert.equal(diagram[k].length,0,k+' '+JSON.stringify(diagram[k]));
+    }
     if(item.id==='2023-i-22'&&!process.env.DONG_EXAM_BASELINE){
       assert.equal(result.completion.answered,2,JSON.stringify(rows.at(-1)));
       assert.equal(diagram.missing.length,0,JSON.stringify(diagram));

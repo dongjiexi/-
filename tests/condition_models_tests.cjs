@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-const box={window:{}};for(const f of ['math-input','number-display','equation-builder','question-parts','ellipse-distance','motion-domain','construction-board','scene-audit','basic-conditions','ellipse-area-chord','ellipse-tangent-ratio'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/'+f+'.js'),'utf8'),box);
+const box={window:{}};for(const f of ['math-input','number-display','equation-builder','question-parts','ellipse-distance','motion-domain','construction-board','scene-audit','basic-conditions','ellipse-area-chord','ellipse-tangent-ratio','hyperbola-asymptote-midpoint'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/'+f+'.js'),'utf8'),box);
 const {DongBasicConditions:basic,DongEllipseAreaChord:chord,DongSceneAudit:audit,DongConstruct:construct}=box.window,copy=x=>JSON.parse(JSON.stringify(x)),close=(a,b)=>assert(Math.abs(a-b)<1e-7*Math.max(1,Math.abs(a),Math.abs(b)),`${a} != ${b}`),bank=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8')).items,q=id=>bank.find(q=>q.id===id).question;let count=0;
 const ellipseExcerpt=q('2025-beijing-19-1').split('\n（2）')[0].replace('\n（1）求椭圆 $E$ 的方程；','求椭圆方程。');
 const circle=basic.solve(q('2022-beijing-3'));assert(circle);close(circle.scene.h,.5);assert.match(circle.answer,/a=\\frac\{1\}\{2\}/);assert(circle.scene.lines.some(l=>l.label==='对称轴'));count++;
@@ -64,4 +64,44 @@ for(const bad of [
  tangentQuestion.replace('|OA|}{|OB|}', '|OB|}{|OA|}'),
  tangentQuestion.replace('的大小。','的大小，并求切线斜率。')
 ]){assert.equal(solveRatio(bad),null);count++;}
+
+const solveMidpoint=box.window.DongHyperbolaAsymptoteMidpoint.solve;
+const hyperbolaQuestion=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/sourced-exam-additions.json'),'utf8')).items.find(item=>item.id==='2022-ii-21-full').question;
+const hyperbolaCases=[
+ [hyperbolaQuestion,2,Math.sqrt(3)],
+ [q('2022-ii-21-1'),2,Math.sqrt(3)],
+ [hyperbolaQuestion.replace('F(2,0)','F(3,0)').replaceAll('√3','2').replaceAll('P','J').replaceAll('Q','K').replaceAll('M','L'),3,2]
+];
+for(const [text,c,s] of hyperbolaCases){
+ const solved=solveMidpoint(text);assert(solved);assert.equal(solved.completion.answered,2);
+ assert.equal(solved.parts[1].steps.filter(step=>step.includes('⇒')).length,3);
+ const a=solved.scene.a,b=solved.scene.b;
+ close(a*a+b*b,c*c);close(b/a,s);
+ const auditResult=audit.inspect(copy(solved.scene),text,solved.parts,construct);
+ for(const key of ['missing','answerMissing','missingLines','answerMissingLines','invalid','unavailable'])assert.equal(auditResult[key].length,0,key);
+ const driver=solved.scene.objects.find(node=>node.op==='point_on'),domain=driver.motionDomain.parameter;
+ for(let i=0;i<=16;i++){
+  driver.t=domain.min+(domain.max-domain.min)*i/16;
+  const e=audit.frame(solved.scene,construct).engine;
+  const read=key=>e.resolve('asymptote-midpoint-'+key);
+  const A=read('upper'),B=read('lower'),M=read('middle'),P=read('p'),Q=read('q');
+  close(A.y,s*A.x);close(B.y,-s*B.x);
+  close((A.x-c)*B.y-(B.x-c)*A.y,0);
+  close(2*M.x,A.x+B.x);close(2*M.y,A.y+B.y);
+  close(Math.hypot(M.x-A.x,M.y-A.y),Math.hypot(M.x-B.x,M.y-B.y));
+  assert(P.x>Q.x&&Q.x>0&&P.y>0);
+  for(const p of [P,Q])close((p.x/a)**2-(p.y/b)**2,1);
+  close(P.y-M.y,-s*(P.x-M.x));close(Q.y-M.y,s*(Q.x-M.x));
+  close((A.x-B.x)*(P.y-Q.y)-(A.y-B.y)*(P.x-Q.x),0);
+  count++;
+ }
+}
+for(const bad of [
+ hyperbolaQuestion.replace('x₁>x₂>0','x₂>x₁>0'),
+ hyperbolaQuestion.replace('斜率为 −√3','斜率为 √3'),
+ hyperbolaQuestion.replace('PQ ∥ AB','PQ ⊥ AB'),
+ hyperbolaQuestion.replace('证明另外一个成立：','并求一个最大值：'),
+ hyperbolaQuestion.replace('③|MA|=|MB|','③|PA|=|PB|'),
+ hyperbolaQuestion+'再求四边形面积。'
+]){assert.equal(solveMidpoint(bad),null);count++;}
 console.log('PASS condition models: '+count+' sourced, parameter, candidate completeness, domain, axis and scope checks');

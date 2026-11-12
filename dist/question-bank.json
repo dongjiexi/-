@@ -26,12 +26,15 @@
       "scene": {"type": "circle", "r": 1, "h": 0.5, "showDynamic": false, "points": {"O": [0.5,0]}, "lines": [{"id": "axis", "label": "对称轴", "a": 2, "b": 1, "c": -1}]}
     },
     {
-      "id": "2022-ii-21-1", "kind": "gaokao", "year": 2022, "paper": "新高考全国Ⅱ卷", "number": "21（1）", "scope": "第（1）问节选", "title": "焦点与渐近线确定双曲线", "curve": "双曲线", "tags": ["标准方程", "渐近线"], "knowledge": [{"name": "焦点与渐近线", "description": "把焦点坐标、渐近线斜率分别转成半焦距和半轴比例。"}, {"name": "双曲线标准方程", "description": "联立半轴与半焦距的关系，确定标准方程。"}], "level": "基础",
-      "question": "已知双曲线 $C:\\dfrac{x^2}{a^2}-\\dfrac{y^2}{b^2}=1\\ (a>0,b>0)$ 的右焦点为 $F(2,0)$，渐近线方程为 $y=\\pm\\sqrt{3}x$。求 $C$ 的方程。（选取原题第（1）问。）",
+      "id": "2022-ii-21-1", "kind": "gaokao", "year": 2022, "paper": "新高考全国Ⅱ卷", "number": "21", "scope": "完整题目", "title": "双曲线与渐近线的弦中点", "curve": "双曲线", "tags": ["标准方程", "渐近线", "弦中点", "条件证明"], "knowledge": [{"name": "焦点与渐近线", "description": "将右焦点和渐近线斜率转化为半焦距与半轴比例。"}, {"name": "弦中点与方向", "description": "用渐近线坐标表达双曲线，分别证明三组条件的推出关系。"}], "level": "综合",
+      "question": "已知双曲线 $C:\\dfrac{x^2}{a^2}-\\dfrac{y^2}{b^2}=1\\ (a>0,b>0)$ 的右焦点为 $F(2,0)$，渐近线为 $y=\\pm\\sqrt{3}x$。\n（1）求 $C$ 的标准方程。\n（2）过 $F$ 的直线与 $C$ 的两条渐近线分别相交于 $A$、$B$。点 $P(x_1,y_1)$ 与 $Q(x_2,y_2)$ 在 $C$ 上，满足 $x_1>x_2>0$、$y_1>0$。过 $P$ 且斜率为 $-\\sqrt{3}$ 的直线与过 $Q$ 且斜率为 $\\sqrt{3}$ 的直线交于 $M$。从①②③中任选两个作为条件，证明另一个成立：① $M$ 在直线 $AB$ 上；② $PQ\\parallel AB$；③ $|MA|=|MB|$。",
       "sources": [{"title": "2022 新高考全国Ⅱ卷原卷", "url": "https://gaokao.eol.cn/shiti/zhenti/202206/t20220608_2230674.shtml"}],
-      "pitfall": "双曲线满足 c²=a²+b²；不要套用椭圆的减法。",
-      "parts": [{"index": 1, "label": "标准方程", "answer": "$x^2-\\dfrac{y^2}{3}=1$。", "steps": ["右焦点给出 $c=2$；渐近线斜率给出 $\\dfrac ba=\\sqrt{3}$。", "联立 $c^2=a^2+b^2$ 和 $b^2=3a^2$，得到 $4=4a^2$。", "所以 $a^2=1$、$b^2=3$，方程为 $x^2-\\dfrac{y^2}{3}=1$。"]}],
-      "scene": {"type": "hyperbola", "a": 1, "b": 1.7320508075688772, "showDynamic": false, "points": {"F": [2, 0]}, "lines": [{"id": "asym1", "label": "y=√3 x", "kind": "slope", "m": 1.7320508075688772, "b": 0}, {"id": "asym2", "label": "y=−√3 x", "kind": "slope", "m": -1.7320508075688772, "b": 0}]}
+      "pitfall": "等距点组成一条垂直平分线，需要结合共线或平行条件才能确定它是弦中点。",
+      "parts": [{"index": 1, "label": "标准方程", "answer": "$x^2-\\dfrac{y^2}{3}=1$。", "steps": ["右焦点给出 $c=2$；渐近线斜率给出 $\\dfrac ba=\\sqrt{3}$。", "联立 $c^2=a^2+b^2$ 和 $b^2=3a^2$，得到 $4=4a^2$。", "所以 $a^2=1$、$b^2=3$，方程为 $x^2-\\dfrac{y^2}{3}=1$。"]}, {"index": 2, "label": "三种条件组合", "answer": "①、②、③中任意两个条件都能推出第三个。", "steps": ["取 $u=x+y/s$、$v=x-y/s$，把两渐近线化为坐标轴。", "利用渐近线弦中点和双曲线上两点的乘积关系，比较两条直线的方向。", "分别使用共线、平行或等距的两项已知，推出第三项。"]}],
+      "scene": {"type": "hyperbola", "a": 1, "b": 1.7320508075688772, "showDynamic": false, "points": {"F": [2, 0]}, "lines": [{"id": "asym1", "label": "y=√3 x", "kind": "slope", "m": 1.7320508075688772, "b": 0}, {"id": "asym2", "label": "y=−√3 x", "kind": "slope", "m": -1.7320508075688772, "b": 0}]},
+      "solver": true,
+      "sceneRevision": 2,
+      "sceneNote": "切到第（2）问后拖动方向点 T。画板展示一段合法构型，解析覆盖全部三种证明方向。"
     },
     {
       "id": "2022-beijing-19-1", "kind": "gaokao", "year": 2022, "paper": "北京卷", "number": "19", "scope": "完整题目", "title": "椭圆方程与过定点弦的截距", "curve": "椭圆", "tags": ["标准方程", "焦距", "韦达定理", "截距"], "knowledge": [{"name":"顶点与焦距","description":"区分短轴顶点、半焦距和两焦点之间的距离。"},{"name":"截距与韦达定理","description":"把两条连线在横轴上的截距差转化为弦端点的根与系数关系。"}], "level": "综合", "solver": "axis-intercept-chord",

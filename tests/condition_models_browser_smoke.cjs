@@ -11,15 +11,49 @@ module.exports=async({page,context,assert,screenshot})=>{
  });
  await context.route('**/runtime-config.js',r=>r.fulfill({contentType:'application/javascript',body:'window.DONGJIEXI_CONFIG={deployment:"web",apiEnabled:true,requiresAuth:false};'}));
  await context.route('**/api/health',r=>r.fulfill({json:{app:'董解析',capabilities:{transport:'sse'},engine:{available:true,remote:true,models:['fixture-cloud']}}}));
- await context.route('**/api/stream',r=>{calls++;const raw={title:'未完成模型回复',restatement:question,strategy:'原模型待解策略',parts:Array.from({length:parts},(_,i)=>({index:parts===1?0:i+1,status:'partial',answer:'尚未求解',steps:['尚未推导。']})),scene:{type:'ellipse',a:3,b:1,points:{},lines:question.includes('OMA')?[{id:'wrong-cloud-line',kind:'slope',m:0,b:9,label:'云端错误线'}]:[],constructions:[]}};return r.fulfill({contentType:'text/event-stream',body:'data: '+JSON.stringify({choices:[{delta:{content:JSON.stringify(raw)}}]})+'\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});});
+ await context.route('**/api/stream',r=>{calls++;const raw={title:'未完成模型回复',restatement:question,strategy:'原模型待解策略',parts:Array.from({length:parts},(_,i)=>({index:parts===1?0:i+1,status:'partial',answer:'尚未求解',steps:['尚未推导。']})),scene:{type:'ellipse',a:3,b:1,points:{},lines:/OMA|①②③/.test(question)?[{id:'wrong-cloud-line',kind:'slope',m:0,b:9,label:'云端错误线'}]:[],constructions:[]}};return r.fulfill({contentType:'text/event-stream',body:'data: '+JSON.stringify({choices:[{delta:{content:JSON.stringify(raw)}}]})+'\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});});
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('#cloudConnection').dataset.state==='connected');
  const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')));
- for(const id of ['2022-beijing-3','2025-beijing-11','2025-beijing-19-1','2025-ii-16']){
-  question=bank.find(q=>q.id===id).question;parts=['2025-beijing-19-1','2025-ii-16'].includes(id)?2:1;await page.locator('#question').fill(question);await page.locator('#solveButton').click();await page.waitForFunction(()=>document.querySelector('#solveProgress').dataset.state==='complete'&&!document.querySelector('#solveButton').disabled);
+ for(const id of ['2022-beijing-3','2025-beijing-11','2022-ii-21-1','2025-beijing-19-1','2025-ii-16']){
+  question=bank.find(q=>q.id===id).question;parts=['2022-ii-21-1','2025-beijing-19-1','2025-ii-16'].includes(id)?2:1;await page.locator('#question').fill(question);await page.locator('#solveButton').click();await page.waitForFunction(()=>document.querySelector('#solveProgress').dataset.state==='complete'&&!document.querySelector('#solveButton').disabled);
   const r=await read();assert.equal(r.solution.restatement,question);assert.equal(r.solution.completion.answered,parts);assert(r.solution.parts.every(p=>p.source==='symbolic-verified-override'));assert.equal(r.solution.model_strategy,'原模型待解策略');assert.equal(r.solution.model_scene.a,3);
   assert.equal(await page.locator('#solution .katex-error').count(),0);for(const k of ['missing','answerMissing','missingLines','answerMissingLines','invalid','missingPolygons'])assert.equal(r.solution.sceneAudit[k].length,0,k);
   if(id==='2022-beijing-3'){assert.equal(r.scene.type,'circle');assert.equal(r.scene.h,.5);assert(r.scene.lines.some(l=>l.label==='对称轴'));}
   if(id==='2025-beijing-11'){assert.equal(r.scene.p,3);assert.match(r.solution.parts[0].answer,/p=6/);}
+  if(id==='2022-ii-21-1'){
+   assert.equal(r.scene.type,'hyperbola');
+   assert.equal(r.scene.lines.filter(line=>line.role==='asymptote').length,2);
+   assert.equal(r.scene.lines.length,2,'The verified graph already contains focal line AB as a dependent construction');
+   assert.match(r.solution.title,/三种条件组合/);
+   assert.equal(r.solution.parts[1].steps.filter(s=>s.includes('⇒')).length,3);
+   await page.locator('[data-study-part="1"]').click();
+   const labels=()=>page.evaluate(()=>window.DongBoardLabels.snapshot().placements.flatMap(n=>n.names||[]));
+   assert(!(await labels()).includes('M'));
+   await page.locator('[data-study-part="2"]').click();await page.locator('#homeButton').click();
+   assert((await labels()).includes('M'));
+   const readGeometry=()=>page.evaluate(()=>{
+    const api=window.__conditionApi,scene=api.sceneData(),engine=window.DongSceneAudit.frame(scene,window.DongConstruct).engine;
+    const keys=['driver','upper','lower','middle','p','q'];
+    return{view:api.state.view,points:Object.fromEntries(keys.map(key=>[key,engine.resolve('asymptote-midpoint-'+key)]))};
+   });
+   const old=await readGeometry(),v=old.view,box=await page.locator('#canvas').boundingBox();
+   const xy=p=>({x:box.x+(p.x-v.xmin)/(v.xmax-v.xmin)*box.width,y:box.y+(v.ymax-p.y)/(v.ymax-v.ymin)*box.height});
+   const theta=Math.atan(1.8*Math.sqrt(3)),from=xy(old.points.driver),to=xy({x:2+1.1*Math.cos(theta),y:1.1*Math.sin(theta)});
+   await page.mouse.move(from.x,from.y);await page.mouse.down();await page.mouse.move(to.x,to.y,{steps:12});await page.mouse.up();
+   const {points}=await readGeometry();
+   for(const key of Object.keys(points))assert.notDeepEqual(points[key],old.points[key],key+' follows the focal line');
+   const {upper:A,lower:B,middle:M,p:P,q:Q}=points,near=(a,b)=>assert(Math.abs(a-b)<1e-7,a+' != '+b);
+   near(A.y,Math.sqrt(3)*A.x);near(B.y,-Math.sqrt(3)*B.x);near(2*M.x,A.x+B.x);
+   near((A.x-B.x)*(P.y-Q.y),(A.y-B.y)*(P.x-Q.x));
+   assert(P.x>Q.x&&Q.x>0&&P.y>0);
+   assert.match(await page.locator('#metrics').textContent(),/\|MA\|.*\|MB\|/s);
+   await page.locator('#homeButton').click();await screenshot('asymptote-midpoint-desktop.png',null);
+   await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="board"]').click();
+   await page.locator('#homeButton').click();
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+   await screenshot('asymptote-midpoint-390.png',null);
+   await page.setViewportSize({width:1600,height:1050});
+  }
   if(id==='2025-beijing-19-1'){
    assert.equal(r.scene.objects.filter(n=>n.op==='tangent').length,1);
    assert(r.scene.lines.every(line=>line.b!==9),'Replace the incomplete cloud scene even when it contains its own line');
@@ -50,7 +84,21 @@ module.exports=async({page,context,assert,screenshot})=>{
    await screenshot('ellipse-tangent-ratio-desktop.png',null);
    await drag(M,{x:0,y:Math.SQRT2});
    assert(Math.abs((await readGeometry()).M.x)>1e-7,'The excluded y-axis point never becomes the contact point');
+   await page.evaluate(()=>{
+    const api=window.__conditionApi;
+    api.state.model.objects.find(node=>node.id==='tangent-ratio-driver').t=Math.PI/2-.001;
+    api.render();
+   });
+   await page.locator('#homeButton').click();
+   const far=await readGeometry();
+   assert(Math.abs(far.B.x)>1000,'The true intersection remains far from the ellipse');
+   assert(far.view.xmax-far.view.xmin<40,'Home keeps the ellipse readable near the excluded axis');
+   assert.match(await page.locator('#tangentViewportNote').textContent(),/在视野外/);
+   assert(await page.locator('#tangentViewportNote').isVisible());
+   assert.match(await page.locator('#metrics').textContent(),/距离比/);
+   await screenshot('ellipse-tangent-near-axis.png',null);
    await page.locator('[data-study-part="1"]').click();
+   assert(!await page.locator('#tangentViewportNote').isVisible());
    assert(!(await labels()).includes('M'));assert.doesNotMatch(await page.locator('#metrics').textContent(),/距离比/);
    await page.locator('[data-study-part="2"]').click();
    for(const width of [390,320]){
@@ -63,7 +111,7 @@ module.exports=async({page,context,assert,screenshot})=>{
    await page.setViewportSize({width:1600,height:1050});
   }
  }
- assert.equal(calls,4);await page.locator('[data-study-part="2"]').click();await page.locator('#homeButton').click();await page.locator('#areaChordPanel summary').click();assert.match(await page.locator('#areaChordReadout').textContent(),/面积条件已保持/);
+ assert.equal(calls,5);await page.locator('[data-study-part="2"]').click();await page.locator('#homeButton').click();await page.locator('#areaChordPanel summary').click();assert.match(await page.locator('#areaChordReadout').textContent(),/面积条件已保持/);
  assert.match(await page.locator('#metrics').textContent(),/△OAB · 面积/);assert.doesNotMatch(await page.locator('#metrics').textContent(),/暂未定位/,'Native A/B triangle is not suppressed by the hidden legacy chord');
  const geometry=()=>page.evaluate(()=>{const r=JSON.parse(localStorage.getItem('zhigeometry:last')),f=window.DongSceneAudit.frame({...r.scene,activePart:r.activePart},window.DongConstruct);return{scene:r.scene,A:f.engine.resolve('area-chord-A'),B:f.engine.resolve('area-chord-B')};});
  let old=await geometry();await page.locator('[data-area-chord-choice="1"]').click();let now=await geometry();assert(Math.abs(now.A.x+old.B.x)<1e-7);assert(Math.abs(now.B.x+old.A.x)<1e-7);assert(Math.abs(Math.hypot(now.A.x-now.B.x,now.A.y-now.B.y)-Math.sqrt(5))<1e-7);

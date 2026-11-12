@@ -1,5 +1,5 @@
 module.exports=async({page,assert,screenshot})=>{
-  const ids=['2022-i-21','2023-ii-21','2024-i-12','2024-i-16','2025-i-18','2025-ii-16','2025-beijing-19-1'];
+  const ids=['2022-ii-21-1','2022-i-21','2023-ii-21','2024-i-12','2024-i-16','2025-i-18','2025-ii-16','2025-beijing-19-1'];
   await page.locator('#openQuestionBank').click();
   await page.locator('#bankList button').first().waitFor();
   assert.equal(await page.locator('[data-bank-paper]').count(),0,'卷别只有一个选择入口');
