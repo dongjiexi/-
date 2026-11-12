@@ -2,11 +2,19 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 MAX_TEXT = 18000
 MAX_PARTS = 12
 ROMAN = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7, "viii": 8}
-TOKEN = r"(?:\d{1,2}|viii|vii|vi|iv|v|iii|ii|i)"
+NUMBER, LETTER = r"[0-9０-９]{1,2}", r"viii|vii|vi|iv|v|iii|ii|i|[Ⅰ-Ⅷⅰ-ⅷ]"
+TOKEN = f"(?:{NUMBER}|{LETTER})"
+SCORE = r"[（(][ \t　]*(?:(?:本(?:小)?题)?满分[ \t　]*)?[0-9０-９]{1,3}(?:[.．][0-9０-９]{1,2})?[ \t　]*分[ \t　]*[）)]"
+LEAD = "已知|若|当|设|在|由|从|利用|记|取|过(?!后|去|了)|令|如图|如表|求|证明|求证|写出|确定|计算|讨论|判断|说明|试|找出|给出|建立|作|研究|分析|选择|是否|椭圆|双曲线|抛物线|圆|直线|点|函数|数列|矩形|三角形|向量"
+HEAD_START = rf"(?:{LEAD}|\$|\\[\[(]|[（(][ \t　]*{TOKEN}[ \t　]*[）)])"
+EXAM_NUMBER = re.compile(rf"^\s*(?:第[ \t　]*{NUMBER}[ \t　]*题[：:、．.]?|{NUMBER}[.．、](?![0-9０-９]))(?=[ \t　]*(?:[\r\n]|{SCORE}|{HEAD_START}))", re.I)
+LEADING_SCORE = re.compile(rf"^(\s*){SCORE}(?=\s*(?:{HEAD_START}|$))", re.I)
+TRAILING_SCORE = re.compile(rf"([。；;！!？?]|\r?\n)[ \t　]*{SCORE}(?=\s*$)")
 
 
 class QuestionPartsError(ValueError):
@@ -30,7 +38,7 @@ def _strip_wrap(value: str) -> str:
 def _heading(text: str, start: int, end: int) -> bool:
     before, after = _strip_wrap(text[max(0, start-160):start]), _strip_wrap(text[end:end+180])
     left, right = before.rstrip(), after.lstrip()
-    if re.match(r"[+\-*/^=<>≤≥),%\d]", right):
+    if re.match(r"[+\-*/^=<>≤≥),%0-9０-９]", right):
         return False
     if re.match(r"[（(]\s*"+TOKEN+r"\s*[）)]", right, re.I) or re.search(r"[（(]\s*"+TOKEN+r"\s*[）)]\s*$", left, re.I):
         return False
@@ -39,22 +47,23 @@ def _heading(text: str, start: int, end: int) -> bool:
     line_start = max(text.rfind("\n", 0, start), text.rfind("\r", 0, start))+1
     if re.fullmatch(r"(?:\s|\$|\\[()\[\]])*", text[line_start:start]):
         return True
-    if re.search(r"[A-Za-z0-9_√π*/^+=-]\s*$", left):
+    if re.search(r"[A-Za-z0-9０-９_√π*/^+=-]\s*$", left):
         return False
     if re.search(r"(?:在|由|根据|依据|利用|结合|参见|见|第|前述|上述|小问|问题|题|求出|求|证明|式|编号|条件)\s*$", left):
         return False
     if re.search(r"[。；;:：!?！？]\s*$", left):
         return True
-    return bool(re.match(r"(?:求|证明|求证|若|当|设|已知|写出|确定|计算|讨论|判断|说明|试|找出|给出|建立|作|研究|分析|选择|是否|在|椭圆|双曲线|抛物线|圆|直线|点|函数|数列|矩形|三角形|向量)", right))
+    return bool(re.match(rf"(?:{LEAD})", LEADING_SCORE.sub(r"\1", right).lstrip()))
 
 
 def _scan(text: str, roman: bool = False) -> list[dict]:
-    pattern = r"[（(]\s*(viii|vii|vi|iv|v|iii|ii|i)\s*[）)]" if roman else r"[（(]\s*(\d{1,2})\s*[）)]"
+    pattern = rf"[（(]\s*({LETTER if roman else NUMBER})\s*[）)]"
     result = []
     for match in re.finditer(pattern, text, re.I if roman else 0):
         if not _heading(text, match.start(), match.end()):
             continue
-        number = match.group(1).lower() if roman else int(match.group(1))
+        token = unicodedata.normalize("NFKC", match.group(1)).lower()
+        number = token if roman else int(token)
         if not roman and number < 1:
             continue
         result.append({"index": match.start(), "end": match.end(), "number": number, "raw": match.group(0)})
@@ -65,8 +74,34 @@ def headings(text: str) -> list[dict]:
     return _scan(_checked_text(text))
 
 
+def exam_content(value: str) -> str:
+    """Return mathematical content while headings() keeps original source offsets."""
+    original = _checked_text(value)
+    without_number = EXAM_NUMBER.sub("", original)
+    text = (LEADING_SCORE.sub(r"\1", original) if without_number == original
+            else LEADING_SCORE.sub(r"\1", without_number).lstrip())
+    numeric = _scan(text)
+    markers = []
+    for i, part in enumerate(numeric):
+        markers.append(part)
+        start = part["end"]
+        end = numeric[i+1]["index"] if i+1 < len(numeric) else len(text)
+        markers.extend({**child, "index": child["index"]+start, "end": child["end"]+start}
+                       for child in _scan(text[start:end], True))
+    if not markers:
+        return TRAILING_SCORE.sub(r"\1", text)
+    content = [TRAILING_SCORE.sub(r"\1", text[:markers[0]["index"]])]
+    for i, part in enumerate(markers):
+        content.append(re.sub(r"[０-９Ⅰ-Ⅷⅰ-ⅷ]",
+                              lambda match: unicodedata.normalize("NFKC", match[0]).lower(), part["raw"]))
+        end = markers[i+1]["index"] if i+1 < len(markers) else len(text)
+        segment = LEADING_SCORE.sub(r"\1", text[part["end"]:end])
+        content.append(TRAILING_SCORE.sub(r"\1", segment))
+    return "".join(content)
+
+
 def split_problem_parts(text: str) -> list[dict]:
-    text = _checked_text(text)
+    text = exam_content(text)
     matches = _scan(text)
     if not matches:
         body = text.strip()

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.70.15">
+  <meta name="dongjiexi-version" content="0.70.16">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.70.15">
-  <link rel="stylesheet" href="classroom.css?v=0.70.15">
-  <link rel="stylesheet" href="question-bank.css?v=0.70.15">
+  <link rel="stylesheet" href="learning-ui.css?v=0.70.16">
+  <link rel="stylesheet" href="classroom.css?v=0.70.16">
+  <link rel="stylesheet" href="question-bank.css?v=0.70.16">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -427,13 +427,13 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.70.15">
-  <link rel="stylesheet" href="autumn.css?v=0.70.15">
+  <link rel="stylesheet" href="theme.css?v=0.70.16">
+  <link rel="stylesheet" href="autumn.css?v=0.70.16">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.15 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.16 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -638,55 +638,55 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.70.15"></script>
+  <script src="runtime.js?v=0.70.16"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.70.15"></script>
-  <script src="number-display.js?v=0.70.15"></script>
-  <script src="label-layout.js?v=0.70.15"></script>
-  <script src="step-highlight.js?v=0.70.15"></script>
-  <script src="scene-audit.js?v=0.70.15"></script>
-  <script src="answer-geometry.js?v=0.70.15"></script>
-  <script src="scene-merge.js?v=0.70.15"></script>
-  <script src="tangent-solver.js?v=0.70.15"></script>
-  <script src="ellipse-distance.js?v=0.70.15"></script>
-  <script src="circle-dot.js?v=0.70.15"></script>
-  <script src="orthogonal-chord.js?v=0.70.15"></script>
-  <script src="axis-intercept-chord.js?v=0.70.15"></script>
-  <script src="conic-area.js?v=0.70.15"></script>
-  <script src="basic-conditions.js?v=0.70.15"></script>
-  <script src="parabola-focal-choice.js?v=0.70.15"></script>
-  <script src="algebra-geometry.js?v=0.70.15"></script>
-  <script src="ellipse-area-chord.js?v=0.70.15"></script>
-  <script src="ellipse-tangent-ratio.js?v=0.70.15"></script>
-  <script src="vertex-secant.js?v=0.70.15"></script>
-  <script src="inverse-locus.js?v=0.70.15"></script>
-  <script src="symmetric-chord.js?v=0.70.15"></script>
-  <script src="parabola-locus.js?v=0.70.15"></script>
-  <script src="question-parts.js?v=0.70.15"></script>
-  <script src="goal-coverage.js?v=0.70.15"></script>
-  <script src="solution-review.js?v=0.70.15"></script>
-  <script src="parabola-focal-data.js?v=0.70.15"></script>
-  <script src="circle-fold.js?v=0.70.15"></script>
-  <script src="circle-fold-view.js?v=0.70.15"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.70.15">
-  <script src="hyperbola-iteration.js?v=0.70.15"></script>
-  <script src="hyperbola-asymptote-midpoint.js?v=0.70.15"></script>
-  <script src="conic-parameter.js?v=0.70.15"></script>
-  <script src="ellipse-focal-chord.js?v=0.70.15"></script>
-  <script src="external-ai.js?v=0.70.15"></script>
-  <script src="learning-ui.js?v=0.70.15"></script>
-  <script src="classroom.js?v=0.70.15"></script>
-  <script src="question-bank.js?v=0.70.15"></script>
-  <script src="construction-board.js?v=0.70.15"></script>
-  <script src="motion-domain.js?v=0.70.15"></script>
-  <script src="motion-protection.js?v=0.70.15"></script>
-  <script src="drag-board.js?v=0.70.15"></script>
-  <script src="equation-builder.js?v=0.70.15"></script>
-  <script src="math-keyboard.js?v=0.70.15"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.70.15"></script>
-  <script src="geogebra-bridge.js?v=0.70.15"></script>
-  <script src="unified-board.js?v=0.70.15"></script>
+  <script src="math-input.js?v=0.70.16"></script>
+  <script src="number-display.js?v=0.70.16"></script>
+  <script src="label-layout.js?v=0.70.16"></script>
+  <script src="step-highlight.js?v=0.70.16"></script>
+  <script src="scene-audit.js?v=0.70.16"></script>
+  <script src="answer-geometry.js?v=0.70.16"></script>
+  <script src="scene-merge.js?v=0.70.16"></script>
+  <script src="tangent-solver.js?v=0.70.16"></script>
+  <script src="ellipse-distance.js?v=0.70.16"></script>
+  <script src="circle-dot.js?v=0.70.16"></script>
+  <script src="orthogonal-chord.js?v=0.70.16"></script>
+  <script src="axis-intercept-chord.js?v=0.70.16"></script>
+  <script src="conic-area.js?v=0.70.16"></script>
+  <script src="basic-conditions.js?v=0.70.16"></script>
+  <script src="parabola-focal-choice.js?v=0.70.16"></script>
+  <script src="algebra-geometry.js?v=0.70.16"></script>
+  <script src="ellipse-area-chord.js?v=0.70.16"></script>
+  <script src="ellipse-tangent-ratio.js?v=0.70.16"></script>
+  <script src="vertex-secant.js?v=0.70.16"></script>
+  <script src="inverse-locus.js?v=0.70.16"></script>
+  <script src="symmetric-chord.js?v=0.70.16"></script>
+  <script src="parabola-locus.js?v=0.70.16"></script>
+  <script src="question-parts.js?v=0.70.16"></script>
+  <script src="goal-coverage.js?v=0.70.16"></script>
+  <script src="solution-review.js?v=0.70.16"></script>
+  <script src="parabola-focal-data.js?v=0.70.16"></script>
+  <script src="circle-fold.js?v=0.70.16"></script>
+  <script src="circle-fold-view.js?v=0.70.16"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.70.16">
+  <script src="hyperbola-iteration.js?v=0.70.16"></script>
+  <script src="hyperbola-asymptote-midpoint.js?v=0.70.16"></script>
+  <script src="conic-parameter.js?v=0.70.16"></script>
+  <script src="ellipse-focal-chord.js?v=0.70.16"></script>
+  <script src="external-ai.js?v=0.70.16"></script>
+  <script src="learning-ui.js?v=0.70.16"></script>
+  <script src="classroom.js?v=0.70.16"></script>
+  <script src="question-bank.js?v=0.70.16"></script>
+  <script src="construction-board.js?v=0.70.16"></script>
+  <script src="motion-domain.js?v=0.70.16"></script>
+  <script src="motion-protection.js?v=0.70.16"></script>
+  <script src="drag-board.js?v=0.70.16"></script>
+  <script src="equation-builder.js?v=0.70.16"></script>
+  <script src="math-keyboard.js?v=0.70.16"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.70.16"></script>
+  <script src="geogebra-bridge.js?v=0.70.16"></script>
+  <script src="unified-board.js?v=0.70.16"></script>
   <script>
   (() => {
     'use strict';
@@ -871,6 +871,7 @@
     }
     function enrichSolvedScene(result,raw){
       const model=result?.scene;if(!model){if(result)result.sceneAudit=window.DongSceneAudit?.inspect(null,raw,result.parts||[],window.DongConstruct);return result;}
+      raw=window.DongQuestionParts.examContent(raw);
       const geometryParts=result.circleDotAligned?result.parts.map(part=>({...part,steps:[...(part.steps||[]),...(part.model_steps||[])]})):result.parts;
       window.DongSceneAudit?.prepare(model,raw,geometryParts);
       const s=normalize(raw),name=value=>value.toUpperCase().replace('1','₁').replace('2','₂');
@@ -1052,6 +1053,7 @@
     }
 
     function parseQuestion(raw) {
+      raw=window.DongQuestionParts.examContent(raw);
       const independent=window.DongAlgebraGeometry?.solve(raw)||window.DongParabolaFocalChoice?.solve(raw)||window.DongBasicConditions?.solve(raw)||window.DongEllipseAreaChord?.solve(raw)||window.DongEllipseTangentRatio?.solve(raw)||window.DongHyperbolaAsymptoteMidpoint?.solve(raw);if(independent)return modelFromJson(JSON.stringify(independent.scene));
       const symmetric=window.DongSymmetricChord?.solve(raw);if(symmetric)return modelFromJson(JSON.stringify(symmetric.scene));
       const s = normalize(raw);
@@ -1935,6 +1937,10 @@
       return{answer,steps};
     }
     function browserDeterministicSolution(raw){
+      const result=browserSolveContent(window.DongQuestionParts.examContent(raw));
+      return {...result,restatement:raw};
+    }
+    function browserSolveContent(raw){
       const focalChoice=window.DongParabolaFocalChoice?.solve(raw);if(focalChoice)return focalChoice;
       const algebra=window.DongAlgebraGeometry?.solve(raw);if(algebra)return algebra;
       const basic=window.DongBasicConditions?.solve(raw);if(basic)return basic;
@@ -2014,7 +2020,19 @@
       if(/证明|证实|验证|垂直/.test(body)&&/动点|动直线|任意|恒|随着|变化|取遍/.test(raw))return '这是一项关于可变位置的证明，当前内置规则尚未完成一般性推导。';
       return '';
     }
-    async function parseAndInstall(){const btn=$('#parseButton');btn.disabled=true;btn.textContent='正在反推…';try{const d=await window.DongRuntime.request('/api/solve',{text:question.value,rules_only:true});showSolution(d);if(!d.scene)throw new Error(d.answer||'条件不足，无法唯一确定图形。');stageScenePreview(modelFromJson(JSON.stringify(d.scene)),'题干条件');}catch(e){try{stageScenePreview(parseQuestion(question.value),'标准式');}catch(localError){setStatus(localError.message||e.message||'无法建立图形。',true);}}finally{btn.disabled=false;btn.textContent='仅快速建图';}}
+    async function parseAndInstall(){
+      const btn=$('#parseButton'),original=question.value.trim();btn.disabled=true;btn.textContent='正在反推…';
+      try{
+        const text=window.DongQuestionParts.examContent(original);
+        const d=await window.DongRuntime.request('/api/solve',{text,rules_only:true});
+        if(question.value.trim()!==original)return;
+        if(!d.scene)throw new Error(d.answer||'无法建立图形。');
+        showSolution({...d,restatement:original});stageScenePreview(modelFromJson(JSON.stringify(d.scene)),'题干条件');
+      }catch(error){
+        if(question.value.trim()!==original)return;
+        try{stageScenePreview(parseQuestion(original),'标准式');}catch(localError){setStatus(localError.message||error.message||'无法建立图形。',true);}
+      }finally{btn.disabled=false;btn.textContent='仅快速建图';}
+    }
     function applyJson(){try{installScene(modelFromJson(sceneJson.value),'场景配置');}catch(e){setStatus(e.message,true);}}
     function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),400);}
     function exportJson(){if(!state.model){setStatus('没有可导出的场景。',true);return;}download('geometry-scene.json',new Blob([sceneJson.value],{type:'application/json'}));}
@@ -2120,7 +2138,7 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.70.15"></script>
-  <script src="release-support.js?v=0.70.15"></script>
+  <script src="pwa.js?v=0.70.16"></script>
+  <script src="release-support.js?v=0.70.16"></script>
 </body>
 </html>

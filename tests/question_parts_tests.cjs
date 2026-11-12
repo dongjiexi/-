@@ -65,3 +65,13 @@ test('classic browser global and CommonJS expose the same methods',()=>{
 test('heading offsets point to the original tokens without changing text',()=>{
   const q='前提\n（1）求x；（2）根据（1）的结果求y。';for(const h of api.headings(q))assert.equal(q.slice(h.index,h.end),h.raw);
 });
+
+test('exam paste layouts isolate printed marks while preserving maths and offsets',()=>{
+  const cases=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/exam-copy-layouts.json'),'utf8'));
+  for(const {input,content,parts} of cases){
+    assert.equal(api.examContent(input),content,input);
+    assert.equal(api.examContent(content),content,'Exam content must be idempotent');
+    assert.deepEqual(indexes(input),parts,input);
+    for(const marker of api.headings(input))assert.equal(input.slice(marker.index,marker.end),marker.raw);
+  }
+});

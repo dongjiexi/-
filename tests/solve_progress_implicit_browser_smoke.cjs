@@ -24,6 +24,17 @@ module.exports=async({page,assert,errors})=>{
   await solve('已知圆 C：4x²+4y²=100，求圆的半径。',{state:'complete',type:'circle',r2:25});
   await solve('椭圆 C：4(x-1)²+9(y+2)²=36，求焦点坐标。',{state:'complete',type:'ellipse',a2:9,b2:4,h:1,k:-2});
   await solve('已知椭圆 C：4x²+9y²=36，证明任意直线都与一个定圆相切。',{state:'partial',type:'ellipse',a2:9,b2:4});
+  const copied='7．（本小题满分5分）\n已知椭圆 C：4x²+9y²=36，求顶点。';
+  await page.locator('#question').fill(copied);
+  await page.locator('#parseButton').click();
+  await page.locator('#scenePreviewDialog').waitFor({state:'visible'});
+  const preview=JSON.parse(await page.locator('#scenePreviewJson').inputValue());
+  assert.equal(preview.type,'ellipse');assert.equal(preview.a,3);assert.equal(preview.b,2);
+  await page.locator('#confirmScenePreview').click();
+  assert.equal(await page.locator('#question').inputValue(),copied);
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')));
+  assert.equal(saved.question,copied);
+  assert.equal(saved.scene.type,'ellipse');
   await page.locator('#question').fill('已知椭圆 C：4x²+9y²=36，求顶点。');
   assert.equal(await page.locator('#solveProgress').getAttribute('data-state'),'idle','题目变化后旧结果不能继续显示为当前题已完成');
   await page.locator('#question').fill('');

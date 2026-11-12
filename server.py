@@ -2044,13 +2044,15 @@ def deterministic_parts(text: str, scene: dict, base_answer: str, base_steps: li
 
 
 def fallback_solution(text: str) -> dict:
+    original = text
+    text = question_parts.exam_content(original)
     if has_uncertainty(text):
         raise ValueError("题面仍含“[看不清]”或其它未确认字段。请先补正题目，再进行本地反推。")
     scene = standard_conic(text)
     if not scene:
         base_parts = split_problem_parts(text)
         return attach_trust_report({
-            "mode": "symbolic-fallback", "title": "当前内置规则尚未覆盖", "restatement": text,
+            "mode": "symbolic-fallback", "title": "当前内置规则尚未覆盖", "restatement": original,
             "answer": "题目可能具有唯一答案，但当前确定性规则尚未覆盖这组条件；这不等于题目条件不足。请选择云端解题继续推导。",
             "steps": ["题干和各小问已完整保留。", "由于尚未建立可回代核验的符号模型，内置引擎不会猜测结论，也不会擅自要求补充条件。"],
             "parts": [{**part, "status": "partial", "answer": "当前内置规则尚未覆盖这一问，不能据此判定题目条件不足。", "steps": ["题面已保留，可交给云端 AI 继续求解。", "只有能指出缺少的独立条件并证明存在不同答案时，才会标记为‘需要补充条件’。"]} for part in base_parts],
@@ -2076,7 +2078,7 @@ def fallback_solution(text: str) -> dict:
     summary_answer = parts[0]["answer"] if len(parts) == 1 and parts[0]["status"] == "answered" else answer
     summary_steps = parts[0]["steps"] if len(parts) == 1 and parts[0]["status"] == "answered" else base_steps
     return attach_trust_report({
-        "mode": "symbolic-fallback", "title": "董解析内置确定性解答", "restatement": text,
+        "mode": "symbolic-fallback", "title": "董解析内置确定性解答", "restatement": original,
         "answer": summary_answer,
         "strategy": "先把自然语言条件转为精确曲线模型，再按小问计算方程、特殊点或固定直线交点；未覆盖的证明目标明确标为待完成。",
         "steps": summary_steps,

@@ -101,6 +101,15 @@ class QuestionPartsTests(unittest.TestCase):
             with self.subTest(id=item["id"]):
                 self.assertEqual(self.indexes(item["question"]), [1, 2] if item["id"] in {"2022-ii-21-full", "2022-beijing-19-full", "2025-beijing-19-full"} else [0])
 
+    def test_exam_copy_layouts(self):
+        from question_parts import exam_content
+        cases = json.loads((ROOT/"tests/fixtures/exam-copy-layouts.json").read_text(encoding="utf-8"))
+        for case in cases:
+            with self.subTest(input=case["input"]):
+                self.assertEqual(exam_content(case["input"]), case["content"])
+                self.assertEqual(exam_content(case["content"]), case["content"])
+                self.assertEqual(self.indexes(case["input"]), case["parts"])
+
     def test_offsets_are_original_tokens(self):
         q = "前提\n（1）求x；（2）根据（1）的结果求y。"
         for heading in headings(q):

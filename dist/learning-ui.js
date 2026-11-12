@@ -520,6 +520,7 @@
       activeJob='pending';find('#cancelJob').disabled=true;
       busy(true);find('#jobPhase').textContent='正在连接解题引擎…';
       try{
+        if(body.kind==='solve')body={...body,text:window.DongQuestionParts.examContent(body.text)};
         if(solveMode==='cloud'&&cloudTransport==='sse'&&['solve','chat','recognize'].includes(body.kind)){
           streamController=new AbortController();activeJob='stream';find('#cancelJob').disabled=false;
           const result=await runtime.streamJob(body,{signal:streamController.signal,onProgress:count=>{find('#jobPhase').textContent=`${body.kind==='recognize'?'DeepSeek 正在读取原图与公式':'云端正在整理解答'} · ${count} 字符`;}});
@@ -960,7 +961,7 @@
       try{
         const browser=api.solveDeterministic?.(original);
         if(browser?.engineExtensions?.length)deterministic=browser;
-        if(!deterministic&&runtime.config.apiEnabled&&(solveMode==='cloud'||(runtime.config.deployment!=='web'&&!runtime.config.apiBase))){try{deterministic=await request('/api/solve',{text:original,rules_only:true});}catch(error){if(!api.solveDeterministic)throw error;}}
+        if(!deterministic&&runtime.config.apiEnabled&&(solveMode==='cloud'||(runtime.config.deployment!=='web'&&!runtime.config.apiBase))){try{deterministic=await request('/api/solve',{text:window.DongQuestionParts.examContent(original),rules_only:true});}catch(error){if(!api.solveDeterministic)throw error;}}
         if(!deterministic)deterministic=browser;
         if(!deterministic)throw new Error('当前环境未能启动内置解题模块。');
         acceptResult(deterministic);

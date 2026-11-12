@@ -1,7 +1,7 @@
 /* Sourced originals; incomplete replies test independent answer/scene recovery. */
 const fs=require('node:fs'),path=require('node:path');
 module.exports=async({page,context,assert,screenshot})=>{
- const bank=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8')).items;let question='',calls=0,parts=1;
+ const bank=JSON.parse(fs.readFileSync(path.join(__dirname,'../dist/question-bank.json'),'utf8')).items;let question='',calls=0,parts=1,submittedText;
  await context.addInitScript(()=>{
   let learning;
   Object.defineProperty(window,'DongLearning',{configurable:true,get:()=>learning,set:value=>{
@@ -11,17 +11,21 @@ module.exports=async({page,context,assert,screenshot})=>{
  });
  await context.route('**/runtime-config.js',r=>r.fulfill({contentType:'application/javascript',body:'window.DONGJIEXI_CONFIG={deployment:"web",apiEnabled:true,requiresAuth:false};'}));
  await context.route('**/api/health',r=>r.fulfill({json:{app:'董解析',capabilities:{transport:'sse'},engine:{available:true,remote:true,models:['fixture-cloud']}}}));
- await context.route('**/api/stream',r=>{calls++;const raw={title:'未完成模型回复',restatement:question,strategy:'原模型待解策略',parts:Array.from({length:parts},(_,i)=>({index:parts===1?0:i+1,status:'partial',answer:'尚未求解',steps:['尚未推导。']})),scene:{type:'ellipse',a:3,b:1,points:{},lines:/OMA|①②③/.test(question)?[{id:'wrong-cloud-line',kind:'slope',m:0,b:9,label:'云端错误线'}]:[],constructions:[]}};return r.fulfill({contentType:'text/event-stream',body:'data: '+JSON.stringify({choices:[{delta:{content:JSON.stringify(raw)}}]})+'\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});});
+ await context.route('**/api/stream',r=>{calls++;assert.equal(r.request().postDataJSON().text,question,'Cloud sees the math without grading metadata');const raw={title:'未完成模型回复',restatement:question,strategy:'原模型待解策略',parts:Array.from({length:parts},(_,i)=>({index:parts===1?0:i+1,status:'partial',answer:'尚未求解',steps:['尚未推导。']})),scene:{type:'ellipse',a:3,b:1,points:{},lines:/OMA|①②③/.test(question)?[{id:'wrong-cloud-line',kind:'slope',m:0,b:9,label:'云端错误线'}]:[],constructions:[]}};return r.fulfill({contentType:'text/event-stream',body:'data: '+JSON.stringify({choices:[{delta:{content:JSON.stringify(raw)}}]})+'\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});});
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('#cloudConnection').dataset.state==='connected');
  const read=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')));
  for(const id of ['2022-beijing-3','2025-beijing-11','2022-ii-21-1','2025-beijing-19-1','2025-ii-16']){
-  question=bank.find(q=>q.id===id).question;parts=['2022-ii-21-1','2025-beijing-19-1','2025-ii-16'].includes(id)?2:1;await page.locator('#question').fill(question);await page.locator('#solveButton').click();await page.waitForFunction(()=>document.querySelector('#solveProgress').dataset.state==='complete'&&!document.querySelector('#solveButton').disabled);
-  const r=await read();assert.equal(r.solution.restatement,question);assert.equal(r.solution.completion.answered,parts);assert(r.solution.parts.every(p=>p.source==='symbolic-verified-override'));assert.equal(r.solution.model_strategy,'原模型待解策略');assert.equal(r.solution.model_scene.a,3);
+  question=bank.find(q=>q.id===id).question;parts=['2022-ii-21-1','2025-beijing-19-1','2025-ii-16'].includes(id)?2:1;submittedText=id==='2022-ii-21-1'?'第21题（本小题满分12分）\n'+question.replace('（1）','（１）（５分）').replace('（2）','（２）（7分）'):question;
+  await page.locator('#question').fill(submittedText);await page.locator('#solveButton').click();await page.waitForFunction(()=>document.querySelector('#solveProgress').dataset.state==='complete'&&!document.querySelector('#solveButton').disabled);
+  const r=await read();assert.equal(r.question,submittedText);assert.equal(r.solution.restatement,submittedText);assert.equal(r.solution.completion.answered,parts);assert(r.solution.parts.every(p=>p.source==='symbolic-verified-override'));assert.equal(r.solution.model_strategy,'原模型待解策略');assert.equal(r.solution.model_scene.a,3);
   assert.equal(await page.locator('#solution .katex-error').count(),0);for(const k of ['missing','answerMissing','missingLines','answerMissingLines','invalid','missingPolygons'])assert.equal(r.solution.sceneAudit[k].length,0,k);
   if(id==='2022-beijing-3'){assert.equal(r.scene.type,'circle');assert.equal(r.scene.h,.5);assert(r.scene.lines.some(l=>l.label==='对称轴'));}
   if(id==='2025-beijing-11'){assert.equal(r.scene.p,3);assert.match(r.solution.parts[0].answer,/p=6/);}
   if(id==='2022-ii-21-1'){
    assert.equal(r.scene.type,'hyperbola');
+   assert(!await page.locator('.stale-question').count());
+   await page.locator('#solution [data-lesson-detail="problem"] summary').click();
+   assert.match(await page.locator('#solution [data-lesson-detail="problem"]').textContent(),/本小题满分12分/);
    assert.equal(r.scene.lines.filter(line=>line.role==='asymptote').length,2);
    assert.equal(r.scene.lines.length,2,'The verified graph already contains focal line AB as a dependent construction');
    assert.match(r.solution.title,/三种条件组合/);
