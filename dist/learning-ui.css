@@ -150,4 +150,21 @@
 .image-page-list small{grid-column:1/-1;overflow-wrap:anywhere}
 #recognitionPageControl select{max-width:100%;width:100%;margin:.35rem 0}
 #recognitionPageText{white-space:pre-wrap;overflow-wrap:anywhere;max-height:24dvh;overflow:auto;font:inherit;padding:.45rem}
+.image-preview-actions,.image-adjust-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem}
+.image-preview-actions{margin-top:.4rem}
+.study-dialog.image-adjust-dialog{width:min(760px,94vw);max-height:92dvh;overflow:auto}
+.image-adjust-dialog h2{font-size:1.15rem}
+.image-adjust-dialog .button{min-height:36px}
+.image-adjust-dialog .dialog-actions{position:sticky;bottom:0;background:inherit}
+.image-adjust-actions{margin:.4rem 0}
+.image-adjust-tilt{display:grid;grid-template-columns:1fr auto;gap:.25rem}
+.image-adjust-dialog input[type="range"]{width:100%;min-width:0;padding:0;accent-color:#975b45}
+.image-adjust-tilt input{grid-column:1/-1}
+.image-adjust-stage{position:relative;overflow:hidden;margin:0 auto;touch-action:none;cursor:crosshair;background:white}
+.image-adjust-stage canvas{display:block;width:100%;height:auto}
+#imageAdjustBox{position:absolute;outline:2px solid #a74829;outline-offset:-2px;box-shadow:0 0 0 100vmax #21171480;pointer-events:none}
+.image-adjust-edges>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem}
+.image-adjust-edges label{min-width:0;display:grid}
+#imageAdjustMessage:empty{display:none}
+#toggleRecognitionOriginal{margin:0 0 .4rem}
 @media(max-width:700px){.recognition-comparison{grid-template-columns:1fr}.study-dialog.recognition-dialog{max-height:92dvh}.recognition-source img{max-height:26dvh}}

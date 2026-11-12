@@ -1,6 +1,6 @@
 'use strict';
 
-const VERSION = '0.70.18';
+const VERSION = '0.70.19';
 // Final release review refreshes connectivity-status fixes without losing drafts.
 const CACHE = `dongjiexi-app-${VERSION}`;
 const CORE = [
@@ -23,7 +23,7 @@ const CORE = [
   './conic-parameter.js',
   './math-input.js', './number-display.js', './tangent-solver.js', './ellipse-distance.js', './orthogonal-chord.js', './ellipse-focal-chord.js', './axis-intercept-chord.js', './conic-area.js',
   './', './index.html', './offline.html', './manifest.webmanifest', './app-version.json',
-  './runtime-config.js', './runtime.js', './recognition-contract.mjs', './scene-contract.mjs', './scene-audit.js', './cloud-contract.mjs', './external-contract.mjs', './external-ai.js', './pwa.js', './theme.css', './learning-ui.css', './recognition-pages.js', './learning-ui.js', './classroom.css',
+  './runtime-config.js', './runtime.js', './recognition-contract.mjs', './scene-contract.mjs', './scene-audit.js', './cloud-contract.mjs', './external-contract.mjs', './external-ai.js', './pwa.js', './theme.css', './learning-ui.css', './recognition-pages.js', './image-adjust.js', './learning-ui.js', './classroom.css',
   './classroom.js', './construction-board.js', './drag-board.js', './equation-builder.js', './math-keyboard.js', './mathlive-adapter.js', './geogebra-bridge.js',
   './question-bank.js', './question-bank.css', './question-bank.json',
   './motion-protection.js', './motion-domain.js',
