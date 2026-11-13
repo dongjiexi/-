@@ -106,7 +106,7 @@
 @media(max-width:480px) {
   .notebook-entry { flex-direction:column; }
   .notebook-entry .notebook-content { width:100%; }
-  .notebook-entry .notebook-actions { flex-direction:row;width:100%; }
+  .notebook-entry .notebook-actions { flex-direction:row;flex-wrap:wrap;width:100%; }
   .notebook-actions button { flex:1;min-height:40px; }
 }
 .stale-question { padding:.5rem;background:#fff1ce;border-radius:7px;font-size:.8rem; }

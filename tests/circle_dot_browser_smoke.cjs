@@ -12,7 +12,16 @@ module.exports=async({page,context,assert,screenshot})=>{
   }
   await screenshot('circle-dot-max.png',null);
   await page.reload({waitUntil:'domcontentloaded'});assert.equal(JSON.parse(await page.locator('#sceneJson').inputValue()).dotExtrema.moving,'P','Saved graph keeps the theorem metadata');
-  await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="board"]').click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await screenshot('circle-dot-mobile.png',null);
+  await page.setViewportSize({width:390,height:844});await page.locator('[data-mobile-panel="board"]').click();
+  const mobile=page.locator('#circleDotPanel');await mobile.locator('summary').click();
+  await mobile.locator('[data-dot-board-jump="min"]').click();
+  assert.equal(await mobile.locator('[data-dot-board-jump="min"]').textContent(),'已到达');
+  assert.match(await mobile.locator('#circleDotReadout').textContent(),/数量积最小值-4/);
+  await mobile.locator('[data-dot-board-jump="max"]').click();
+  assert.equal(await mobile.locator('[data-dot-board-jump="max"]').textContent(),'已到达');
+  assert.match(await mobile.locator('#circleDotReadout').textContent(),/数量积最大值6/);
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await screenshot('circle-dot-mobile.png',null);
   await page.setViewportSize({width:1600,height:1050});
   await context.route('**/runtime-config.js',r=>r.fulfill({contentType:'application/javascript',body:'window.DONGJIEXI_CONFIG={deployment:"web",apiEnabled:true,requiresAuth:false};'}));
   await context.route('**/api/health',r=>r.fulfill({json:{app:'董解析',capabilities:{transport:'sse'},engine:{available:true,remote:true,models:['fixture-cloud']}}}));

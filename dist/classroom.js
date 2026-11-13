@@ -14,6 +14,12 @@
     nextPart.id='classroomNextPart';nextPart.textContent='下一问';
     find('#classroomPart').before(previousPart);find('#classroomPart').after(nextPart);
     find('#classroomProgress').setAttribute('role','status');
+    const locateStep=document.createElement('button'),saveLecture=document.createElement('button'),lectureStatus=document.createElement('span');
+    locateStep.id='classroomLocateStep';locateStep.textContent='本步图形';
+    saveLecture.id='classroomSave';saveLecture.textContent='保存讲题进度';
+    lectureStatus.id='classroomFeedback';lectureStatus.setAttribute('role','status');
+    find('#classroomProgress').after(locateStep);
+    find('#exitClassroom').before(saveLecture,lectureStatus);
     const ink=document.createElement('canvas');ink.id='classroomInk';ink.hidden=true;ink.setAttribute('aria-label','讲题屏幕批注');find('.canvas-wrap').append(ink);
     let casting=false,pen=false,strokes=[],activeStroke=null,activePointer=null,solutionRef=null,inkHost=null,inkPart=api.state.activePart;
     let fullscreenOwned=false,fullscreenPending=false,lectureSession=0;
@@ -71,11 +77,13 @@
       const count=Math.min(part.steps.length,Math.max(0,Number(data.counts[part.index])||0));
       find('#classroomProgress').textContent=`${count} / ${part.steps.length} 步`;
       find('#previousStep').disabled=count===0;find('#nextStep').disabled=count>=part.steps.length;
+      locateStep.disabled=count===0||!api.state.model;
       find('#classroomAnswer').textContent=data.answers[part.index]?'隐藏结论':'显示结论';
       find('#classroomAnswer').setAttribute('aria-pressed',String(data.answers[part.index]));
     }
     function changePart(part){
       if(!requireCurrent()||!part)return;
+      lectureStatus.textContent='';
       api.selectPart(part.index);api.saveStudy();
       if(casting)find('#solution .part-body')?.scrollIntoView({block:'nearest'});
     }
@@ -87,6 +95,8 @@
       const count=data.counts[part.index];
       const next=Math.max(0,Math.min(part.steps.length,count+delta));
       if(next===count)return;
+      api.clearStepHighlight?.();
+      lectureStatus.textContent='';
       data.counts[part.index]=next;
       api.renderSolution();persist();
       const shown=[...document.querySelectorAll('#solution .part-body > ol > li:not([hidden])')].at(-1);if(casting)shown?.scrollIntoView({block:'nearest'});
@@ -109,9 +119,12 @@
       if(!api.state.solution){api.setStatus('请先载入本题解析。',true);return;}
       if(!requireCurrent())return;
       const part=currentPart();if(!part){api.setStatus('当前题稿没有可讲解的小问，请重新载入解析。',true);return;}
-      api.state.activePart=part.index;api.partChanged?.();finishStroke();strokes=[];
+      const changed=api.state.activePart!==part.index;
+      if(changed){api.state.activePart=part.index;api.partChanged?.();}
+      finishStroke();strokes=[];
+      lectureStatus.textContent='';
       casting=true;document.body.classList.add('classroom-mode');castbar.hidden=false;ink.hidden=false;ink.style.pointerEvents='none';
-      api.showLearning();api.renderSolution();api.refreshLayers();api.fitPart?.();api.render();updateCastBar();requestAnimationFrame(showInk);persist();
+      api.showLearning();api.renderSolution();api.refreshLayers();if(changed)api.fitPart?.();api.render();updateCastBar();requestAnimationFrame(showInk);persist();
       const next=find('#nextStep');
       (next.disabled?find('#classroomAnswer'):next).focus({preventScroll:true});
     }
@@ -164,6 +177,22 @@
     find('#reviewAttempt').addEventListener('click',()=>{if(!requireCurrent())return;const notes=study()?.notes?.trim();if(!notes){api.setStatus('请先写下你的解题尝试或卡住的地方。',true);return;}find('#followupInput').value='请点评我的解题思路，指出第一处错误或需要补充的依据，先给改进提示，不直接重写完整答案。我的尝试：\n'+notes;find('#followupInput').focus();find('#followupInput').scrollIntoView({block:'nearest'});api.sendFeedback();});
     find('#startClassroom').addEventListener('click',enter);find('#exitClassroom').addEventListener('click',()=>leave());
     find('#previousStep').addEventListener('click',()=>changeStep(-1));find('#nextStep').addEventListener('click',()=>changeStep(1));find('#classroomAnswer').addEventListener('click',answerToggle);
+    locateStep.addEventListener('click',()=>{
+      if(!requireCurrent())return;
+      const part=currentPart(),count=study()?.counts[part?.index];
+      if(!count)return;
+      const result=api.highlightCurrentStep(Number(part.index),count-1);
+      lectureStatus.textContent=result?.matched.length?'已高亮 '+result.matched.join('、')+'。':'本步未匹配到可见图形。';
+      if(result?.matched.length)api.showStepBoard();
+    });
+    saveLecture.addEventListener('click',async()=>{
+      if(!requireCurrent())return;
+      const session=lectureSession;
+      saveLecture.disabled=true;lectureStatus.textContent='正在保存…';
+      try{await api.saveLecture();if(session===lectureSession)lectureStatus.textContent='已保存到我的题本。';}
+      catch(error){if(session===lectureSession)lectureStatus.textContent=error.message||'保存未完成，请重试。';}
+      finally{saveLecture.disabled=false;}
+    });
     find('#classroomPart').addEventListener('change',event=>changePart(api.state.solution?.parts.find(part=>String(part.index)===event.target.value)));
     find('#lectureFont').addEventListener('change',event=>document.body.style.setProperty('--lecture-font',event.target.value+'px'));
     const fullscreenButton=find('#classroomFullscreen');
@@ -204,7 +233,7 @@
     });
     find('#printWorksheet').addEventListener('click',()=>{if(!requireCurrent())return;const solution=api.state.solution;if(!solution)return;const target=find('#printLesson');target.replaceChildren();const title=document.createElement('h1');title.textContent='董解析 · 独立练习';const name=document.createElement('p');name.textContent='姓名：________________　班级：________________　日期：________________';const problem=document.createElement('div');problem.textContent=solution.restatement;problem.style.whiteSpace='pre-wrap';const space=document.createElement('div');space.className='worksheet-space';space.textContent='作答区';target.append(title,name,problem);if(solution.lessonSource){const source=document.createElement("p");source.textContent=[solution.lessonSource.year,solution.lessonSource.paper,solution.lessonSource.number,solution.lessonSource.scope].filter(Boolean).join(" · ");target.append(source);}target.append(space);if(api.typesetProblem)api.typesetProblem(problem,solution.restatement);else window.renderMathInElement?.(problem,{throwOnError:false,trust:false,delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}]});window.print();});
     api.question.addEventListener('input',refreshContext);
-    return {decorate,leave,refreshContext};
+    return {decorate,enter,leave,refreshContext};
   }
   window.DongClassroom={attach};
 })();

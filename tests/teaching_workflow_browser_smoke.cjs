@@ -54,8 +54,9 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#startClassroom').click();
   assert.equal(await shown(),2);
   assert.equal((await last()).solution.study.mode,'full','Lecture does not overwrite the saved reading mode');
-  await part().locator('[data-step-graph-index="1"]').click();
-  assert(await page.evaluate(()=>window.DongBoardStep.snapshot()));
+  await page.locator('#classroomLocateStep').click();
+  assert.equal(await page.evaluate(()=>window.DongBoardStep.snapshot()?.index),1,'The teacher toolbar highlights the last revealed step');
+  assert.match(await page.locator('#classroomFeedback').textContent(),/已高亮/);
   await page.locator('#previousStep').click();
   assert.equal(await page.evaluate(()=>window.DongBoardStep.snapshot()),null,'Collapsing the highlighted step removes the board emphasis');
   await page.locator('#nextStep').click();
