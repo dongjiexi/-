@@ -27,6 +27,36 @@ assert(audit.inspect({type:'circle',r:1,showDynamic:false},'直线l经过原点'
   check(()=>assert.equal(target.objects.filter(n=>n.label==='M').length,1));
   check(()=>assert.equal(sandbox.window.DongSceneMerge.mergeDerived(target,exact),3));
   check(()=>assert.equal(target.objects.length,3,'Repeated merge does not duplicate objects'));
+  const keep=sandbox.window.DongSceneMerge.keepAuxiliaries;
+  const base={type:'ellipse',a:2,b:1,h:0,k:0,dynamicLine:true,showDynamic:true,lineThrough:'point:P',
+    dynamicIntersectionLabels:['A','B'],points:{P:[1,0],X:[2,2]},pointParts:{X:[2]},objects:[],lines:[]};
+  const segment=(id,refs,extra={})=>({id,label:id,kind:'construction',op:'segment',refs,...extra});
+  const cloudScene={...base,provenance:{validatedConstructions:true},objects:[
+    segment('PX',['feature:P','feature:X']),
+    segment('XP',['feature:X','feature:P']),
+    segment('zero',['feature:P','feature:P']),
+    segment('auxA',['feature:P','feature:A'])
+  ]};
+  const parts=[{index:1},{index:2}];
+  check(()=>{
+    const scene=copy(base),result=keep(scene,cloudScene,parts,audit,construct);
+    assert.deepEqual(Array.from(result.accepted),['PX','auxA']);
+    assert.deepEqual(Array.from(scene.objects[0].parts),[2]);
+    assert.deepEqual(Array.from(result.archived.map(item=>item.label)),['XP','zero']);
+    assert.equal(cloudScene.objects[0].parts,undefined,'Archive remains untouched');
+  });
+  check(()=>{
+    const scene=copy(base),result=keep(scene,{...cloudScene,a:3},parts,audit,construct);
+    assert.equal(scene.objects.length,0);
+    assert(result.archived.every(item=>item.reason.includes('坐标系')));
+  });
+  check(()=>{
+    const scene=copy(base),reply={...cloudScene,points:{...cloudScene.points,P:[1.1,0]},objects:[
+      segment('point-changed',['feature:P','feature:O']),segment('chord-changed',['feature:A','feature:B'])
+    ]};
+    const result=keep(scene,reply,parts,audit,construct);
+    assert.equal(result.accepted.length,0,'A changed point invalidates the chord origin and both intersection references');
+  });
   const sourced=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/sourced-exam-additions.json'),'utf8')).items.find(q=>q.id==='2022-beijing-12');
   const inferred=conic.infer(sourced.question);
   check(()=>assert.equal(inferred.parameterSolution.value,-3));

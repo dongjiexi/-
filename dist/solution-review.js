@@ -106,7 +106,7 @@
     const result=clone(record),baseline=shareBaseline(record.original);delete result.original;
     if(baseline)result.original=baseline;
     if(!includeBoardDraft)delete result.boardDraft;
-    if(result.solution)for(const key of ['study','conversation','rawReply','model_scene','model_scene_warnings'])delete result.solution[key];
+    if(result.solution)for(const key of ['study','conversation','rawReply','model_scene','model_scene_warnings','modelAuxiliaries'])delete result.solution[key];
     result.shared=true;
     return result;
   }

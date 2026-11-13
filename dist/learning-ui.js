@@ -354,7 +354,12 @@
       const graphIssues=audit?[...(audit.missing||[]),...(audit.answerMissing||[]),...(audit.missingLines||[]),...(audit.answerMissingLines||[]),...(audit.unavailable||[]),...(audit.missingPolygons||[]),...(audit.invalid||[]),...(audit.answerConflicts||[]).map(n=>n.label+'（关系冲突）'),...(audit.answerUnresolved||[]).map(n=>n.label+(n.dependencyUnconfirmed?'（依赖待确认）':'（构造待完成）'))]:[];
       const graphNotice=graphIssues.length?`<p class="verification-conflict geometry-notice" role="status">图形尚未完整呈现：${escapeText([...new Set(graphIssues)].slice(0,12).join('、'))}。展开“图形核对”查看原因；文字作答完成不代表画板完整。</p>`:'';
       const auditRows=audit?[['题目声明但未找到的点',audit.missing],['答案中尚未呈现的点',audit.answerMissing],['尚未找到的直线或切线',audit.missingLines],['答案中尚未呈现的切线',audit.answerMissingLines],['当前构型无法定位的点',audit.unavailable],['顶点不完整、暂未绘制的多边形',audit.missingPolygons],['当前无法构造',audit.invalid],['已有同名点的关系冲突',(audit.answerConflicts||[]).map(n=>n.label+'：'+n.reason)]].filter(([,items])=>items?.length).map(([label,items])=>`<p class="verification-conflict">${escapeText(label)}：${escapeText(items.join('、'))}。</p>`).join(''):'';
-      const diagramReport=audit?`${graphNotice}<details class="diagram-audit"><summary>图形核对 · 缺失点 ${(audit.missing?.length||0)+(audit.answerMissing?.length||0)} · 缺失线 ${(audit.missingLines?.length||0)+(audit.answerMissingLines?.length||0)} · 无效构造 ${audit.invalid?.length||0}</summary><p>${escapeText(audit.note)}</p>${!all?'<button type="button" class="button secondary" data-diagram-recheck>重新核对当前图形</button>':''}${auditRows}${audit.answerUnresolved?.length?'<p>'+escapeText(audit.answerUnresolved.map(n=>n.label+'：'+n.reason).join('；'))+'</p>':''}<ul>${(audit.checks||[]).filter(c=>all||window.DongSceneAudit.visible(c,active)).map(c=>`<li>${c.passed?'✓':'未通过'} ${escapeText(c.label)}：${escapeText(c.detail)}</li>`).join('')}</ul></details>`:'';
+      const retained=solution.modelAuxiliaries?.accepted,archived=solution.modelAuxiliaries?.archived;
+      const modelGraph=!all&&audit&&(Array.isArray(retained)&&retained.length||Array.isArray(archived)&&archived.length)?
+        `<details data-lesson-detail="model-auxiliaries"><summary>AI 辅助图形</summary>${Array.isArray(retained)&&retained.length?
+          '<p>已保留，可随构造联动：'+escapeText(retained.join('、'))+'。</p>':''}${Array.isArray(archived)&&archived.length?
+          '<p>仅在原图留档：</p><ul>'+archived.filter(item=>typeof item?.label==='string'&&typeof item.reason==='string').slice(0,110).map(item=>'<li>'+escapeText(item.label)+' · '+escapeText(item.reason)+'</li>').join('')+'</ul>':''}</details>`:'';
+      const diagramReport=audit?`${graphNotice}<details class="diagram-audit"><summary>图形核对 · 缺失点 ${(audit.missing?.length||0)+(audit.answerMissing?.length||0)} · 缺失线 ${(audit.missingLines?.length||0)+(audit.answerMissingLines?.length||0)} · 无效构造 ${audit.invalid?.length||0}</summary><p>${escapeText(audit.note)}</p>${!all?'<button type="button" class="button secondary" data-diagram-recheck>重新核对当前图形</button>':''}${auditRows}${audit.answerUnresolved?.length?'<p>'+escapeText(audit.answerUnresolved.map(n=>n.label+'：'+n.reason).join('；'))+'</p>':''}<ul>${(audit.checks||[]).filter(c=>all||window.DongSceneAudit.visible(c,active)).map(c=>`<li>${c.passed?'✓':'未通过'} ${escapeText(c.label)}：${escapeText(c.detail)}</li>`).join('')}</ul>${modelGraph}</details>`:'';
       const stepLinks=!all&&typeof api.highlightStep==='function';
       const linkToolbar=stepLinks?'<div class="step-graph-toolbar" hidden><span data-step-graph-status role="status" aria-live="polite"></span><button type="button" data-step-graph-open>查看画板</button><button type="button" data-step-graph-clear>清除高亮</button></div>':'';
       const partMarkup=visible.map(part=>{const partTrust=part.verification||(solution.mode==='symbolic-fallback'&&part.status==='answered'?{status:report.status||'generated',message:'内置确定性复算'}:{status:'generated',message:'仅生成'});const derivation=part.derivation||{};const obligations=derivation.proof_obligations||[];return `<section class="part-body" data-part-index="${escapeText(part.index)}"><h3>${escapeText(part.label||'本问')}</h3><span class="answer-status ${['answered','partial','needs_information'].includes(part.status)?part.status:'partial'}">${escapeText(statusNames[part.status]||'请核对解答')}</span><span class="verification-status ${escapeText(partTrust.status||'generated')}">${escapeText(verificationNames[partTrust.status]||partTrust.message||'待核验')}</span>${retryable&&!window.DongSolutionReview.complete(part)?`<button type="button" class="button secondary" data-solution-continue="${Number(part.index)}">继续解答本问</button>`:''}<div class="answer-summary">${textBlock(part.answer)}</div><ol>${(part.steps||[]).map((step,index)=>'<li>'+textBlock(step)+(stepLinks?`<button type="button" class="step-graph-link" data-step-graph-part="${Number(part.index)||0}" data-step-graph-index="${index}" aria-pressed="false" aria-label="高亮第 ${index+1} 步对应图形">对应图形</button>`:'')+'</li>').join('')}</ol>${obligations.length?`<details class="proof-obligations"><summary>尚需完成的证明义务（${obligations.length}）</summary><ul>${obligations.map(item=>'<li>'+textBlock(item)+'</li>').join('')}</ul></details>`:''}${part.quality_notice?`<p class="verification-conflict">${escapeText(part.quality_notice)}</p>`:''}${part.model_answer||part.model_steps?.length?`<details class="model-original"><summary>查看 AI 原始判断与步骤（未证实）</summary>${part.model_answer?textBlock(part.model_answer):''}<ol>${(part.model_steps||[]).map(step=>'<li>'+textBlock(step)+'</li>').join('')}</ol></details>`:''}${checkList(part)}</section>`;}).join('');
@@ -795,6 +800,7 @@
       if(api.question.value.trim()!==original){api.setStatus('题目已修改，本次旧题结果未应用。请点击“解题”求解当前题目。');return false;}
       if(!result||!Array.isArray(result.parts)||!result.parts.length||result.parts.some(part=>!part||typeof part!=='object')){api.setStatus('解题引擎未返回有效的小问解析，原解析与图稿保留。',true);progress('error','未收到有效解答，请重试。');return false;}
       bindSubmittedQuestion(result,original);
+      let keepModelAuxiliaries=false;
       const completed=part=>part.status==='answered'&&typeof part.answer==='string'&&part.answer.trim()&&Array.isArray(part.steps)&&part.steps.some(step=>typeof step==='string'&&step.trim());
       // HTTP/local adapters can return their own completion counts. The UI
       // derives its status from actual parts instead of trusting those counts.
@@ -844,6 +850,7 @@
           exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra);
         if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(coupledScene||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
           if(coupledScene&&result.scene&&!result.model_scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
+          keepModelAuxiliaries=!!exactChord;
           result.scene=exactScene;
           if(exactChord||exactScene.asymptoteMidpoint||exactScene.tangentRatio){result.model_title=result.title;result.title=exactSolution.title;}
           result.scene_notice='已核对题目与答案；已覆盖部分由独立符号模型对齐答案与画板。';
@@ -897,7 +904,7 @@
           result.scene_notice='AI 已先完成解答；画板再由可核验的符号模型对齐题目与答案。';
         }
       }
-      if(installGraph)result=api.enrichSolvedScene?.(result,original)||result;
+      if(installGraph)result=api.enrichSolvedScene?.(result,original,{keepModelAuxiliaries})||result;
       else{result.scene=null;result.scene_notice='仅导入文字；原画板未替换，不应当作本题的新图形。';}
       const algebra=[];
       if(['cloud-ai','local-ollama','external-ai'].includes(result.mode))result.parts=result.parts.map(part=>{

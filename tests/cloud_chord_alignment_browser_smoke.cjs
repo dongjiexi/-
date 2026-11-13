@@ -25,11 +25,18 @@ module.exports=async({page,context,assert,screenshot})=>{
     assert.equal(saved.solution.model_strategy,'测试中有意用静态图');
     assert(!Object.hasOwn(saved.scene.points,'A')&&!Object.hasOwn(saved.scene.points,'B'),'Do not freeze the dynamic intersections');
     assert(!saved.scene.lines.some(line=>line.label==='AI静态线'));
-    return saved.scene;
+    return saved;
   };
 
   const staticLine={kind:'slope',label:'AI静态线',m:1,b:-1};
-  const parabola=await solve(focus,{type:'parabola',p:1,dynamicLine:false,points:{P:[1,0],A:[1,2],B:[1,-2]},lines:[staticLine]},4);
+  const para=await solve(focus,{type:'parabola',p:1,dynamicLine:false,points:{P:[1,0],A:[1,2],B:[1,-2]},lines:[staticLine],constructions:[
+    {id:'frozen-pa',op:'segment',refs:['feature:P','feature:A'],label:'静态 PA'},
+    {id:'frozen-child',op:'distance',refs:['feature:P','frozen-mid'],label:'静态派生长度'},
+    {id:'frozen-mid',op:'midpoint',refs:['feature:P','feature:A'],label:'U'}
+  ]},4);
+  const parabola=para.scene;
+  assert(!parabola.objects.some(node=>node.id.startsWith('frozen-')));
+  assert(para.solution.modelAuxiliaries.archived.some(item=>item.label==='静态 PA'&&item.reason.includes('无法对应')));
   assert.equal(parabola.focusChord.tangents.length,2);
   assert(parabola.lines.some(line=>line.id===parabola.focusChord.qLocus&&line.x===-1));
   assert(parabola.objects.some(node=>node.id===parabola.focusChord.mLocus));
@@ -45,9 +52,34 @@ module.exports=async({page,context,assert,screenshot})=>{
   await screenshot('cloud-chord-alignment-mobile.png',null);
   await page.setViewportSize({width:1600,height:1050});
 
-  const ellipse=await solve(reflected,{type:'ellipse',a:2,b:1,dynamicLine:false,points:{P:[1,0],A:[1,.8],B:[1,-.8]},lines:[staticLine]},2);
+  const paired=await solve(reflected,{type:'ellipse',a:2,b:1,dynamicLine:true,lineThrough:'point:P',points:{P:[1,0],W:[99,99]},lines:[staticLine],constructions:[
+    {id:'ai-length',op:'distance',refs:['mid-pa','feature:B'],label:'辅助长度',part:2},
+    {id:'mid-pa',op:'midpoint',refs:['feature:P','feature:A'],label:'U',part:2},
+    {id:'helper-pa',op:'segment',refs:['feature:P','feature:A'],label:'辅助线段',part:2},
+    {id:'other-scope',op:'segment',refs:['mid-pa','feature:A'],label:'跨问线段',part:1},
+    {id:'wrong-anchor',op:'segment',refs:['feature:P','feature:W'],label:'错误锚点',part:2},
+    {id:'copied-m',op:'line',refs:['feature:A','feature:B'],label:'m',part:2}
+  ]},2);
+  const ellipse=paired.scene;
   assert.equal(ellipse.fixedPoint.x,4);
   assert.equal(ellipse.pairedChord.part,2);
   assert(ellipse.objects.some(node=>node.id==='reflected-chord-m-prime'&&node.part===2));
+  assert(!paired.solution.sceneAudit.missingLines.includes('L′'),'The second dynamic chord already exists');
+  assert.deepEqual(paired.solution.modelAuxiliaries.accepted.sort(),['U','辅助线段','辅助长度'].sort());
+  assert.deepEqual(paired.solution.modelAuxiliaries.archived.map(item=>item.label).sort(),['AI静态线','跨问线段','错误锚点','m'].sort());
+  assert(!Object.hasOwn(ellipse.points,'W'));
+  assert(ellipse.objects.filter(node=>['ai-length','mid-pa','helper-pa'].includes(node.id)).every(node=>node.source==='model'&&node.part===2));
+  const samples=await page.evaluate(scene=>[42,71].map(theta=>{
+    const {engine}=window.DongSceneAudit.frame({...scene,theta,activePart:2},window.DongConstruct);
+    const U=engine.resolve('mid-pa'),A=engine.resolve('feature:A'),P=engine.resolve('feature:P'),L=engine.resolve('ai-length');
+    return {x:U.x,y:U.y,error:Math.hypot(U.x-(A.x+P.x)/2,U.y-(A.y+P.y)/2),length:L.value};
+  }),ellipse);
+  assert(samples.every(sample=>sample.error<1e-9));
+  assert.notEqual(samples[0].length,samples[1].length,'An admitted dependent measurement updates with the chord');
+  await page.locator('.diagram-audit > summary').click();
+  const details=page.locator('[data-lesson-detail="model-auxiliaries"]');
+  await details.locator('summary').click();
+  assert.match(await details.textContent(),/跨问线段 · 依赖对象不在同一小问/);
+  assert.match(await details.textContent(),/已保留，可随构造联动/);
   assert.equal(calls,2,'Each problem uses one cloud request before deterministic graph alignment');
 };
