@@ -40,4 +40,9 @@ module.exports=async({page,assert,errors})=>{
   await page.locator('#question').fill('');
   await page.locator('#solveButton').click();
   assert.equal(await page.locator('#solveProgress').getAttribute('data-state'),'idle','输入校验不应伪装成功');
+  await page.locator('#question').fill('已知圆 C：4x²+4y²=100，求圆的半径。');
+  await page.locator('#question').evaluate(el=>el.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,isComposing:true,bubbles:true})));
+  assert.equal(await page.locator('#solveProgress').getAttribute('data-state'),'idle','输入法确认候选字时不应提交题目');
+  await page.locator('#question').press('Meta+Enter');
+  await page.waitForFunction(()=>document.querySelector('#solveProgress').dataset.state==='complete');
 };

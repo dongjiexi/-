@@ -6,7 +6,8 @@ module.exports=async({page,baseURL,assert,errors})=>{
     await phone.locator('#question').fill('椭圆x²/9+y²/4=1。');
     await phone.locator('#parseButton').tap();await phone.locator('#scenePreviewDialog').waitFor({state:'visible'});await phone.locator('#confirmScenePreview').tap();
     assert.equal(await phone.locator('#inputPanelToggle').isVisible(),false,'手机端不应显示无效的隐藏题目按钮');
-    await phone.locator('[data-mobile-panel="board"]').tap();
+    assert(await phone.locator('#canvas').isVisible(),'确认绘图后直接看到画板');
+    assert(await phone.locator('#question').isHidden(),'确认绘图后不会停留在输入栏');
     await phone.locator('#toolboxToggle').tap();
     assert.equal(await phone.locator('#toolboxMobileCollapse').isVisible(),true,'展开作图工具后必须显示手机端收起按钮');
     await phone.locator('[data-add-conic="circle"]').tap();
@@ -25,6 +26,17 @@ module.exports=async({page,baseURL,assert,errors})=>{
     await phone.setViewportSize({width:844,height:390});
     assert.equal(await phone.locator('.mobile-panel-nav').isVisible(),true,'手机横屏仍使用栏目切换');
     assert.equal(await phone.locator('.inspect').isVisible(),false,'横屏也不能同时叠放解析');
+    assert(await phone.locator('#inputPanelToggle').isHidden(),'横屏不显示仅用于桌面的布局按钮');
+    await phone.locator('#toolboxToggle').tap();
+    await phone.locator('#toolboxMobileCollapse').tap();
+    assert(await phone.locator('#nativeToolbar').isHidden(),'横屏可以触摸收起作图工具');
+    await phone.evaluate(()=>window.scrollTo(0,document.scrollingElement.scrollHeight));
+    const landscape=await phone.evaluate(()=>({
+      scroll:scrollY,navTop:document.querySelector('.mobile-panel-nav').getBoundingClientRect().top,
+      canvasBottom:document.querySelector('#canvas').getBoundingClientRect().bottom
+    }));
+    assert(landscape.scroll>100&&Math.abs(landscape.navTop)<2,'手机横屏实际滚动且栏目导航常驻');
+    assert(landscape.canvasBottom<=390,'手机横屏可以滚到完整画板底部');
     await phone.locator('#canvas').scrollIntoViewIfNeeded();
     assert.equal(await phone.locator('[data-add-conic="ellipse"]').count(),1);
     console.log('PASS: mobile touch input, recognition confirmation, additive curve dialog, no horizontal overflow and orientation change.');

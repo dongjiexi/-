@@ -26,27 +26,52 @@
   function attach(api) {
     const foldView=window.DongCircleFoldView?.attach(api);
     const find = selector => document.querySelector(selector);
-    // Import controls belong to the question, not below network diagnostics.
-    // Move existing nodes so file selections and registered listeners survive.
-    const inputUtilities=find('.input-utilities');
-    if(inputUtilities)api.question.after(inputUtilities);
     const runtime = window.DongRuntime;
     // The public release has one solving entry. Retain the underlying local
     // engines without exposing their controls or silently switching to them.
     const cloudOnly=document.body.dataset.cloudOnly==='true';
     const mobileNav=find('.mobile-panel-nav'),workspace=find('.workspace');
-    const solveProgress=find('#solveProgress');
-    function progress(state,message){solveProgress.dataset.state=state;solveProgress.textContent=message;}
+    const solveProgress=find('#solveProgress'),openCurrentSolution=find('#openCurrentSolution');
+    const panelOffsets={input:0,lesson:0,board:0};
+    let panelFrame;
+    const workAreaStart=()=>workspace.getBoundingClientRect().top+window.scrollY-mobileNav.offsetHeight;
+    function updateSolutionShortcut(){
+      const answer=api.state.solution;
+      openCurrentSolution.hidden=solveProgress.dataset.state==='solving'||!answer||
+        !api.question.value.trim()||api.question.value.trim()!==answer.restatement?.trim();
+      if(!openCurrentSolution.hidden&&solveProgress.dataset.state==='idle')solveProgress.textContent='已有本题解析';
+    }
+    function progress(state,message){
+      solveProgress.dataset.state=state;solveProgress.textContent=message;
+      updateSolutionShortcut();
+    }
     api.question.addEventListener('input',()=>{progress('idle','题目已修改，等待重新解题。');document.querySelectorAll('[data-solution-continue]').forEach(button=>{button.disabled=processing||api.question.value.trim()!==api.state.solution?.restatement;});});
-    function setMobilePanel(panel,{scroll=true}={}){
+    function setMobilePanel(panel,{position='restore',view='lesson'}={}){
       if(panel==='input'&&document.body.classList.contains('classroom-mode'))return;
+      const previous=workspace.dataset.mobileView,mobile=api.mobileLayout.matches;
+      if(mobile&&previous!==panel)panelOffsets[previous]=Math.max(0,window.scrollY-workAreaStart());
       workspace.dataset.mobileView=panel;
-      mobileNav.querySelectorAll('button').forEach(item=>item.setAttribute('aria-pressed',String(item.dataset.mobilePanel===panel)));
-      if(panel==='lesson')setInspectorView('lesson');
+      mobileNav.querySelectorAll('[data-mobile-panel]').forEach(item=>item.setAttribute('aria-pressed',String(item.dataset.mobilePanel===panel)));
+      const changedView=panel==='lesson'&&view!==inspectorView;
+      if(panel==='lesson')setInspectorView(view);
+      if(previous===panel&&!changedView&&position==='restore')return;
+      cancelAnimationFrame(panelFrame);
+      if(!mobile||position==='keep')return;
       // Hidden canvas dimensions are zero; redraw only after the selected panel is laid out.
-      if(scroll)requestAnimationFrame(()=>{api.render();window.scrollTo({top:Math.max(0,workspace.getBoundingClientRect().top+window.scrollY-mobileNav.offsetHeight),behavior:'instant'});});
+      panelFrame=requestAnimationFrame(()=>{
+        if(!api.mobileLayout.matches||workspace.dataset.mobileView!==panel)return;
+        if(panel==='board')api.render();
+        const offset=position==='restore'&&!changedView?panelOffsets[panel]:0;
+        window.scrollTo({top:Math.max(0,workAreaStart()+offset),behavior:'instant'});
+      });
     }
     mobileNav.querySelectorAll('[data-mobile-panel]').forEach(button=>button.addEventListener('click',()=>setMobilePanel(button.dataset.mobilePanel)));
+    openCurrentSolution.addEventListener('click',()=>{
+      if(openCurrentSolution.hidden)return;
+      setMobilePanel('lesson',{position:'start'});
+      inspector.scrollTop=0;
+      find('#lessonPanelTitle').focus({preventScroll:true});
+    });
     const notebookKey = 'dongjiexi:notebook:v1';
     const backupKey = 'dongjiexi:lesson-backups:v1';
     const draftKey = 'dongjiexi:draft:v1';
@@ -289,7 +314,7 @@
     }
     function showStepBoard(){
       if(!selectedStep?.matched.length)return;
-      setMobilePanel('board');
+      setMobilePanel('board',{position:'start'});
       const title=find('#boardTitle');
       title?.focus({preventScroll:true});
     }
@@ -387,8 +412,12 @@
       foldView?.mount(solution);
       if(solution!==lastSolution||api.state.activePart!==lastStepPart||api.question.value!==lastStepQuestion)clearStepHighlight();
       lastStepPart=api.state.activePart;lastStepQuestion=api.question.value;
-      if(solution!==lastSolution){lastSolution=solution;inspectorView=solution?.mode==='local-ollama'?'lesson':'geometry';inspector.scrollTop=0;}
+      if(solution!==lastSolution){
+        lastSolution=solution;panelOffsets.lesson=0;panelOffsets.board=0;
+        inspectorView=solution?.mode==='local-ollama'?'lesson':'geometry';inspector.scrollTop=0;
+      }
       setInspectorView(inspectorView);
+      updateSolutionShortcut();
       if(!solution){find('#solution').hidden=true;renderChat();classroom?.decorate();return;}
       panel.innerHTML=`<div class="lesson-actions"><button data-lesson-action="read">展开解析</button><button data-lesson-action="copy">复制解析</button><button data-lesson-action="print">打印 / PDF</button><button data-lesson-action="save">保存本题</button></div>`+markup(solution);
       for(const item of panel.querySelectorAll('details[data-lesson-detail]'))item.open=openDetails.has(item.dataset.lessonDetail);
@@ -734,6 +763,7 @@
       // Legacy lessons without this flag still receive the existing question constraints.
       if(parsedScene)api.installScene(parsedScene,record.scene.problemMotion===false?'图稿文件':'题本',{original,exploring:!!record.exploring});
       api.state.exploring=!window.DongMotion.protectedScene(api.state.model)&&!!record.exploring;find('#exploreNotice').hidden=!api.state.exploring;
+      progress('idle','已载入保存的题目。');
       renderSolution();api.refreshLayers();api.render();window.DongUnifiedBoard?.restoreStagedDraft?.();api.remember();api.setStatus('题目、解析、图形与追问已恢复。');
     }
     let notebookOpening=false,notebookEpoch=0;
@@ -1236,7 +1266,7 @@
     find('#openCloudAuthInSetup').addEventListener('click',()=>openCloudAuthDialog());
     find('#closeCloudAuth').addEventListener('click',()=>cloudDialog.close());
     find('#toggleCloudSecret').addEventListener('click',event=>{const input=find('#cloudAccessKey'),hidden=input.classList.toggle('secret-text');event.currentTarget.textContent=hidden?'显示':'隐藏';event.currentTarget.setAttribute('aria-pressed',String(!hidden));input.focus();});
-    find('#clearButton').addEventListener('click',renderSolution);
+    find('#clearButton').addEventListener('click',()=>{progress('idle','等待解题');renderSolution();});
     find('#modelName').addEventListener('change',event=>{lastModel=event.target.value;localStorage.setItem(modelKey,lastModel);renderEngineRoute();refreshEngine();});
     find('#pullModel').addEventListener('click',()=>runJob({kind:'pull',model:find('#modelName').value},result=>api.setStatus(result.message)));
     find('#cancelJob').addEventListener('click',async()=>{
@@ -1403,7 +1433,7 @@
     const formulaPreview=document.createElement('details');formulaPreview.className='question-formula-preview';
     const previewTitle=document.createElement('summary');previewTitle.textContent='题目公式预览 · 支持 LaTeX';
     const previewBody=document.createElement('div');previewBody.className='math-content';
-    formulaPreview.append(previewTitle,previewBody);api.question.after(formulaPreview);
+    formulaPreview.append(previewTitle,previewBody);find('#imagePreview').after(formulaPreview);
     const refreshFormula=()=>{
       updateFractionReview(api.question,find('#questionFractionReview'));
       previewExamText(api.question,previewBody);
@@ -1420,17 +1450,24 @@
       draftTimer=setTimeout(()=>{if(api.question.value===draftQuestion)saveDraft();},300);
       if(api.state.solution)renderSolution();
     });
-    api.question.addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')solve();});
+    api.question.addEventListener('keydown',event=>{
+      if(event.isComposing||event.key!=='Enter'||!(event.ctrlKey||event.metaKey))return;
+      event.preventDefault();
+      void solve();
+    });
     window.addEventListener('beforeunload',event=>{if(activeJob){event.preventDefault();event.returnValue='';}});
     classroom=window.DongClassroom.attach({...api,renderSolution,selectPart,
       highlightCurrentStep:(part,index)=>highlightLessonStep(api.state.solution,part,index),
       showStepBoard,clearStepHighlight,saveLecture:()=>saveCurrentLesson(true),
       typesetProblem(element,source){element.innerHTML=textBlock(source);typeset(element);},
-      sendFeedback:followup,showLearning:()=>setMobilePanel('lesson',{scroll:false}),
+      sendFeedback:followup,showLearning:()=>setMobilePanel('lesson',{position:'keep'}),
       saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
-    window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>saveBeforeSwitch(),showLearning:()=>setInspectorView('lesson')});
+    window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>saveBeforeSwitch(),showLearning:()=>setMobilePanel('lesson',{position:'start'})});
     renderDraftRecovery();
-    return {refreshEngine,renderSolution,solve,clearStepHighlight,refreshFold:()=>foldView?.refresh()};
+    return {refreshEngine,renderSolution,solve,clearStepHighlight,
+      openParameters:()=>setMobilePanel('lesson',{position:'start',view:'geometry'}),
+      openBoard:()=>setMobilePanel('board',{position:'start'}),
+      refreshFold:()=>foldView?.refresh()};
   }
   window.DongLearning={attach,questionRepairSuggestion};
 })();

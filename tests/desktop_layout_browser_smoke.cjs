@@ -21,6 +21,10 @@ module.exports = async ({page, assert, screenshot}) => {
   assert(desktop.board.width >= 560, 'PC 画板应保留足够展示宽度');
   assert(desktop.solve.x < desktop.parse.x, '整题解答应为首要动作');
   assert(desktop.overflow <= 1, 'PC 页面不应横向溢出');
+  assert(await page.evaluate(()=>{
+    const rows=['#question','.hero-actions','#solveProgress','.input-utilities','#imagePreview','.question-formula-preview'].map(selector=>document.querySelector(selector));
+    return rows.every((row,index)=>row&&(index===0||rows[index-1].compareDocumentPosition(row)&Node.DOCUMENT_POSITION_FOLLOWING));
+  }),'主操作紧跟题目，图片处理和题面预览位置固定');
 
   await page.locator('#question').fill('椭圆 C：(x-1)²/9+(y+2)²/4=1，过右焦点的直线 l 与 C 交于 A、B。');
   await page.locator('#parseButton').click();

@@ -149,7 +149,6 @@
             if(!dialog.open||!action.isConnected||epoch!==navigationEpoch)return;
             api.restoreLesson(record); dialog.close(); api.showLearning();
             if (mode === 'teach') find('#startClassroom').click();
-            if (window.matchMedia('(max-width: 760px)').matches) find('[data-mobile-panel="lesson"]')?.click();
             api.setStatus('已载入' + item.scope + '。' + (mode === 'practice' ? '先独立作答，再点击提示；参考结论默认隐藏。' : '参考讲解已载入；可保存到题本、记录错因。'));
           } catch (error) {api.setStatus(error.message || String(error), true);}
           finally {openingLesson=false;action.textContent=label;actions.querySelectorAll('button').forEach(button=>{button.disabled=false;});}
