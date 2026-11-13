@@ -1344,6 +1344,7 @@
       state.view={xmin:-rx,xmax:rx,ymin:-ry,ymax:ry};
       if(state.model.parabolaFocalData){for(const point of nativeFeatures()){if(Number.isFinite(point.x)&&Number.isFinite(point.y)){rx=Math.max(rx,Math.abs(point.x)*1.2);ry=Math.max(ry,Math.abs(point.y)*1.2);}}state.view={xmin:-rx,xmax:rx,ymin:-ry,ymax:ry};}
       if(state.model.hyperbolaIteration){const spec=state.model.hyperbolaIteration,data=window.DongHyperbolaIteration?.sample(spec,spec.k,spec.n);if(data?.valid)for(const point of Object.values(data.points||{})){rx=Math.max(rx,Math.abs(point[0])*1.15);ry=Math.max(ry,Math.abs(point[1])*1.15);}state.view={xmin:-rx,xmax:rx,ymin:-ry,ymax:ry};}
+      requestedFit=state.view;
     }
     function coeffs() {
       const t=state.model.type,h=P('h'),k=P('k');
@@ -1412,7 +1413,7 @@
       }
       return groups;
     }
-    let renderedView;
+    let renderedView,requestedFit,fitBounds;
     function resize(){
       const {width,height}=canvas.getBoundingClientRect();
       if(width<=0||height<=0)return;
@@ -1420,11 +1421,14 @@
       if(Math.round(width*d)!==canvas.width||Math.round(height*d)!==canvas.height){
         canvas.width=Math.round(width*d);canvas.height=Math.round(height*d);
       }
-      const v=state.view,w=v.xmax-v.xmin,h=v.ymax-v.ymin;
+      const v=state.view;
+      if(v!==renderedView)fitBounds=v===requestedFit?v:null;
       if(v!==renderedView||width!==state.cssW||height!==state.cssH){
-        // Carry the short-side span through layout changes to avoid cumulative zoom-out on rotation.
-        const scale=v===renderedView?Math.min(w,h)/Math.min(width,height):Math.max(w/width,h/height);
-        const cx=v.xmin+w/2,cy=v.ymin+h/2;
+        // Fit the original geometry bounds after layout changes. Manual zoom/pan
+        // instead carries its short-side span through rotation.
+        const bounds=fitBounds||v,w=bounds.xmax-bounds.xmin,h=bounds.ymax-bounds.ymin;
+        const scale=!fitBounds&&v===renderedView?Math.min(w,h)/Math.min(width,height):Math.max(w/width,h/height);
+        const cx=bounds.xmin+w/2,cy=bounds.ymin+h/2;
         state.view={xmin:cx-scale*width/2,xmax:cx+scale*width/2,ymin:cy-scale*height/2,ymax:cy+scale*height/2};
         renderedView=state.view;
       }
