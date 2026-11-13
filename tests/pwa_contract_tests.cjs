@@ -19,7 +19,7 @@ assert.ok(worker.includes("'./conic-area.js'")&&html.includes(`conic-area.js?v=$
 assert.ok(worker.includes("'./vertex-secant.js'")&&html.includes(`vertex-secant.js?v=${app.version}`),'The dependent vertex-secant graph is versioned and cached');
 assert.ok(worker.includes("'./inverse-locus.js'")&&html.includes(`inverse-locus.js?v=${app.version}`),'Independent inversion and per-part locus drivers are updated and cached together');
 assert.ok(worker.includes("'./symmetric-chord.js'")&&html.includes(`symmetric-chord.js?v=${app.version}`),'Symmetric secants and their answer diagrams ship and cache with the same release');
-for(const module of ['basic-conditions','ellipse-area-chord','ellipse-tangent-ratio','hyperbola-asymptote-midpoint','recognition-pages','recognition-review','image-adjust'])assert.ok(worker.includes(`'./${module}.js'`)&&html.includes(`${module}.js?v=${app.version}`),'Browser modules must ship and cache with the same release');
+for(const module of ['basic-conditions','ellipse-area-chord','ellipse-tangent-ratio','hyperbola-asymptote-midpoint','recognition-pages','recognition-review','image-review-viewer','image-adjust'])assert.ok(worker.includes(`'./${module}.js'`)&&html.includes(`${module}.js?v=${app.version}`),'Browser modules must ship and cache with the same release');
 
 assert.match(app.version, /^\d+\.\d+\.\d+$/);
 assert.equal(web.version, app.version);

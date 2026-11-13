@@ -136,7 +136,19 @@
 .study-dialog.recognition-dialog{width:min(1080px,94vw);max-height:90dvh;overflow:auto}
 .recognition-comparison{display:grid;grid-template-columns:1fr 1fr;gap:18px;min-width:0}
 .recognition-comparison>div{min-width:0}
-.recognition-source img{display:block;width:100%;max-height:48dvh;object-fit:contain;background:#fff;border-radius:8px}
+.recognition-view-tools,.recognition-view-nav,.recognition-edit-heading{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+.recognition-view-tools,.recognition-view-nav{margin:.4rem 0}
+.recognition-edit-heading{justify-content:space-between;margin-bottom:.35rem}
+.recognition-view-tools .button,.recognition-view-nav .button,.recognition-edit-heading .button{min-height:36px;padding:.25rem .5rem}
+.recognition-view-tools output{min-width:3.5ch;text-align:center;font-variant-numeric:tabular-nums}
+.recognition-view-tools [aria-pressed="true"]{outline:1px solid #975b45;outline-offset:-2px}
+.recognition-image-viewport{position:relative;block-size:clamp(160px,40dvh,450px);overflow:auto;overscroll-behavior:contain;background:#f2e7da;border:1px solid #d6c6b9;border-radius:8px}
+.recognition-image-viewport:focus-visible{outline:2px solid #974a33;outline-offset:2px}
+.recognition-image-plane{display:flex;align-items:center;justify-content:center;width:max-content;min-width:100%;height:max-content;min-height:100%}
+.recognition-image-plane img{display:block;max-width:none;flex:none;background:#fff;user-select:none;cursor:grab}
+.recognition-image-viewport.is-panning img{cursor:grabbing}
+.review-image-expanded .recognition-image-viewport{block-size:clamp(180px,62dvh,680px)}
+.review-image-expanded .recognition-comparison{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
 #recognizedText{width:100%;min-height:220px;box-sizing:border-box}
 #recognitionFormulaPreview{max-height:32dvh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:10px}
 #recognitionReview{padding:12px;margin:12px 0;background:var(--panel-bg,#fff7de);border:1px solid #b98931;border-radius:8px}
@@ -148,7 +160,9 @@
 .image-page-list .page-actions{display:flex;gap:.2rem}
 .image-page-list .page-actions button{padding:.3rem .45rem;min-width:32px;min-height:32px}
 .image-page-list small{grid-column:1/-1;overflow-wrap:anywhere}
-#recognitionPageControl select{max-width:100%;width:100%;margin:.35rem 0}
+.recognition-page-control>div{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.35rem;margin:.35rem 0}
+.recognition-page-control select{min-width:0;width:100%}
+.recognition-page-control button{min-width:36px;min-height:36px;padding:.25rem .5rem}
 #recognitionPageText{white-space:pre-wrap;overflow-wrap:anywhere;max-height:24dvh;overflow:auto;font:inherit;padding:.45rem}
 .recognition-findings{margin:.5rem 0;background:#fff7e4;border:1px solid #c5a367;border-radius:8px;padding:.55rem;color:#40291c}
 .recognition-findings h3{font-size:.92rem;margin:0 0 .3rem}
@@ -173,4 +187,4 @@
 .image-adjust-edges label{min-width:0;display:grid}
 #imageAdjustMessage:empty{display:none}
 #toggleRecognitionOriginal{margin:0 0 .4rem}
-@media(max-width:700px){.recognition-comparison{grid-template-columns:1fr}.study-dialog.recognition-dialog{max-height:92dvh}.recognition-source img{max-height:26dvh}}
+@media(max-width:700px){.recognition-comparison,.review-image-expanded .recognition-comparison{grid-template-columns:1fr}.study-dialog.recognition-dialog{max-height:92dvh}.recognition-image-viewport{block-size:clamp(145px,30dvh,300px)}}

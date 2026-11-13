@@ -85,8 +85,14 @@ module.exports=async({page,context,assert,screenshot})=>{
   },uploads[0].image);
   assert.deepEqual(colors,[[18,102,53,255],[33,64,160,255]],'Crop uses the exact oriented selection');
   await checkPreview('#recognitionOriginal',480,240);
+  await page.locator('[data-review-view="actual"]').click();
+  assert.equal(await page.locator('#recognitionImageScale').textContent(),'100%');
   await page.locator('#toggleRecognitionOriginal').click();
   await checkPreview('#recognitionOriginal',400,600);
+  assert.equal(await page.locator('[data-review-view="fit"]').getAttribute('aria-pressed'),'true');
+  await page.locator('#toggleRecognitionOriginal').click();
+  await checkPreview('#recognitionOriginal',480,240);
+  assert.equal(await page.locator('#recognitionImageScale').textContent(),'100%');
   await page.locator('#recognitionPageSelect').selectOption('1');
   assert(!await page.locator('#toggleRecognitionOriginal').isVisible());
   assert.equal(await page.locator('#recognizedText').inputValue(),question);

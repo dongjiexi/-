@@ -48,7 +48,6 @@ body .dong-ggb-tools>div{background:#fffaf4;box-shadow:0 6px 20px #69352824}
 #scenePreviewDialog{scroll-padding-bottom:84px}
 #scenePreviewDialog>.dialog-actions{position:sticky;bottom:-1px;z-index:3;background:#fffcf8;border-top:1px solid var(--line);padding:12px 0;margin-bottom:0;box-shadow:0 -8px 18px #703a250b}
 #recognitionDialog{scroll-padding-bottom:72px}
-#confirmRecognition{position:sticky;bottom:0;z-index:3;box-shadow:0 -5px 16px #703a2520}
 .input-utilities{padding:8px 0;margin-bottom:6px;border-bottom:1px solid var(--line)}
 .part-body>.verification-status.generated{display:block;margin:10px 0;padding:10px 12px;background:#fff3d9;border:1px solid #c99436;border-left-width:4px;color:#714600;font-size:14px;line-height:1.5}
 .part-body>.verification-status.generated::after{content:'。以下为待核验解答，请结合题设与推导检查；图形展示不等于数学证明。'}

@@ -1033,12 +1033,15 @@
       duplicate.hidden=!duplicate.textContent;
       previewExamText(input,find('#recognitionFormulaPreview'));
     }
+    const imageReview=window.DongImageReviewViewer.mount(find('#recognitionDialog'));
     function showReviewPage(showOriginal=false){
       const select=find('#recognitionPageSelect'),index=Number(select.value)||0,page=imagePages[index];
       if(!page)return;
-      const image=find('#recognitionOriginal'),toggle=find('#toggleRecognitionOriginal');
+      find('#previousRecognitionPage').disabled=index===0;
+      find('#nextRecognitionPage').disabled=index===imagePages.length-1;
+      const toggle=find('#toggleRecognitionOriginal');
       const adjusted=!!page.adjustedUrl&&!showOriginal,label=adjusted?'识别用图':'原图';
-      image.src=adjusted?page.adjustedUrl:page.url;image.alt='第 '+(index+1)+' 页'+label;
+      imageReview.show(adjusted?page.adjustedUrl:page.url,'第 '+(index+1)+' 页'+label);
       find('#recognitionImageTitle').textContent=label;
       toggle.hidden=!page.adjustedUrl;
       toggle.textContent=adjusted?'查看原图':'查看识别用图';
@@ -1058,7 +1061,9 @@
       find('#recognitionPageSource').hidden=false;
       find('#recognitionPageSource').open=false;
       const select=find('#recognitionPageSelect');
+      const lastPage=select.value;
       select.replaceChildren(...imagePages.map((page,i)=>new Option('第 '+(i+1)+' 页 · '+page.file.name,String(i))));
+      if(select.querySelector('option[value="'+lastPage+'"]'))select.value=lastPage;
       showReviewPage();
       const join=find('#recognitionJoinNotice');
       join.hidden=!merged.removed;join.textContent=merged.removed?'已合并 '+merged.removed+' 处相同的题干或跨页重叠文字。':'';
@@ -1258,6 +1263,8 @@
     }
     function resetRecognitionReview(){
       reviewDraft=null;
+      imageReview.reset();
+      find('#recognitionPageSelect').value='0';
       const dialog=find('#recognitionDialog');
       if(dialog.open)dialog.close();
     }
@@ -1320,7 +1327,23 @@
       else find('#removeImage').focus();
     });
     find('#recognitionPageSelect').addEventListener('change',()=>showReviewPage());
+    for(const [id,step] of [['previousRecognitionPage',-1],['nextRecognitionPage',1]]){
+      find('#'+id).addEventListener('click',()=>{
+        const select=find('#recognitionPageSelect');
+        const index=select.selectedIndex+step;
+        if(index<0||index>=imagePages.length)return;
+        select.selectedIndex=index;
+        showReviewPage();
+        if(find('#'+id).disabled)select.focus();
+      });
+    }
     find('#toggleRecognitionOriginal').addEventListener('click',event=>showReviewPage(event.currentTarget.dataset.showOriginal==='true'));
+    find('#jumpRecognitionText').addEventListener('click',()=>find('#recognizedText').focus());
+    find('#jumpRecognitionImage').addEventListener('click',()=>{
+      const viewport=find('#recognitionImageViewport');
+      viewport.focus({preventScroll:true});
+      find('.recognition-source').scrollIntoView({block:'start'});
+    });
     find('#recognizedText').addEventListener('input',()=>{
       if(imagePages.length>1)reviewDraft=find('#recognizedText').value;
       previewRecognition();
