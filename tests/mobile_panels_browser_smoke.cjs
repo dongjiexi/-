@@ -17,6 +17,9 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#openCurrentSolution').click();
   assert.equal(await page.locator('#lessonPanelTitle').evaluate(el=>document.activeElement===el),true);
   assert.equal(await page.locator('#solution').isVisible(),true);
+  // The shortcut scrolls on the next animation frame. Let that finish before
+  // simulating a reader scrolling farther down the explanation.
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));
   const lessonOffset=await page.evaluate(()=>scrollY);
   assert(lessonOffset>200,'解析面板有足够的内容验证实际滚动');
