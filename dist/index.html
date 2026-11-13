@@ -303,10 +303,11 @@
     .native-toolbar .tool-group:last-child { padding-right:0;border-right:0; }
     .board-shell.toolbox-collapsed .native-toolbar { display:none; }
     .toolbox-mobile-collapse { display:none; }
-    .board-tool-state { display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.35rem .65rem;background:#fff4e7;color:#693e31;border-bottom:1px solid #e5cbbb; }
+    .board-tool-state { display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.3rem .55rem;background:#fff4e7;color:#693e31;border:1px solid #e5cbbb;border-radius:7px; }
     .board-tool-state strong { font-size:.82rem; }
     .board-tool-state .button { flex:none;min-height:32px; }
     .dong-ggb-head .board-tool-state { flex:0 0 100%;order:2; }
+    #nativeToolState { position:absolute;z-index:4;left:.5rem;top:.5rem;max-width:calc(100% - 84px); }
     .quick-function-details,.compact-section { margin-top:.55rem;border:1px solid #d9e5ed;border-radius:9px;background:#fbfdff; }
     .quick-function-details summary,.compact-section summary { padding:.55rem .7rem;color:#28506a;font-size:.82rem;font-weight:700;cursor:pointer; }
     .quick-function-details[open] summary,.compact-section[open] summary { border-bottom:1px solid #e2ebf1; }
@@ -566,11 +567,11 @@
         <details id="areaChordPanel" class="compact-section" hidden><summary>面积条件与合法弦</summary><div id="areaChordReadout"></div></details>
         <section id="lessonUpgradeNotice" class="help" hidden><span id="lessonUpgradeMessage"></span><button id="upgradeReferenceScene" class="button secondary" type="button">备份并升级动态图</button></section>
         <div id="drawingControls">
-          <div class="board-tool-state" id="nativeToolState" hidden><strong id="nativeToolName"></strong><button class="button secondary" id="finishNativeTool" type="button">退出工具</button></div>
           <div id="dragHint" class="drag-hint" role="status">拖动动点沿轨迹；拖空白处移动视野。</div>
         </div>
         <div id="snapStatus" class="snap-status" role="status" aria-live="polite"></div>
         <div class="canvas-wrap">
+          <div class="board-tool-state" id="nativeToolState" hidden><strong id="nativeToolName"></strong><button class="button secondary" id="finishNativeTool" type="button">退出工具</button></div>
           <div id="tangentViewportNote" hidden></div>
           <button id="openGeoGebraInline" class="button secondary" type="button" style="position:absolute;left:.5rem;top:.5rem;z-index:3">教学画板（集成预览）</button>
           <button id="openObjectManager" class="button secondary" type="button" style="position:absolute;right:.5rem;top:.5rem;z-index:3" aria-haspopup="dialog">对象</button>
