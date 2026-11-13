@@ -69,5 +69,14 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#confirmAddConic').click();
   const scene=JSON.parse(await page.locator('#sceneJson').inputValue());
   assert.equal(scene.objects.at(-1).r,2.5);
+  await page.locator('[data-mobile-panel="board"]').click();
+  await page.locator('[data-add-conic="circle"]').click();
+  await page.locator('#addConicDialog [data-open-math-keyboard]').click();
+  await page.keyboard.press('Escape');
+  assert(await page.locator('#mathKeyboard').isHidden(),'Escape 先收起键盘');
+  assert(await page.locator('#addConicDialog').isVisible(),'Escape 收起键盘时保留建图弹窗');
+  await page.locator('#addConicDialog [data-open-math-keyboard]').click();
+  await page.locator('#addConicDialog').evaluate(el=>el.close());
+  await page.waitForFunction(()=>document.querySelector('#mathKeyboard').hidden&&document.querySelector('#mathKeyboard').parentElement===document.body);
   console.log('PASS: self-hosted MathLive edits structured parameters and the expanded keyboard remains available.');
 };

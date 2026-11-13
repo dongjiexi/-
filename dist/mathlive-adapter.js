@@ -10,11 +10,7 @@ let fieldEditing = false;
 let visualEditing = false;
 document.addEventListener('focusin',event=>{
   if(event.target===activeField)visualEditing=true;
-  else if(event.target.matches?.('input,textarea')){
-    visualEditing=false;
-    const panel=document.getElementById('mathKeyboard');
-    if(panel&&!panel.hidden&&!panel.contains(event.target)&&event.target!==activeTarget)connect(panel,event.target);
-  }
+  else if(event.target.matches?.('input,textarea'))visualEditing=false;
 });
 
 document.addEventListener('input', event => {
@@ -37,9 +33,12 @@ function connect(panel, target) {
   if (!host) return;
   if (!targetSupportsFormulaEditor(target)) {
     activeTarget = null;
-    host.innerHTML = '<p class="mathlive-note">题干可继续使用下方中文兼容键盘；选中方程或参数输入格，可启用完整 LaTeX 公式编辑器。</p>';
+    visualEditing = false;
+    host.hidden = true;
+    window.mathVirtualKeyboard?.hide();
     return;
   }
+  host.hidden = false;
   activeTarget = target;
   visualEditing = false;
   let configureField = false;

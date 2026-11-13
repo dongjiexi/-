@@ -18,7 +18,6 @@ module.exports=async({page,context,assert,screenshot})=>{
       '\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});
   });
   await page.reload({waitUntil:'domcontentloaded'});
-  await page.locator('#cloudVisionChoice').waitFor({state:'visible'});
   const make=async(width,name)=>({name,mimeType:'image/png',buffer:Buffer.from(await page.evaluate(width=>{
     const c=document.createElement('canvas');c.width=width;c.height=210;const ctx=c.getContext('2d');
     ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#27211b';ctx.font='30px sans-serif';ctx.fillText('Math page '+width,20,80);
@@ -27,6 +26,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   const a=await make(440,'01.png'),b=await make(460,'02.png'),c=await make(480,'03.png');
   await page.locator('#question').fill('当前题稿保持原样');
   await page.locator('#imageFile').setInputFiles([b,a]);
+  await page.locator('#cloudVisionChoice').waitFor({state:'visible'});
   assert.deepEqual(uploaded,[],'Choosing files does not upload');
   await page.getByRole('button',{name:'上移第 2 页'}).click();
   assert.match(await page.locator('#imagePageList li').first().textContent(),/01\.png/);
@@ -77,7 +77,6 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#cancelScenePreview').click();
 
   await page.locator('#removeImage').click();
-  await page.locator('#preferCloudVision').uncheck();
   await page.evaluate(({page1,page2})=>{
     window.__ocrPages={created:0,ended:0,files:[]};
     window.Tesseract={createWorker:async()=>{
@@ -95,6 +94,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   },{page1,page2});
   await page.locator('#imageFile').setInputFiles([a,b]);
   await page.locator('#cameraFile').setInputFiles(c);
+  await page.locator('#preferCloudVision').uncheck();
   assert.equal(await page.locator('#imagePageList li').count(),3,'Camera appends to existing pages');
   await page.locator('#recognizeButton').click();
   await page.waitForFunction(()=>typeof window.__ocrPages.release==='function');

@@ -4,6 +4,7 @@ module.exports=async({page,context})=>{
   await context.route('**/runtime-config.js',route=>route.fulfill({contentType:'application/javascript',body:"window.DONGJIEXI_CONFIG={version:'0.24.0',deployment:'web',apiEnabled:false,apiBase:''};"}));
   await page.reload({waitUntil:'domcontentloaded'});
   assert.equal(await page.locator('#recognizeButton').isDisabled(),false,'Browser OCR must remain available without cloud API');
+  assert(await page.locator('#recognizeButton').isHidden(),'识图动作随题图出现');
   assert.equal(await page.locator('#cameraFile').getAttribute('capture'),'environment');
   const png=await page.evaluate(()=>{
     const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=220;

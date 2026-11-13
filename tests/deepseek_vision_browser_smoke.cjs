@@ -5,11 +5,12 @@ module.exports=async({page,context,assert,screenshot})=>{
   let sent,calls=0,fail=false,warnings=false;
   await context.route('**/api/jobs',r=>r.fulfill({status:500,json:{error:'Vision must not use polling'}}));
   await context.route('**/api/recognize',r=>{calls++;sent=r.request().postDataJSON();return r.fulfill({contentType:'text/event-stream',body:'data: '+JSON.stringify({choices:[{delta:{content:JSON.stringify({text:warnings?text+' [看不清：某角度]':text,uncertainties:warnings?['第 3 问角度需核对']:[]})}}]})+'\n\n'+(fail?'':'data: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n')});});
-  await page.reload({waitUntil:'domcontentloaded'});await page.locator('#cloudVisionChoice').waitFor({state:'visible'});
-  assert(await page.locator('#preferCloudVision').isChecked());
+  await page.reload({waitUntil:'domcontentloaded'});
   const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=500;c.height=180;c.getContext('2d').fillText('protocol fixture',10,60);return c.toDataURL().split(',')[1];});
   await page.locator('#question').fill('保留当前题稿');
   await page.locator('#imageFile').setInputFiles({name:'math.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+  await page.locator('#cloudVisionChoice').waitFor({state:'visible'});
+  assert(await page.locator('#preferCloudVision').isChecked());
   assert.equal(calls,0,'Selecting an image never uploads it');
   await page.locator('#recognizeButton').click();await page.locator('#recognitionDialog[open]').waitFor();
   assert.equal(sent.kind,'recognize');assert.equal(sent.model,'deepseek-flash','Vision stays Flash even when solve uses Pro');assert.match(sent.image,/^data:image\/png;base64,/);

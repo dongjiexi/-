@@ -49,7 +49,10 @@
     function setMobilePanel(panel,{position='restore',view='lesson'}={}){
       if(panel==='input'&&document.body.classList.contains('classroom-mode'))return;
       const previous=workspace.dataset.mobileView,mobile=api.mobileLayout.matches;
-      if(mobile&&previous!==panel)panelOffsets[previous]=Math.max(0,window.scrollY-workAreaStart());
+      if(mobile&&previous!==panel){
+        panelOffsets[previous]=Math.max(0,window.scrollY-workAreaStart());
+        api.closeMathKeyboard();
+      }
       workspace.dataset.mobileView=panel;
       mobileNav.querySelectorAll('[data-mobile-panel]').forEach(item=>item.setAttribute('aria-pressed',String(item.dataset.mobilePanel===panel)));
       const changedView=panel==='lesson'&&view!==inspectorView;
@@ -1429,7 +1432,11 @@
     find('#importLesson').addEventListener('change',async event=>{if(!event.target.files[0])return;if(!find('#notebookDialog').open){notebookEpoch++;renderNotebook();find('#notebookDialog').showModal();}const epoch=notebookEpoch;try{const file=event.target.files[0];if(!file)return;if(file.size>5*1024*1024)throw new Error('题稿超过 5 MB。');const record=JSON.parse(await file.text());if(epoch!==notebookEpoch||!find('#notebookDialog').open)return;await openNotebookRecord(record,{externalFile:true});}catch(error){find('#notebookNotice').textContent=error.message;report(error);}finally{event.target.value='';}});
     find('#sendFollowup').addEventListener('click',followup);
     document.querySelectorAll('[data-followup]').forEach(button=>button.addEventListener('click',()=>{find('#followupInput').value=button.dataset.followup;find('#followupInput').focus();}));
-    find('#followupInput').addEventListener('keydown',event=>{if(event.ctrlKey&&event.key==='Enter')followup();});
+    find('#followupInput').addEventListener('keydown',event=>{
+      if(event.isComposing||event.key!=='Enter'||!(event.ctrlKey||event.metaKey))return;
+      event.preventDefault();
+      void followup();
+    });
     const formulaPreview=document.createElement('details');formulaPreview.className='question-formula-preview';
     const previewTitle=document.createElement('summary');previewTitle.textContent='题目公式预览 · 支持 LaTeX';
     const previewBody=document.createElement('div');previewBody.className='math-content';

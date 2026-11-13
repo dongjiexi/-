@@ -17,7 +17,6 @@ module.exports=async({page,context,assert,screenshot})=>{
       '\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});
   });
   await page.reload({waitUntil:'domcontentloaded'});
-  await page.locator('#cloudVisionChoice').waitFor({state:'visible'});
   const make=async(sideways,name)=>({name,mimeType:'image/png',buffer:Buffer.from(await page.evaluate(sideways=>{
     const c=document.createElement('canvas');c.width=sideways?400:410;c.height=sideways?600:240;
     const ctx=c.getContext('2d');
@@ -31,6 +30,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   },sideways),'base64')});
   const a=await make(true,'page-1.png'),b=await make(false,'page-2.png');
   await page.locator('#imageFile').setInputFiles([a,b]);
+  await page.locator('#cloudVisionChoice').waitFor({state:'visible'});
   const dialog=page.locator('#imageAdjustDialog'),stage=page.locator('#imageAdjustStage');
   const adjust=async()=>{
     await page.locator('#openImageAdjust').click();
@@ -140,7 +140,6 @@ module.exports=async({page,context,assert,screenshot})=>{
   await review.locator('[data-close-dialog]').click();
 
   await page.locator('#removeImage').click();
-  await page.locator('#preferCloudVision').uncheck();
   await page.evaluate(text=>{
     window.Tesseract={createWorker:async()=>({
       recognize:async file=>{
@@ -151,6 +150,7 @@ module.exports=async({page,context,assert,screenshot})=>{
     })};
   },question);
   await page.locator('#imageFile').setInputFiles(a);
+  await page.locator('#preferCloudVision').uncheck();
   await adjust();
   await page.getByRole('button',{name:'右转 90°',exact:false}).click();
   await crop(100,200,900,800);

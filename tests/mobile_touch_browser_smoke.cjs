@@ -3,6 +3,30 @@ module.exports=async({page,baseURL,assert,errors})=>{
   const phone=await context.newPage();phone.on('pageerror',error=>errors.push(error.message));
   try{
     await phone.goto(baseURL,{waitUntil:'domcontentloaded'});
+    const symbols=phone.locator('#mathKeyboard');
+    const question=phone.locator('#question');
+    await question.fill('题目：');
+    await phone.locator('#questionPanel [data-open-math-keyboard]').tap();
+    await symbols.getByRole('button',{name:'π',exact:true}).tap();
+    assert.equal(await question.inputValue(),'题目：π','触控符号应写入题干');
+    assert.equal(await question.evaluate(el=>el===document.activeElement),false,'点按符号时不重新唤起系统输入');
+    await phone.evaluate(()=>{
+      const reducedViewport={height:290,offsetTop:50,width:390,offsetLeft:0};
+      for(const [key,value] of Object.entries(reducedViewport))Object.defineProperty(visualViewport,key,{value,configurable:true});
+      visualViewport.dispatchEvent(new Event('resize'));
+    });
+    await phone.waitForFunction(()=>{
+      const keyboard=document.querySelector('#mathKeyboard'),close=keyboard.querySelector('[data-key-command="close"]');
+      const bounds=keyboard.getBoundingClientRect();
+      return bounds.top>=50&&bounds.bottom<=340&&close.getBoundingClientRect().bottom<=340;
+    });
+    await phone.evaluate(()=>{
+      for(const key of ['height','offsetTop','width','offsetLeft'])delete visualViewport[key];
+      visualViewport.dispatchEvent(new Event('resize'));
+    });
+    await phone.locator('[data-mobile-panel="board"]').tap();
+    assert(await symbols.isHidden(),'切栏自动收起键盘');
+    await phone.locator('[data-mobile-panel="input"]').tap();
     await phone.locator('#question').fill('椭圆x²/9+y²/4=1。');
     await phone.locator('#parseButton').tap();await phone.locator('#scenePreviewDialog').waitFor({state:'visible'});await phone.locator('#confirmScenePreview').tap();
     assert.equal(await phone.locator('#inputPanelToggle').isVisible(),false,'手机端不应显示无效的隐藏题目按钮');
@@ -39,6 +63,10 @@ module.exports=async({page,baseURL,assert,errors})=>{
     assert(landscape.canvasBottom<=390,'手机横屏可以滚到完整画板底部');
     await phone.locator('#canvas').scrollIntoViewIfNeeded();
     assert.equal(await phone.locator('[data-add-conic="ellipse"]').count(),1);
+    await phone.locator('[data-mobile-panel="input"]').tap();
+    await phone.locator('[data-quick-conic="parabola"]').tap();
+    assert(await phone.locator('#canvas').isVisible(),'快捷曲线建成后在同一画板展示');
+    assert.equal(JSON.parse(await phone.locator('#sceneJson').inputValue()).type,'parabola');
     console.log('PASS: mobile touch input, recognition confirmation, additive curve dialog, no horizontal overflow and orientation change.');
   }finally{await context.close();}
 };

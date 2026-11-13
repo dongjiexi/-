@@ -50,7 +50,7 @@
     ]}
   ];
 
-  function attach({defaultTarget} = {}) {
+  function attach({defaultTarget, mobileLayout} = {}) {
     const symbols={
       'a/b':'\\frac{\\square}{\\square}','分数':'\\frac{\\square}{\\square}','aⁿ':'\\square^{\\square}',
       '上标 ^':'\\square^{\\square}','√':'\\sqrt{\\square}','∛':'\\sqrt[3]{\\square}',
@@ -68,34 +68,62 @@
     const panel = document.createElement('section');
     panel.id = 'mathKeyboard';panel.className = 'math-keyboard';panel.hidden = true;
     panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','mathKeyboardTitle');panel.setAttribute('aria-describedby','mathKeyboardHelp');
-    panel.innerHTML = '<header><div><strong id="mathKeyboardTitle">数学键盘</strong><span id="mathKeyboardHelp">点按符号会插入到当前参数或文字输入框</span><span id="mathKeyboardTarget" aria-live="polite"></span></div><div class="math-keyboard-edit"><button type="button" data-key-command="left" aria-label="光标左移">←</button><button type="button" data-key-command="right" aria-label="光标右移">→</button><button type="button" data-key-command="backspace" aria-label="退格">⌫</button><button type="button" data-key-command="close">关闭</button></div></header><div class="mathlive-host" data-mathlive-host><p class="mathlive-note">正在准备完整 LaTeX 公式编辑器…</p></div><div class="math-keyboard-tabs" role="tablist"></div><div class="math-keyboard-keys"></div>';
+    panel.innerHTML = '<header><div><strong id="mathKeyboardTitle">数学键盘</strong><span id="mathKeyboardHelp">点按符号会插入到当前参数或文字输入框</span><span id="mathKeyboardTarget" aria-live="polite"></span></div><div class="math-keyboard-edit"><button type="button" data-key-command="left" aria-label="光标左移">←</button><button type="button" data-key-command="right" aria-label="光标右移">→</button><button type="button" data-key-command="backspace" aria-label="退格">⌫</button><button type="button" data-key-command="close">关闭</button></div></header><div class="math-keyboard-content"><div class="mathlive-host" data-mathlive-host><p class="mathlive-note">正在准备完整 LaTeX 公式编辑器…</p></div><div class="math-keyboard-tabs" role="tablist"></div><div class="math-keyboard-keys"></div></div>';
     document.body.append(panel);
     const next=document.createElement('button');next.type='button';next.dataset.keyCommand='next';next.textContent='下一空';next.title='可视公式中跳到下一个填空位置';panel.querySelector('.math-keyboard-edit').prepend(next);
-    panel.addEventListener('pointerdown',event=>{if(event.target.closest('.math-keyboard-keys button,[data-key-command]'))event.preventDefault();});
+    panel.addEventListener('pointerdown',event=>{if(event.target.closest('.math-keyboard-keys button,.math-keyboard-tabs button,[data-key-command]'))event.preventDefault();});
     const tabBox=panel.querySelector('.math-keyboard-tabs'),keyBox=panel.querySelector('.math-keyboard-keys');
     keyBox.id='mathKeyboardKeys';keyBox.setAttribute('role','tabpanel');
-    let activeGroup=groups[0].id,lastTarget=defaultTarget || null;
+    let activeGroup=groups[0].id,lastTarget=defaultTarget || null,opener=null,viewportFrame=0;
+    const viewport=window.visualViewport;
+    function syncViewport(){
+      cancelAnimationFrame(viewportFrame);
+      if(panel.hidden||!viewport)return;
+      viewportFrame=requestAnimationFrame(()=>{
+        const bottom=Math.max(0,document.documentElement.clientHeight-viewport.height-viewport.offsetTop);
+        panel.style.setProperty('--keyboard-bottom',bottom+'px');
+        panel.style.setProperty('--keyboard-left',viewport.offsetLeft+'px');
+        panel.style.setProperty('--keyboard-width',viewport.width+'px');
+        panel.style.setProperty('--keyboard-height',viewport.height+'px');
+      });
+    }
+    viewport?.addEventListener('resize',syncViewport);
+    viewport?.addEventListener('scroll',syncViewport);
+    window.addEventListener('resize',syncViewport);
 
-    const usable = element => element && element.isConnected && element.matches('textarea,input[type="text"],input[type="search"],input:not([type])') && !element.disabled && !element.readOnly && !element.closest('#mathKeyboard');
-    const targetName = target => target?.getAttribute('aria-label') || target?.closest('label')?.firstChild?.textContent?.trim() || target?.placeholder || '输入框';
+    const inputSelector='textarea,input[type="text"],input[type="search"],input:not([type])';
+    const usable = element => element?.isConnected && element.matches(inputSelector) && !element.disabled && !element.readOnly && !panel.contains(element) && element.getClientRects().length>0;
+    const targetName = target => target?.getAttribute('aria-label') || target?.labels?.[0]?.querySelector('span')?.textContent?.trim() || target?.labels?.[0]?.firstChild?.textContent?.trim() || '输入框';
     const announceTarget = () => {const output=panel.querySelector('#mathKeyboardTarget');if(output)output.textContent=`当前输入：${targetName(lastTarget)}`;};
-    document.addEventListener('focusin', event => {if(usable(event.target)){lastTarget=event.target;if(!panel.hidden)announceTarget();}});
+    document.addEventListener('focusin', event => {
+      if(panel.contains(event.target))return;
+      if(!panel.hidden&&event.target.closest('dialog[open]')!==panel.closest('dialog[open]'))close({restoreFocus:false});
+      if(usable(event.target)){
+        const changed=lastTarget!==event.target;
+        lastTarget=event.target;
+        if(!panel.hidden&&changed){
+          announceTarget();
+          window.DongMathLive?.connect(panel,lastTarget);
+        }
+      }
+    });
 
     function insert(text, caret = 0) {
-      const target=usable(lastTarget)?lastTarget:defaultTarget;
-      if(!usable(target))return;
+      const target=lastTarget;
+      if(panel.hidden||!usable(target))return;
       if(window.DongMathLive?.edit(target,text))return;
       const start=Number.isInteger(target.selectionStart)?target.selectionStart:target.value.length;
       const end=Number.isInteger(target.selectionEnd)?target.selectionEnd:start;
       target.setRangeText(text,start,end,'end');
       const position=Math.max(0,target.selectionStart+caret);
-      target.setSelectionRange(position,position);target.focus();
+      target.setSelectionRange(position,position);
+      if(!mobileLayout?.matches)target.focus({preventScroll:true});
       target.dispatchEvent(new Event('input',{bubbles:true}));
     }
     function command(value){
-      const target=usable(lastTarget)?lastTarget:defaultTarget;if(!usable(target))return;
+      const target=lastTarget;if(panel.hidden||!usable(target))return;
       if(window.DongMathLive?.edit(target,null,value))return;
-      if(value==='next'){const from=target.selectionStart??0,index=target.value.indexOf('()',from);if(index>=0){target.setSelectionRange(index+1,index+1);target.focus();}return;}
+      if(value==='next'){const from=target.selectionStart??0,index=target.value.indexOf('()',from);if(index>=0)target.setSelectionRange(index+1,index+1);return;}
       let start=target.selectionStart??target.value.length,end=target.selectionEnd??start;
       if(value==='backspace'){
         if(start===end&&start>0)start--;
@@ -104,7 +132,7 @@
         const position=Math.max(0,Math.min(target.value.length,start+(value==='left'?-1:1)));
         target.setSelectionRange(position,position);
       }
-      target.focus();
+      if(!mobileLayout?.matches)target.focus({preventScroll:true});
     }
     function renderGroup() {
       const group=groups.find(item=>item.id===activeGroup) || groups[0];
@@ -129,22 +157,57 @@
     });
     renderGroup();
 
-    function open(target){
-      if(usable(target))lastTarget=target;
+    function open(target, trigger=null){
+      if(!usable(target))return;
+      lastTarget=target;opener=trigger;
       // A native <dialog> lives in the browser top layer.  A fixed keyboard
       // left under <body> cannot receive pointer events above that dialog, so
       // temporarily mount it inside the active dialog for preview/OCR fields.
-      const modal=usable(lastTarget)?lastTarget.closest('dialog[open]'):null;
-      if(modal&&panel.parentNode!==modal)modal.append(panel);
-      else if(!modal&&panel.parentNode!==document.body)document.body.append(panel);
-      panel.hidden=false;document.body.classList.add('math-keyboard-open');renderGroup();announceTarget();window.DongMathLive?.connect(panel,lastTarget);if(!window.DongMathLive&&usable(lastTarget))lastTarget.focus();
+      const parent=target.closest('dialog[open]')||document.body;
+      if(panel.parentNode!==parent)parent.append(panel);
+      panel.hidden=false;
+      renderGroup();announceTarget();syncViewport();
+      window.DongMathLive?.connect(panel,target);
+      if(!mobileLayout?.matches)target.focus({preventScroll:true});
+      else if(trigger&&usable(document.activeElement))document.activeElement.blur();
     }
-    function close(){panel.hidden=true;document.body.classList.remove('math-keyboard-open');window.DongMathLive?.close();if(panel.parentNode!==document.body)document.body.append(panel);if(usable(lastTarget))lastTarget.focus();}
-    function toggle(target){panel.hidden?open(target):close();}
-    document.addEventListener('click',event=>{const trigger=event.target.closest('[data-open-math-keyboard]');if(!trigger)return;event.preventDefault();const scope=trigger.dataset.mathScope?document.querySelector(trigger.dataset.mathScope):null;let target=usable(lastTarget)&&(!scope||scope.contains(lastTarget))?lastTarget:null;if(!target&&trigger.dataset.mathTarget)target=document.querySelector(trigger.dataset.mathTarget);if(!panel.hidden&&target&&target!==lastTarget)open(target);else toggle(target||lastTarget);});
+    function close({restoreFocus=true}={}){
+      if(panel.hidden)return;
+      panel.hidden=true;
+      cancelAnimationFrame(viewportFrame);window.DongMathLive?.close();
+      if(panel.parentNode!==document.body)document.body.append(panel);
+      const focus=mobileLayout?.matches?opener:lastTarget;
+      if(restoreFocus&&focus?.getClientRects().length)focus.focus({preventScroll:true});
+      opener=null;
+    }
+    document.addEventListener('click',event=>{
+      const trigger=event.target.closest('[data-open-math-keyboard]');
+      if(!trigger)return;
+      event.preventDefault();
+      const modal=trigger.closest('dialog[open]');
+      const scope=trigger.dataset.mathScope?document.querySelector(trigger.dataset.mathScope):modal;
+      let target=usable(lastTarget)&&(!scope||scope.contains(lastTarget))&&lastTarget.closest('dialog[open]')===modal?lastTarget:null;
+      if(!target&&trigger.dataset.mathTarget)target=document.querySelector(trigger.dataset.mathTarget);
+      if(!usable(target))target=scope?(usable(scope)?scope:[...scope.querySelectorAll(inputSelector)].find(usable)):defaultTarget;
+      if(!usable(target)||target.closest('dialog[open]')!==modal)return;
+      if(!panel.hidden&&target===lastTarget)close();
+      else open(target,trigger);
+    });
     panel.addEventListener('click',event=>{const button=event.target.closest('[data-key-command]');if(!button)return;const value=button.dataset.keyCommand;if(value==='close')close();else command(value);});
-    document.addEventListener('keydown',event=>{if(event.ctrlKey&&event.shiftKey&&event.key.toLowerCase()==='k'){event.preventDefault();toggle(document.activeElement);}else if(event.key==='Escape'&&!panel.hidden)close();});
-    document.addEventListener('dong-mathlive-ready',()=>{if(!panel.hidden)window.DongMathLive?.connect(panel,lastTarget);});
+    document.addEventListener('keydown',event=>{
+      if(event.isComposing)return;
+      if(event.key==='Escape'&&!panel.hidden){
+        event.preventDefault();event.stopPropagation();close();
+      }else if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==='k'){
+        const modal=document.activeElement.closest('dialog[open]');
+        const target=[document.activeElement,lastTarget,defaultTarget].find(element=>usable(element)&&element.closest('dialog[open]')===modal);
+        if(target){event.preventDefault();if(panel.hidden)open(target);else close();}
+      }
+    },true);
+    document.addEventListener('close',event=>{
+      if(event.target===panel.parentNode)close({restoreFocus:false});
+    },true);
+    document.addEventListener('dong-mathlive-ready',()=>{if(!panel.hidden&&usable(lastTarget))window.DongMathLive?.connect(panel,lastTarget);});
     return {open,close,insert,get target(){return lastTarget;}};
   }
 

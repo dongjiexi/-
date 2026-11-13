@@ -6,9 +6,9 @@ module.exports=async({page,context,assert})=>{
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#solveModeToggle').click();
   await page.locator('[data-solve-mode="cloud"]').click();
-  await page.locator('#cloudVisionChoice').waitFor({state:'visible'});
   const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=300;c.height=100;c.getContext('2d').fillText('y2=4x',10,50);return c.toDataURL('image/png').split(',')[1];});
   await page.locator('#imageFile').setInputFiles({name:'math.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+  await page.locator('#cloudVisionChoice').waitFor({state:'visible'});
   await page.locator('#preferCloudVision').check();
   await page.locator('#recognizeButton').click();
   await page.locator('#recognitionDialog[open]').waitFor();
