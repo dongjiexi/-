@@ -1462,7 +1462,10 @@
       typesetProblem(element,source){element.innerHTML=textBlock(source);typeset(element);},
       sendFeedback:followup,showLearning:()=>setMobilePanel('lesson',{position:'keep'}),
       saveStudy(){if(api.state.solution&&api.question.value.trim()===api.state.solution.restatement.trim()){try{saveLesson(true);}catch(error){report(error);}}}});
-    window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>saveBeforeSwitch(),showLearning:()=>setMobilePanel('lesson',{position:'start'})});
+    window.DongQuestionBank?.attach({...api,restoreLesson,saveCurrent:()=>saveBeforeSwitch(),showLearning:()=>{
+      if(api.mobileLayout.matches)setMobilePanel('lesson',{position:'start'});
+      else setInspectorView('lesson');
+    }});
     renderDraftRecovery();
     return {refreshEngine,renderSolution,solve,clearStepHighlight,
       openParameters:()=>setMobilePanel('lesson',{position:'start',view:'geometry'}),
