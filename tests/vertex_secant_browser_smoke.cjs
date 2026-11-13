@@ -20,6 +20,11 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.equal(saved.solution.sceneAudit.answerMissingLines.length,0);
   assert.equal(saved.scene.vertexSecant.fixedX,-1);assert(!Object.hasOwn(saved.scene.points,'P'),'The dependent P is not frozen at the unnamed given point');
   await page.locator('[data-study-part="2"]').click();await page.locator('#homeButton').click();
+  const fixedLine=saved.scene.lines.find(line=>/定直线$/.test(line.label));
+  const conclusion=page.locator('#solution .part-body li').filter({hasText:/与动直线无关/});
+  await conclusion.locator('[data-step-graph-index]').click();
+  const selected=()=>page.evaluate(()=>window.DongBoardStep.snapshot()?.ids||[]);
+  assert((await selected()).includes(fixedLine.id)&&(await selected()).includes('vertex-secant-P'));
   const scene=()=>page.locator('#sceneJson').inputValue().then(JSON.parse);
   const get=async()=>page.evaluate(s=>{const f=window.DongSceneAudit.frame(s,window.DongConstruct);return{features:f.features,M:f.engine.resolve('vertex-secant-M'),N:f.engine.resolve('vertex-secant-N'),P:f.engine.resolve('vertex-secant-P')};},await scene());
   let initial=await get();assert(Math.abs(initial.M.y-4*Math.sqrt(3))<1e-7);assert(Math.abs(initial.P.y+2*Math.sqrt(3))<1e-7);
@@ -31,6 +36,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   const changed=await get();assert(Math.abs(changed.M.y-initial.M.y)>.2,'Actual mouse drag changes the driver');
   assert(changed.M.x<0&&changed.M.y>0&&changed.N.x<0&&changed.N.y<0);assert(Math.abs(changed.P.x+1)<1e-6);
   assert(Math.abs(changed.N.y-initial.N.y)>.1&&Math.abs(changed.P.y-initial.P.y)>.1,'Dependent endpoint and intersection follow the drag');
+  assert((await selected()).includes(fixedLine.id)&&(await selected()).includes('vertex-secant-P'));
   assert.equal(await page.locator('#solution .katex-error').count(),0);
   await page.locator('#homeButton').click();await screenshot('vertex-secant-linked-desktop.png',null);
   assert.match(await page.locator('.solve-review').textContent(),/未发现已覆盖项缺失/);

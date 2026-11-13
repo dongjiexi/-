@@ -35,4 +35,20 @@ assert.deepEqual(Array.from(duplicate.ids),['q']);
 assert.deepEqual(Array.from(duplicate.missing),['P（名称不唯一）']);
 assert.deepEqual(Array.from(link.select('直线tP',[named[0],{...named[0]}]).ids),['tp'],'Repeated entry for the same object is not a collision');
 assert.deepEqual(Array.from(link.select('ellipse and application',[{id:'bad',label:'辅助线',aliases:['ellipse','application','<img src=x>']}]).ids),[]);
+const relations=[
+  {id:'t1',label:'A 点切线',relation:'tangent',contact:'A'},
+  {id:'t2',label:'B′ 点切线',relation:'tangent',contact:'B′'},
+  {id:'t3',label:'A₁ 点切线',relation:'tangent',contact:'A₁'},
+  {id:'T',label:'T',relation:'fixed-point'},
+  {id:'fixed-line',label:'P 的定直线',relation:'fixed-line'}
+];
+const ids=(text,items=relations)=>Array.from(link.select(text,items).ids);
+assert.deepEqual(ids('在 $A$、$B^{\\prime}$ 两点处分别作切线。'),['t1','t2']);
+assert.deepEqual(ids('两条参数切线交于 Q。',relations.slice(0,2)),['t1','t2']);
+assert.deepEqual(ids('两条切线互相垂直。'),[],'Three tangents must not be guessed as a pair');
+assert.deepEqual(ids('A_1 点处的切线。'),['t3']);
+assert.deepEqual(ids('直线 m 恒过定点。'),['T']);
+assert.deepEqual(ids('动点 P 恒在定直线 x=-1 上。'),['fixed-line']);
+assert.deepEqual(ids('过定点 P 作动直线。'),[],'A given fixed point does not identify the derived invariant');
+assert.deepEqual(Array.from(link.select('A、B′ 两点处的切线。',relations.slice(0,1)).missing),['B′ 点切线']);
 console.log('PASS: step links use existing object names, preserve primes/subscripts, report missing names, ignore English words and clear stale scenes.');

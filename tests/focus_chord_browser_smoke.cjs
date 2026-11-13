@@ -45,7 +45,13 @@ module.exports = async ({page, context, assert, screenshot}) => {
   assert.match(await page.locator('#metrics').innerText(), /两切线方向点积/);
   assert.match(await page.locator('#solution').innerText(), /4\s*\/\s*4|已完成\s*4/);
   const {q_locus:qPart,m_locus:mPart,area:areaPart}=scene.focusChord.parts;
+  await page.locator(`[data-study-part="${scene.focusChord.parts.perpendicular}"]`).click();
+  const tangentStep=page.locator('#solution .part-body li').filter({hasText:/两条切线斜率/});
+  await tangentStep.locator('[data-step-graph-index]').click();
+  const highlight=()=>page.evaluate(()=>window.DongBoardStep.snapshot()?.ids||[]);
+  assert.deepEqual((await highlight()).filter(id=>scene.focusChord.tangents.includes(id)).sort(),[...scene.focusChord.tangents].sort());
   await page.locator(`[data-study-part="${qPart}"]`).click();
+  assert.deepEqual(await highlight(),[]);
   assert.match(await page.locator('#layers').textContent(),/M 的轨迹 · 推导 · 其他小问/);
   assert.doesNotMatch(await page.locator('#metrics').textContent(),/△PAB 面积/);
   await page.locator(`[data-study-part="${mPart}"]`).click();

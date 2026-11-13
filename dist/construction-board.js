@@ -96,8 +96,9 @@
       const feature=api.features().find(item=>item.name===name);
       if(!feature)return null;
       const dynamic=feature.nativeDynamic&&name!==model?.fixedPoint?.name;
-      const scope=dynamic?{part:model?.dynamicLinePart,parts:model?.dynamicLineParts}:{parts:model?.pointParts?.[name]};
-      if(!inPart(scope)||displayed&&dynamic&&(model.showDynamic===false||model.showConic===false))return null;
+      const scope=feature.nativeFixed?model.fixedPoint:dynamic?{part:model?.dynamicLinePart,parts:model?.dynamicLineParts}:{parts:model?.pointParts?.[name]};
+      if(!inPart(scope)||feature.nativeSecondary&&!inPart(model.pairedChord)||
+        displayed&&(api.featureVisible?!api.featureVisible(feature):scope?.visible===false||dynamic&&(model.showDynamic===false||model.showConic===false)))return null;
       return 'feature:'+name;
     }
     function resolveNamedPoint(name,options){
@@ -129,7 +130,10 @@
           }
           else if(obj.kind==='construction'){
             const [a,b]=refs;
-            if(['line','segment','ray','vector'].includes(obj.op)&&a?.type==='point'&&b?.type==='point')result={type:'line',o:a,d:sub(b,a),segment:obj.op==='segment'||obj.op==='vector',ray:obj.op==='ray',vector:obj.op==='vector'};
+            if(['line','segment','ray','vector'].includes(obj.op)&&a?.type==='point'&&b?.type==='point'){
+              const d=sub(b,a);
+              if(norm(d)>EPS)result={type:'line',o:a,d,segment:obj.op==='segment'||obj.op==='vector',ray:obj.op==='ray',vector:obj.op==='vector'};
+            }
             if(obj.op==='line_angle'&&a?.type==='point'&&Number.isFinite(obj.angle)){const angle=obj.angle*Math.PI/180;result={type:'line',o:a,d:{x:Math.cos(angle),y:Math.sin(angle)}};}
             if(obj.op==='circle'&&a?.type==='point'&&b?.type==='point')result={type:'circle',x:a.x,y:a.y,r:distance(a,b)};
             if(obj.op==='midpoint'&&a?.type==='point'&&b?.type==='point')result=pointValue(mul(add(a,b),.5));

@@ -48,6 +48,13 @@
       const len=Math.sqrt(l2);
       return {pivot,handle:{x:pivot.x+dx/len*step,y:pivot.y+dy/len*step}};
     }
+    function chords(){
+      const m=state.model;
+      if(m.showDynamic===false||!visible({part:m.dynamicLinePart,parts:m.dynamicLineParts}))return [];
+      const first={key:'theta',points:api.intersections,color:'#b7790e',name:m.dynamicLineLabel||'动直线'};
+      if(!m.pairedChord||!visible(m.pairedChord))return [first];
+      return [first,{key:'theta2',points:api.secondIntersections,color:'#356cb0',name:m.pairedChord.lineLabel||'第二条动直线'}];
+    }
     function handles() {
       if(!state.model)return [];
       const list=[],m=state.model,p=state.p,vertical=m.orientation==='vertical';
@@ -75,11 +82,11 @@
         }else if(m.type==='circle')list.push({type:'radius',point:{x:p.h+p.r,y:p.k},label:'拖动圆周手柄调整半径'});
         else list.push({type:'focus',point:vertical?{x:p.h,y:p.k+(p.direction||1)*p.p}:{x:p.h+(p.direction||1)*p.p,y:p.k},label:'拖动焦点调整开口与焦距'});
       }
-      if(m.showDynamic!==false&&visible({part:m.dynamicLinePart,parts:m.dynamicLineParts})) {
-        const origin=api.lineOrigin(),rad=p.theta*Math.PI/180;
+      for(const chord of chords()){
+        const origin=api.lineOrigin(),rad=p[chord.key]*Math.PI/180;
         const d=(state.view.xmax-state.view.xmin)/state.cssW*110;
-        list.push({type:'dynamic',point:{x:origin.x+d*Math.cos(rad),y:origin.y+d*Math.sin(rad)},label:'拖动橙色手柄旋转动直线'});
-        if(m.showConic!==false)for(const point of api.intersections())list.push({type:'dynamic',point,label:'交点受约束：拖动以旋转过定点的直线'});
+        list.push({type:'dynamic',key:chord.key,color:chord.color,point:{x:origin.x+d*Math.cos(rad),y:origin.y+d*Math.sin(rad)},label:'拖动手柄旋转 '+chord.name});
+        if(m.showConic!==false)for(const point of chord.points())list.push({type:'dynamic',key:chord.key,color:chord.color,point,label:'交点受约束：拖动以旋转 '+chord.name});
       }
       if(selection?.type==='line'&&[...m.lines||[],...m.objects||[]].includes(selection.line)&&visible(selection.line)&&selection.line.kind!=='through_points'){
         const projected=projection(selection.line);
@@ -106,10 +113,12 @@
         if(segmentDistance(p,xy(ends.a.x,ends.a.y),xy(ends.b.x,ends.b.y),line.infinite!==false)<threshold)
           return {type:'line',line,label:`拖动平移 ${line.label||'直线'}；选中后可拖动旋转手柄`};
       }
-      if(m.showDynamic!==false&&visible({part:m.dynamicLinePart,parts:m.dynamicLineParts})){
-        const o=api.lineOrigin(),rad=state.p.theta*Math.PI/180,a=xy(o.x,o.y),b=xy(o.x+Math.cos(rad),o.y+Math.sin(rad));
-        if(segmentDistance(p,a,b,true)<threshold)return {type:'dynamic',label:'旋转动直线，保持通过题设定点'};
-      }
+      const origin=api.lineOrigin(),a=xy(origin.x,origin.y);
+      const near=chords().map(chord=>{
+        const rad=state.p[chord.key]*Math.PI/180,b=xy(origin.x+Math.cos(rad),origin.y+Math.sin(rad));
+        return {key:chord.key,name:chord.name,distance:segmentDistance(p,a,b,true)};
+      }).filter(chord=>chord.distance<threshold).sort((left,right)=>left.distance-right.distance)[0];
+      if(near)return {type:'dynamic',key:near.key,label:'旋转 '+near.name+'，保持通过题设定点'};
       return null;
     }
     function begin(event) {
@@ -155,7 +164,7 @@
       if(t.type==='minor'){p.b=Math.max(.05,Math.abs(m.orientation==='vertical'?v.x-p.h:v.y-p.k));if(m.type==='ellipse')p.b=Math.min(p.b,p.a-.01);}
       if(t.type==='focus'){const d=m.orientation==='vertical'?v.y-p.k:v.x-p.h;p.p=Math.max(.05,Math.abs(d));p.direction=d<0?-1:1;}
       if(t.type==='dynamic'){
-        const origin=api.lineOrigin();if(distance(origin,v)>.01){let angle=Math.atan2(v.y-origin.y,v.x-origin.x)*180/Math.PI;angle=((angle%180)+180)%180;p.theta=snap?Math.round(angle/5)*5:angle;}
+        const origin=api.lineOrigin();if(distance(origin,v)>.01){let angle=Math.atan2(v.y-origin.y,v.x-origin.x)*180/Math.PI;angle=((angle%180)+180)%180;p[t.key]=snap?Math.round(angle/5)*5:angle;}
       }
       if(t.type==='line'){
         const line=t.line,initial=drag.line;
@@ -185,7 +194,7 @@
       for(const h of handles()){
         if(!window.DongMotion.dragAllowed(state.model,h))continue;
         const p=xy(h.point.x,h.point.y);if(p.x<0||p.y<0||p.x>state.cssW||p.y>state.cssH)continue;
-        const color=h.type==='dynamic'?'#b7790e':'#356cb0';
+        const color=h.color||'#356cb0';
         ctx.beginPath();ctx.arc(p.x,p.y,h.type==='dynamic'?7:6,0,Math.PI*2);ctx.fillStyle='#ffffff';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=color;ctx.stroke();
         ctx.beginPath();ctx.arc(p.x,p.y,2,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
       }
