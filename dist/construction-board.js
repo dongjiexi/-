@@ -246,8 +246,11 @@
     const hint=text=>{const target=$('dragHint');if(target.textContent!==text)target.textContent=text;};
     const toolButtons=document.querySelectorAll('[data-construct]');
     const toolState=$('nativeToolState'),toolName=$('nativeToolName'),exitTool=$('finishNativeTool');
+    const marker=$('nativePointLocator'),located=$('locatedPoint'),locatedValue=$('locatedPointValue');
+    let locatedId=null,locationText='';
     const uid=()=>globalThis.crypto?.randomUUID?.()||'obj-'+Date.now()+'-'+Math.random().toString(36).slice(2);
     const fmt=n=>window.DongNumber?.text(n)??Number(n.toFixed(4)).toString();
+    const normalizeObjectQuery=value=>String(value).normalize('NFKC').replace(/[′’]/g,"'").replace(/_/g,'').toLowerCase();
     function label(prefix){const used=new Set([...api.features().map(p=>p.name),...engine.objects().map(o=>o.label),...staged.map(o=>o.label)]);let i=1;while(used.has(prefix+i))i++;return prefix+i;}
     function visible(id){if(id==='$conic')return state.model?.showConic!==false;if(id==='$dynamic')return state.model?.showDynamic!==false&&api.visible({part:state.model.dynamicLinePart,parts:state.model.dynamicLineParts});if(id.startsWith('feature:')){const p=api.features().find(p=>p.name===id.slice(8));return p&&(api.featureVisible?api.featureVisible(p):state.model?.showFeatures!==false);}const o=engine.getObject(id);return o&&api.visible(o);}
     function points(){return [...api.features().filter(p=>api.featureVisible?api.featureVisible(p):state.model?.showFeatures!==false).map(p=>({id:'feature:'+p.name,...p})),...engine.objects().filter(o=>api.visible(o)).map(o=>({id:o.id,...engine.resolve(o.id)})).filter(o=>o.type==='point')];}
@@ -288,15 +291,50 @@
       if(distance(xy(target.x,target.y),xy(point.x,point.y))<10){snapPreview={point:target,label:`方向吸附 ${((Math.round(nearest*180/Math.PI)%360)+360)%360}°`};return target;}return point;
     }
     function select(id){selected=id;inspector();objectList();}
+    function pointLocation(id){
+      const object=engine.getObject(id);
+      if(object&&!api.visible(object))return null;
+      const shape=engine.resolve(id);
+      if(shape?.type!=='point'||!finitePoint(shape))return null;
+      if(id.startsWith('feature:')&&!visible(id))return null;
+      return shape;
+    }
+    function clearLocation(){
+      locatedId=null;locationText='';marker.hidden=located.hidden=true;
+    }
+    function drawLocation(){
+      if(!locatedId)return;
+      const point=pointLocation(locatedId);
+      if(!point){clearLocation();return;}
+      const pos=xy(point.x,point.y);
+      const visible=pos.x>=0&&pos.x<=state.cssW&&pos.y>=0&&pos.y<=state.cssH;
+      marker.hidden=!visible;
+      if(visible){marker.style.left=pos.x+'px';marker.style.top=pos.y+'px';}
+      const value=title(locatedId)+describe(point)+(visible?'':' · 视野外');
+      if(value!==locationText){
+        locationText=value;locatedValue.textContent=value;
+        window.DongMathInput?.formula(locatedValue,value);
+      }
+    }
+    function locate(id){
+      const point=pointLocation(id);
+      if(!point)return;
+      locatedId=id;located.hidden=false;
+      const pos=xy(point.x,point.y),margin=24;
+      if(pos.x<margin||pos.x>state.cssW-margin||pos.y<margin||pos.y>state.cssH-margin)api.centerPoint(point);
+      $('objectManagerDialog').close();
+      api.render();canvas.focus({preventScroll:true});api.showPoint();
+    }
+    $('clearLocatedPoint').addEventListener('click',()=>{clearLocation();canvas.focus({preventScroll:true});});
     let objectListKey='';
     function objectList(){
       const box=$('boardObjects');if(!box)return;
-      const query=($('boardObjectSearch')?.value||'').trim().toLowerCase(),all=engine.objects();
+      const query=normalizeObjectQuery(($('boardObjectSearch')?.value||'').trim()),all=engine.objects();
       const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
-      const entries=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:(o.refs||[]).map(title)}));
+      const entries=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:(o.refs||[]).map(title),point:window.DongConstruct.pointObject(o)}));
       if(state.model&&!state.model.isFreeBoard)entries.unshift({id:'$conic',label:'主圆锥曲线',type:'主曲线（参数入口编辑）',shown:state.model.showConic!==false,active:true,refs:[],readonly:true});
-      const seenFeatures=new Set();for(const feature of api.features()){if(seenFeatures.has(feature.name))continue;seenFeatures.add(feature.name);entries.push({id:'feature:'+feature.name,label:feature.name,type:'题设 / 内置点（只读）',shown:api.featureVisible?api.featureVisible(feature):true,active:true,refs:[],readonly:true});}
-      const rows=entries.filter(o=>!query||(o.label+' '+o.type).toLowerCase().includes(query));
+      const seenFeatures=new Set();for(const feature of api.features()){if(seenFeatures.has(feature.name))continue;seenFeatures.add(feature.name);entries.push({id:'feature:'+feature.name,label:feature.name,type:'题设 / 内置点（只读）',shown:api.featureVisible?api.featureVisible(feature):true,active:true,refs:[],readonly:true,point:true});}
+      const rows=entries.filter(o=>!query||normalizeObjectQuery(o.label+' '+o.type+' '+o.refs.join(' ')).includes(query));
       $('boardObjectsCount').textContent=`（${rows.length}/${entries.length}）`;
       const key=JSON.stringify([selected,rows]);if(key===objectListKey)return;objectListKey=key;
       const focus=document.activeElement,focusId=box.contains(focus)?focus.dataset.objectId:null,focusAction=focus?.dataset.objectAction;
@@ -307,7 +345,16 @@
         const show=document.createElement('input');show.type='checkbox';show.checked=row.shown;show.disabled=!!row.readonly;show.style.cssText='width:20px;min-height:20px;margin:0 .5rem 0 0;vertical-align:middle';show.setAttribute('aria-label','显示 '+row.label);show.dataset.objectId=row.id;show.dataset.objectAction='visibility';
         show.onchange=()=>{const obj=engine.getObject(row.id);if(obj)api.transaction(()=>obj.visible=show.checked);};
         const pick=document.createElement('button');pick.type='button';pick.className='button secondary';pick.textContent=row.label;pick.setAttribute('aria-pressed',String(selected===row.id));pick.dataset.objectId=row.id;pick.dataset.objectAction='select';pick.onclick=()=>{select(row.id);api.render();};
-        const detail=document.createElement('p');detail.className='help';detail.style.margin='.25rem 0';detail.textContent=row.type+(row.active?'':' · 不属于当前小问')+(row.reason?' · '+row.reason:'')+(row.refs.length?' · 依赖：'+row.refs.join('、'):'');item.append(show,pick,detail);box.append(item);
+        item.append(show,pick);
+        if(row.point){
+          const button=document.createElement('button');button.type='button';button.className='button secondary board-object-locate';button.textContent='定位';
+          button.dataset.objectId=row.id;button.dataset.objectAction='locate';
+          button.setAttribute('aria-label','定位 '+row.label);
+          button.disabled=!row.shown||!row.active||!!row.reason;
+          button.onclick=()=>locate(row.id);
+          item.append(button);
+        }
+        const detail=document.createElement('p');detail.className='help';detail.style.margin='.25rem 0';detail.textContent=row.type+(row.active?'':' · 不属于当前小问')+(row.reason?' · '+row.reason:'')+(row.refs.length?' · 依赖：'+row.refs.join('、'):'');item.append(detail);box.append(item);
       }
       if(focusId)Array.from(box.querySelectorAll('[data-object-id]')).find(n=>n.dataset.objectId===focusId&&n.dataset.objectAction===focusAction)?.focus({preventScroll:true});
     }
@@ -475,6 +522,7 @@
       if(snapPreview&&finitePoint(snapPreview.point)){const s=xy(snapPreview.point.x,snapPreview.point.y);ctx.save();ctx.strokeStyle='#087f80';ctx.lineWidth=2;ctx.beginPath();ctx.arc(s.x,s.y,10,0,Math.PI*2);ctx.stroke();ctx.restore();api.annotation(snapPreview.label,snapPreview.point,'#087f80');}
       if($('snapStatus'))$('snapStatus').textContent=snapPreview?.label||'';
       $('undefinedObjects').textContent=invalid.length?'暂未定义：'+invalid.join('；')+'。恢复条件后会自动出现。':'';
+      drawLocation();
       if(selected&&!$('nativeInspector').contains(document.activeElement))inspector();
     }
     function hit(screen,touch){
@@ -518,17 +566,18 @@
     exitTool.addEventListener('click',()=>{$('moveMode').click();canvas.focus({preventScroll:true});});
     $('moveMode').addEventListener('click',()=>setTool(null));$('panMode').addEventListener('click',()=>setTool(null));
     $('undoDrag').addEventListener('click',()=>{resetPending();select(null);});$('redoDrag').addEventListener('click',()=>{resetPending();select(null);});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tool&&!document.querySelector('dialog[open]'))$('moveMode').click();if((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase()))resetPending();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.querySelector('dialog[open]')){if(tool)$('moveMode').click();else clearLocation();}if((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase()))resetPending();});
     inspector();objectList();
     function cancelTouch(){
       if(!pointer)return;
       pointer=null;hover=null;snapPreview=null;api.render();
     }
     function partChanged(){
+      clearLocation();
       if(!tool)return;
       resetPending();hint(instruction());
     }
-    return {engine,draw,hit,begin,move,cancelTouch,partChanged,active:()=>!!tool,select,selectedId:()=>selected,refreshObjects:objectList,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();tool=null;selected=null;updateToolState();inspector();objectList();}};
+    return {engine,draw,hit,begin,move,cancelTouch,partChanged,active:()=>!!tool,select,selectedId:()=>selected,refreshObjects:objectList,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();clearLocation();tool=null;selected=null;updateToolState();inspector();objectList();}};
   }
   const pointOps=new Set(['point_on','inverse','midpoint','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection']);
   const pointObject=item=>item.kind==='point'||item.kind==='construction'&&pointOps.has(item.op);

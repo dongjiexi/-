@@ -175,7 +175,7 @@ module.exports=async({page,assert,screenshot})=>{
   const restoredOffsets=await page.evaluate(()=>{const doc=new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml');return ['N','Np','F1','LabelMid'].map(n=>doc.querySelector('element[label="'+n+'"] labelOffset')?.outerHTML);});
   assert.deepEqual(restoredOffsets,offsets,'Label offsets survive saving and reopening');
   const originalXML=await page.evaluate(()=>new DOMParser().parseFromString(window.DongGeoGebra.getAPI().getXML(),'application/xml').querySelector('construction').outerHTML);
-  await page.locator('.dong-ggb-tools > summary').click();await page.getByRole('button',{name:'查找点',exact:true}).click();
+  await page.getByRole('button',{name:'定位点',exact:true}).click();
   await page.getByLabel('选择要定位的点').selectOption('N');
   await page.locator('#boardPointLocator').waitFor({state:'visible'});
   await page.waitForFunction(()=>document.querySelector('#boardPointInfo').textContent.includes('坐标读数（近似）'));
@@ -193,8 +193,14 @@ module.exports=async({page,assert,screenshot})=>{
   await page.waitForFunction(old=>document.querySelector('#boardPointLocator').style.left!==old,markerX);
   await page.evaluate(()=>window.DongGeoGebra.getAPI().setVisible('LocatorFree',false));
   await page.waitForFunction(()=>document.querySelector('#boardPointLocator').hidden&&document.querySelector('#boardPointFinder').textContent.includes('这个点已隐藏'));
+  assert(await page.getByRole('button',{name:'居中此点',exact:true}).isDisabled());
   await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();a.setVisible('LocatorFree',true);a.setCoords('LocatorFree',1000,1000);});
   await page.waitForFunction(()=>document.querySelector('#boardPointLocator').hidden&&document.querySelector('#boardPointFinder').textContent.includes('当前视野外'));
+  const locatorCoordinates=await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return [a.getXcoord('LocatorFree'),a.getYcoord('LocatorFree')];});
+  await page.getByRole('button',{name:'居中此点',exact:true}).click();
+  await page.locator('#boardPointLocator').waitFor({state:'visible'});
+  assert.deepEqual(await page.evaluate(()=>{const a=window.DongGeoGebra.getAPI();return [a.getXcoord('LocatorFree'),a.getYcoord('LocatorFree')];}),locatorCoordinates);
+  await page.locator('#homeButton').click();
   await page.evaluate(()=>window.DongGeoGebra.getAPI().deleteObject('LocatorFree'));
   await page.waitForFunction(()=>document.querySelector('#boardPointFinder').textContent.includes('已删除或改名'));
   await page.getByLabel('选择要定位的点').selectOption('N');await page.locator('#boardPointLocator').waitFor({state:'visible'});
