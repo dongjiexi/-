@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.70.27">
+  <meta name="dongjiexi-version" content="0.70.28">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.70.27">
-  <link rel="stylesheet" href="classroom.css?v=0.70.27">
-  <link rel="stylesheet" href="question-bank.css?v=0.70.27">
+  <link rel="stylesheet" href="learning-ui.css?v=0.70.28">
+  <link rel="stylesheet" href="classroom.css?v=0.70.28">
+  <link rel="stylesheet" href="question-bank.css?v=0.70.28">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -419,6 +419,7 @@
       .board-shell>.canvas-wrap { flex:none;height:max(300px,calc(70dvh - 100px));min-height:300px;width:100%;overflow:hidden; }
       .workspace>.panel { min-width:0;max-width:100%; }
       .board-toolbar .tool-actions { flex-wrap:wrap;min-width:0; }
+      .board-toolbar .tool-button { min-width:44px;min-height:44px; }
       .workspace>.controls .panel-heading,.workspace>.inspect .panel-heading,.workspace>.inspect .inspector-switch { position:relative!important;top:auto!important; }
       .input-utilities .file-button,.input-utilities .button,.solve-feedback .button { min-height:44px; }
       .image-preview-actions .button { min-height:44px; }
@@ -436,13 +437,13 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.70.27">
-  <link rel="stylesheet" href="autumn.css?v=0.70.27">
+  <link rel="stylesheet" href="theme.css?v=0.70.28">
+  <link rel="stylesheet" href="autumn.css?v=0.70.28">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.27 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.28 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -525,7 +526,7 @@
         <div id="geoGebraInlineSlot" hidden></div>
         <div class="board-toolbar">
           <div class="board-title-wrap"><span class="board-kicker">第 3 步 · 动态画板</span><div class="board-title" id="boardTitle" tabindex="-1">未载入图形</div></div>
-          <div class="tool-actions"><button class="toolbox-toggle" id="inputPanelToggle" type="button" aria-expanded="true">隐藏题目栏</button><button class="toolbox-toggle" id="toolboxToggle" type="button" aria-expanded="false" aria-controls="nativeToolbar">展开作图工具</button><button class="tool-button" id="zoomOut" title="缩小视图">−</button><button class="tool-button" id="homeButton" title="适应图形">⌂</button><button class="tool-button" id="zoomIn" title="放大视图">＋</button><label class="toggle"><input type="checkbox" id="guideToggle" checked>辅助线</label><label class="toggle"><input type="checkbox" id="gridToggle" checked>网格</label></div>
+          <div class="tool-actions"><button class="toolbox-toggle" id="inputPanelToggle" type="button" aria-expanded="true">隐藏题目栏</button><button class="toolbox-toggle" id="toolboxToggle" type="button" aria-expanded="false" aria-controls="nativeToolbar">展开作图工具</button><button class="tool-button" id="zoomOut" type="button" aria-label="缩小视图" title="缩小视图">−</button><button class="tool-button" id="homeButton" type="button" title="将当前图形移回视野">适应图形</button><button class="tool-button" id="zoomIn" type="button" aria-label="放大视图" title="放大视图">＋</button><label class="toggle"><input type="checkbox" id="guideToggle" checked>辅助线</label><label class="toggle"><input type="checkbox" id="gridToggle" checked>网格</label></div>
         </div>
         <div class="drag-toolbar" aria-label="画板操作">
           <span class="toolbar-caption">操作</span>
@@ -564,7 +565,7 @@
           <div id="tangentViewportNote" hidden></div>
           <button id="openGeoGebraInline" class="button secondary" type="button" style="position:absolute;left:.5rem;top:.5rem;z-index:3">教学画板（集成预览）</button>
           <button id="openObjectManager" class="button secondary" type="button" style="position:absolute;right:.5rem;top:.5rem;z-index:3" aria-haspopup="dialog">对象</button>
-          <canvas id="canvas" aria-label="解析几何动态画板"></canvas>
+          <canvas id="canvas" tabindex="0" aria-label="解析几何动态画板" aria-keyshortcuts="+ - Home"></canvas>
           <div id="pointHoverCard" class="point-hover-card" role="tooltip" hidden></div>
           <div class="empty" id="emptyState"><div><strong>直接在这里作图</strong>选择上方“点”“直线”或“圆”，再点击画板。不必先输入标准方程；也可以在左侧导入题目。</div></div>
         </div>
@@ -706,59 +707,59 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.70.27"></script>
+  <script src="runtime.js?v=0.70.28"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.70.27"></script>
-  <script src="number-display.js?v=0.70.27"></script>
-  <script src="label-layout.js?v=0.70.27"></script>
-  <script src="step-highlight.js?v=0.70.27"></script>
-  <script src="scene-audit.js?v=0.70.27"></script>
-  <script src="answer-geometry.js?v=0.70.27"></script>
-  <script src="scene-merge.js?v=0.70.27"></script>
-  <script src="tangent-solver.js?v=0.70.27"></script>
-  <script src="ellipse-distance.js?v=0.70.27"></script>
-  <script src="circle-dot.js?v=0.70.27"></script>
-  <script src="orthogonal-chord.js?v=0.70.27"></script>
-  <script src="axis-intercept-chord.js?v=0.70.27"></script>
-  <script src="conic-area.js?v=0.70.27"></script>
-  <script src="basic-conditions.js?v=0.70.27"></script>
-  <script src="parabola-focal-choice.js?v=0.70.27"></script>
-  <script src="algebra-geometry.js?v=0.70.27"></script>
-  <script src="ellipse-area-chord.js?v=0.70.27"></script>
-  <script src="ellipse-tangent-ratio.js?v=0.70.27"></script>
-  <script src="vertex-secant.js?v=0.70.27"></script>
-  <script src="inverse-locus.js?v=0.70.27"></script>
-  <script src="symmetric-chord.js?v=0.70.27"></script>
-  <script src="parabola-locus.js?v=0.70.27"></script>
-  <script src="question-parts.js?v=0.70.27"></script>
-  <script src="goal-coverage.js?v=0.70.27"></script>
-  <script src="solution-review.js?v=0.70.27"></script>
-  <script src="parabola-focal-data.js?v=0.70.27"></script>
-  <script src="circle-fold.js?v=0.70.27"></script>
-  <script src="circle-fold-view.js?v=0.70.27"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.70.27">
-  <script src="hyperbola-iteration.js?v=0.70.27"></script>
-  <script src="hyperbola-asymptote-midpoint.js?v=0.70.27"></script>
-  <script src="conic-parameter.js?v=0.70.27"></script>
-  <script src="ellipse-focal-chord.js?v=0.70.27"></script>
-  <script src="external-ai.js?v=0.70.27"></script>
-  <script src="recognition-pages.js?v=0.70.27"></script>
-  <script src="recognition-review.js?v=0.70.27"></script>
-  <script src="image-review-viewer.js?v=0.70.27"></script>
-  <script src="image-adjust.js?v=0.70.27"></script>
-  <script src="learning-ui.js?v=0.70.27"></script>
-  <script src="classroom.js?v=0.70.27"></script>
-  <script src="question-bank.js?v=0.70.27"></script>
-  <script src="construction-board.js?v=0.70.27"></script>
-  <script src="motion-domain.js?v=0.70.27"></script>
-  <script src="motion-protection.js?v=0.70.27"></script>
-  <script src="drag-board.js?v=0.70.27"></script>
-  <script src="equation-builder.js?v=0.70.27"></script>
-  <script src="math-keyboard.js?v=0.70.27"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.70.27"></script>
-  <script src="geogebra-bridge.js?v=0.70.27"></script>
-  <script src="unified-board.js?v=0.70.27"></script>
+  <script src="math-input.js?v=0.70.28"></script>
+  <script src="number-display.js?v=0.70.28"></script>
+  <script src="label-layout.js?v=0.70.28"></script>
+  <script src="step-highlight.js?v=0.70.28"></script>
+  <script src="scene-audit.js?v=0.70.28"></script>
+  <script src="answer-geometry.js?v=0.70.28"></script>
+  <script src="scene-merge.js?v=0.70.28"></script>
+  <script src="tangent-solver.js?v=0.70.28"></script>
+  <script src="ellipse-distance.js?v=0.70.28"></script>
+  <script src="circle-dot.js?v=0.70.28"></script>
+  <script src="orthogonal-chord.js?v=0.70.28"></script>
+  <script src="axis-intercept-chord.js?v=0.70.28"></script>
+  <script src="conic-area.js?v=0.70.28"></script>
+  <script src="basic-conditions.js?v=0.70.28"></script>
+  <script src="parabola-focal-choice.js?v=0.70.28"></script>
+  <script src="algebra-geometry.js?v=0.70.28"></script>
+  <script src="ellipse-area-chord.js?v=0.70.28"></script>
+  <script src="ellipse-tangent-ratio.js?v=0.70.28"></script>
+  <script src="vertex-secant.js?v=0.70.28"></script>
+  <script src="inverse-locus.js?v=0.70.28"></script>
+  <script src="symmetric-chord.js?v=0.70.28"></script>
+  <script src="parabola-locus.js?v=0.70.28"></script>
+  <script src="question-parts.js?v=0.70.28"></script>
+  <script src="goal-coverage.js?v=0.70.28"></script>
+  <script src="solution-review.js?v=0.70.28"></script>
+  <script src="parabola-focal-data.js?v=0.70.28"></script>
+  <script src="circle-fold.js?v=0.70.28"></script>
+  <script src="circle-fold-view.js?v=0.70.28"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.70.28">
+  <script src="hyperbola-iteration.js?v=0.70.28"></script>
+  <script src="hyperbola-asymptote-midpoint.js?v=0.70.28"></script>
+  <script src="conic-parameter.js?v=0.70.28"></script>
+  <script src="ellipse-focal-chord.js?v=0.70.28"></script>
+  <script src="external-ai.js?v=0.70.28"></script>
+  <script src="recognition-pages.js?v=0.70.28"></script>
+  <script src="recognition-review.js?v=0.70.28"></script>
+  <script src="image-review-viewer.js?v=0.70.28"></script>
+  <script src="image-adjust.js?v=0.70.28"></script>
+  <script src="learning-ui.js?v=0.70.28"></script>
+  <script src="classroom.js?v=0.70.28"></script>
+  <script src="question-bank.js?v=0.70.28"></script>
+  <script src="construction-board.js?v=0.70.28"></script>
+  <script src="motion-domain.js?v=0.70.28"></script>
+  <script src="motion-protection.js?v=0.70.28"></script>
+  <script src="drag-board.js?v=0.70.28"></script>
+  <script src="equation-builder.js?v=0.70.28"></script>
+  <script src="math-keyboard.js?v=0.70.28"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.70.28"></script>
+  <script src="geogebra-bridge.js?v=0.70.28"></script>
+  <script src="unified-board.js?v=0.70.28"></script>
   <script>
   (() => {
     'use strict';
@@ -1224,7 +1225,7 @@
       if(manualReplacement){state.solution.scene_context_notice='当前画板由手工图稿重新载入，与保存解析的对应关系尚未确认。';delete state.solution.sceneAudit;}
       learningUI?.clearStepHighlight();stepHighlighter?.clear();
       labelSceneKey++;boardLabels.clear();
-      $('#dragHint').textContent='拖点改坐标；拖直线平移，选中后拖手柄旋转；拖空白处移动视野。';$('#snapStatus').textContent='';
+      $('#dragHint').textContent=mobileLayout.matches?'单指拖动，双指缩放或平移视野。':'拖点改坐标；拖直线平移，选中后拖手柄旋转；拖空白处移动视野。';$('#snapStatus').textContent='';
       stopMotion(false);extremeScan=null;scanResult.textContent='—';$('#jumpMinimum').hidden=$('#jumpMaximum').hidden=true;nativeController?.reset();parameterTarget='';state.model=scene.model; state.p=scene.values; nativeController?.engine.ensureIds();if(!state.model.isFreeBoard&&!['场景配置','快捷新建','图稿文件','自由画板','本地自由画板','上次保存'].includes(source)&&question.value.trim())state.model.problemMotion=true;state.model.unrestrictedMotion=false;delete state.model.motionOverrides;if(window.DongMotion.protectedScene(state.model)&&restored?.original?.model?.type===state.model.type){const baseline=cloneScene(restored.original);baseline.model.problemMotion=true;delete baseline.model.motionBaseline;window.DongMotion.capture(baseline.model,baseline.values);state.model.motionBaseline=baseline.model.motionBaseline;}window.DongMotion.capture(state.model,state.p);window.DongMotion.restorePremises(state.model,state.p);motionController?.sync();state.original=cloneScene(restored?.original||scene); state.exploring=!window.DongMotion.protectedScene(state.model)&&restored?.exploring===true; dragController?.reset(); $('#exploreNotice').hidden=!state.exploring; homeView(); buildParams(); updateSceneJson(); refreshLayers();syncMotionButton();
       boardTitle.textContent=state.model.title || '已载入图形'; emptyState.hidden=true;
       setStatus(`${source}已转为「${typeName()}」模型。请核对方程和动直线经过的点，再调节参数。`); render();if(manualReplacement)learningUI?.renderSolution();
@@ -1411,7 +1412,25 @@
       }
       return groups;
     }
-    function resize() { const r=canvas.getBoundingClientRect(),d=Math.max(1,window.devicePixelRatio||1); if(r.width<=0||r.height<=0)return; if (Math.round(r.width*d)!==canvas.width||Math.round(r.height*d)!==canvas.height) { canvas.width=Math.round(r.width*d); canvas.height=Math.round(r.height*d); } state.cssW=r.width; state.cssH=r.height;const v=state.view,cx=(v.xmin+v.xmax)/2,cy=(v.ymin+v.ymax)/2,scale=Math.max((v.xmax-v.xmin)/r.width,(v.ymax-v.ymin)/r.height);state.view={xmin:cx-scale*r.width/2,xmax:cx+scale*r.width/2,ymin:cy-scale*r.height/2,ymax:cy+scale*r.height/2};ctx.setTransform(d,0,0,d,0,0); }
+    let renderedView;
+    function resize(){
+      const {width,height}=canvas.getBoundingClientRect();
+      if(width<=0||height<=0)return;
+      const d=Math.max(1,window.devicePixelRatio||1);
+      if(Math.round(width*d)!==canvas.width||Math.round(height*d)!==canvas.height){
+        canvas.width=Math.round(width*d);canvas.height=Math.round(height*d);
+      }
+      const v=state.view,w=v.xmax-v.xmin,h=v.ymax-v.ymin;
+      if(v!==renderedView||width!==state.cssW||height!==state.cssH){
+        // Carry the short-side span through layout changes to avoid cumulative zoom-out on rotation.
+        const scale=v===renderedView?Math.min(w,h)/Math.min(width,height):Math.max(w/width,h/height);
+        const cx=v.xmin+w/2,cy=v.ymin+h/2;
+        state.view={xmin:cx-scale*width/2,xmax:cx+scale*width/2,ymin:cy-scale*height/2,ymax:cy+scale*height/2};
+        renderedView=state.view;
+      }
+      state.cssW=width;state.cssH=height;
+      ctx.setTransform(d,0,0,d,0,0);
+    }
     function xy(x,y) { const v=state.view; return {x:(x-v.xmin)/(v.xmax-v.xmin)*state.cssW,y:(v.ymax-y)/(v.ymax-v.ymin)*state.cssH}; }
     function worldX(px) { const v=state.view; return v.xmin+px/state.cssW*(v.xmax-v.xmin); }
     function worldY(py) { const v=state.view; return v.ymax-py/state.cssH*(v.ymax-v.ymin); }
@@ -2184,11 +2203,23 @@
     function setInputPanelCollapsed(collapsed,{persist=false}={}){const workspace=document.querySelector('.workspace'),button=$('#inputPanelToggle'),active=!!collapsed&&!mobileLayout.matches;workspace?.classList.toggle('input-collapsed',active);if(button){button.setAttribute('aria-expanded',String(!active));button.textContent=active?'显示题目栏':'隐藏题目栏';}if(persist)try{localStorage.setItem('dongjiexi:input-collapsed',active?'1':'0');}catch{}requestAnimationFrame(()=>render());}
     function showSolution(d){state.solution=d;const parts=Array.isArray(d.parts)?d.parts:[];state.activePart=parts.length>1?parts[0].index:null;renderSolution();}
     async function solveLocal(){return learningUI?.solve();}
-    function zoom(f){if(!state.model)return;const v=state.view,cx=(v.xmin+v.xmax)/2,cy=(v.ymin+v.ymax)/2,w=(v.xmax-v.xmin)*f,h=(v.ymax-v.ymin)*f;state.view={xmin:cx-w/2,xmax:cx+w/2,ymin:cy-h/2,ymax:cy+h/2};render();}
+    function zoomView(factor,from={x:state.cssW/2,y:state.cssH/2},to=from,view=state.view){
+      if(!state.model||!state.cssW||!state.cssH)return;
+      const w=view.xmax-view.xmin,h=view.ymax-view.ymin;
+      const short=Math.min(w,h);
+      factor=Math.max(Math.min(1,1e-3/short),Math.min(Math.max(1,1e6/short),factor));
+      const x=view.xmin+w*from.x/state.cssW,y=view.ymax-h*from.y/state.cssH;
+      const xmin=x-w*factor*to.x/state.cssW,ymax=y+h*factor*to.y/state.cssH;
+      state.view={xmin,xmax:xmin+w*factor,ymin:ymax-h*factor,ymax};
+      render();
+    }
     function resetParams(){if(!state.original){setStatus('请先载入图形。',true);return;}learningUI?.clearStepHighlight();stepHighlighter?.clear();const before=dragController?.checkpoint(),source=cloneScene(state.original);state.model=source.model;state.p=source.values;state.exploring=false;motionController?.sync();homeView();buildParams();updateSceneJson();refreshLayers();if(before)dragController?.record(before);setStatus('已还原到本题初始参数。');render();}
     function clearManualObjects(){if(!state.model)return;const count=[...(state.model.objects||[]),...(state.model.lines||[])].filter(object=>object.source==='user').length;if(!count){setStatus('没有本次手动添加的对象；题设与解析构造已保留。');return;}stopMotion(false);nativeTransaction(()=>{state.model.objects=(state.model.objects||[]).filter(object=>object.source!=='user');state.model.lines=(state.model.lines||[]).filter(object=>object.source!=='user');});setStatus(`已清除 ${count} 个手动对象；题设、推导对象及依赖关系保留，可撤销。`);}
     function restoreLocal(){try{const saved=JSON.parse(localStorage.getItem('zhigeometry:last')||'null');if(!saved)return;question.value=saved.question||'';state.solution=saved.solution||null;state.activePart=window.DongSolutionReview.restoredPart(saved);state.grid=saved.grid!==false;state.guides=saved.guides!==false;$('#gridToggle').checked=state.grid;$('#guideToggle').checked=state.guides;let original=null,legacyBaseline=false;try{if(saved.original?.model&&saved.original?.values)original=modelFromJson(JSON.stringify({...saved.original.model,...saved.original.values}));else if(saved.exploring&&saved.solution?.scene)original=modelFromJson(JSON.stringify(saved.solution.scene));}catch{}if(saved.scene){legacyBaseline=!!saved.exploring&&!original;installScene(modelFromJson(JSON.stringify(saved.scene)),'上次保存',{original,exploring:!!saved.exploring});}state.exploring=!window.DongMotion.protectedScene(state.model)&&!!saved.exploring;$('#exploreNotice').hidden=!state.exploring;if(state.solution)renderSolution();if(state.model)updateSceneJson();setStatus(legacyBaseline?'已保留旧版草稿的当前图稿；旧草稿没有原题快照，当前图稿暂作为还原基准。':'已恢复上次的题目和学习进度。');}catch(error){setStatus('草稿未能完整恢复；原存储记录未删除。'+(error.message||''),true);}}
-    $('#parseButton').addEventListener('click',parseAndInstall);$('#clearButton').addEventListener('click',clear);$('#applyJson').addEventListener('click',applyJson);$('#exportJson').addEventListener('click',exportJson);$('#pngButton').addEventListener('click',exportPng);$('#copyButton').addEventListener('click',copyForCodex);$('#scanButton').addEventListener('click',scan);$('#extremeMetric').addEventListener('change',()=>{extremeScan=null;scanResult.textContent='请选择“寻找最大 / 最小”开始扫描。';$('#jumpMinimum').hidden=$('#jumpMaximum').hidden=true;render();});$('#jumpMinimum').addEventListener('click',()=>jumpExtreme('min'));$('#jumpMaximum').addEventListener('click',()=>jumpExtreme('max'));$('#solveButton').addEventListener('click',solveLocal);$('#motionPlay').addEventListener('click',toggleMotion);$('#addObject').addEventListener('click',addFreeObject);$('#clearObjects').addEventListener('click',clearManualObjects);$('#objectType').addEventListener('change',updateObjectHint);$('#gridToggle').addEventListener('change',e=>{state.grid=e.target.checked;remember();render();});$('#guideToggle').addEventListener('change',e=>{state.guides=e.target.checked;remember();render();});$('#zoomIn').addEventListener('click',()=>zoom(.8));$('#zoomOut').addEventListener('click',()=>zoom(1.25));$('#homeButton').addEventListener('click',()=>{homeView();render();});$('#resetParams').addEventListener('click',resetParams);$('#saveLocal').addEventListener('click',()=>{remember();setStatus('已保存在这台设备的浏览器中。');});
+    $('#parseButton').addEventListener('click',parseAndInstall);$('#clearButton').addEventListener('click',clear);$('#applyJson').addEventListener('click',applyJson);$('#exportJson').addEventListener('click',exportJson);$('#pngButton').addEventListener('click',exportPng);$('#copyButton').addEventListener('click',copyForCodex);$('#scanButton').addEventListener('click',scan);$('#extremeMetric').addEventListener('change',()=>{extremeScan=null;scanResult.textContent='请选择“寻找最大 / 最小”开始扫描。';$('#jumpMinimum').hidden=$('#jumpMaximum').hidden=true;render();});$('#jumpMinimum').addEventListener('click',()=>jumpExtreme('min'));$('#jumpMaximum').addEventListener('click',()=>jumpExtreme('max'));$('#solveButton').addEventListener('click',solveLocal);$('#motionPlay').addEventListener('click',toggleMotion);$('#addObject').addEventListener('click',addFreeObject);$('#clearObjects').addEventListener('click',clearManualObjects);$('#objectType').addEventListener('change',updateObjectHint);$('#gridToggle').addEventListener('change',e=>{state.grid=e.target.checked;remember();render();});$('#guideToggle').addEventListener('change',e=>{state.guides=e.target.checked;remember();render();});$('#resetParams').addEventListener('click',resetParams);$('#saveLocal').addEventListener('click',()=>{remember();setStatus('已保存在这台设备的浏览器中。');});
+    $('#zoomIn').addEventListener('click',()=>zoomView(.8));
+    $('#zoomOut').addEventListener('click',()=>zoomView(1.25));
+    $('#homeButton').addEventListener('click',()=>{homeView();render();});
     function setToolboxCollapsed(collapsed){const shell=$('.board-shell'),button=$('#toolboxToggle');shell.classList.toggle('toolbox-collapsed',collapsed);button.textContent=collapsed?'展开作图工具':'收起作图工具';button.setAttribute('aria-expanded',String(!collapsed));if(collapsed&&mobileLayout.matches){$('.board-toolbar').scrollIntoView({block:'start',behavior:'instant'});button.focus({preventScroll:true});}requestAnimationFrame(render);}
     $('#toolboxToggle').addEventListener('click',()=>setToolboxCollapsed(!$('.board-shell').classList.contains('toolbox-collapsed')));
     $('#toolboxMobileCollapse').addEventListener('click',()=>setToolboxCollapsed(true));
@@ -2216,7 +2247,19 @@
     });
     document.querySelectorAll('[data-example]').forEach(b=>b.addEventListener('click',()=>{question.value=examples[b.dataset.example];parseAndInstall();}));
     $('#textFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{question.value=String(reader.result||'');setStatus('题目文本已导入，点击“解析并绘图”。');};reader.readAsText(f,'utf-8');});
-    canvas.addEventListener('wheel',e=>{if(!state.model)return;e.preventDefault();const before={x:worldX(e.offsetX),y:worldY(e.offsetY)},f=e.deltaY<0?.86:1.16,v=state.view;const w=(v.xmax-v.xmin)*f,h=(v.ymax-v.ymin)*f;state.view={xmin:before.x-(before.x-v.xmin)*f,xmax:before.x+(v.xmax-before.x)*f,ymin:before.y-(before.y-v.ymin)*f,ymax:before.y+(v.ymax-before.y)*f};render();},{passive:false});
+    canvas.addEventListener('wheel',e=>{
+      if(!state.model||!e.deltaY)return;
+      e.preventDefault();zoomView(e.deltaY<0?.86:1.16,{x:e.offsetX,y:e.offsetY});
+    },{passive:false});
+    canvas.addEventListener('keydown',event=>{
+      if(!state.model||event.altKey||event.ctrlKey||event.metaKey||event.isComposing)return;
+      if(event.key==='+'||event.key==='=')zoomView(.8);
+      else if(event.key==='-')zoomView(1.25);
+      else if(event.key==='Home'){homeView();render();}
+      else return;
+      event.preventDefault();
+      window.dispatchEvent(new Event('dong:board-view-changed'));
+    });
     function nativeTransaction(change){const before=dragController?.checkpoint();change();nativeController?.engine.ensureIds();if(before)dragController.record(before);updateSceneJson();refreshLayers();syncMotionButton();render();}
     function clipNativeLine(shape){const ends=clippedLine(shape.o,shape.d);if(!ends)return null;const len=shape.d.x**2+shape.d.y**2;const t=p=>((p.x-shape.o.x)*shape.d.x+(p.y-shape.o.y)*shape.d.y)/len;let lo=t(ends.a),hi=t(ends.b);if(shape.segment||shape.ray)lo=Math.max(0,lo);if(shape.segment)hi=Math.min(1,hi);return lo<=hi?{a:{x:shape.o.x+lo*shape.d.x,y:shape.o.y+lo*shape.d.y},b:{x:shape.o.x+hi*shape.d.x,y:shape.o.y+hi*shape.d.y}}:null;}
     function conicPoint(t,branch=1){const h=P('h'),k=P('k'),vertical=state.model.orientation==='vertical',kind=state.model.type;if(kind==='circle')return{x:h+P('r')*Math.cos(t),y:k+P('r')*Math.sin(t)};if(kind==='ellipse')return{x:h+(vertical?P('b'):P('a'))*Math.cos(t),y:k+(vertical?P('a'):P('b'))*Math.sin(t)};if(kind==='hyperbola')return vertical?{x:h+P('b')*Math.sinh(t),y:k+branch*P('a')*Math.cosh(t)}:{x:h+branch*P('a')*Math.cosh(t),y:k+P('b')*Math.sinh(t)};const major=(P('direction')||1)*t*t/(4*P('p'));return vertical?{x:h+t,y:k+major}:{x:h+major,y:k+t};}
@@ -2228,6 +2271,7 @@
       ensureScene(){if(!state.model)installScene(modelFromJson('{"type":"circle","r":3,"isFreeBoard":true,"showConic":false,"showDynamic":false,"showFeatures":false,"title":"本地自由画板"}'),'自由画板');}
     });
     dragController=window.DongDrag.attach({canvas,ctx,state,xy,worldX,worldY,features,lineOrigin,intersections,secondIntersections,endpoints:endpointsForLine,visible:visibleForPart,render,
+      zoomView,cancelConstructionTouch:()=>nativeController.cancelTouch(),
       nativeHit:(p,touch)=>nativeController.hit(p,touch),nativeBegin:t=>nativeController.begin(t),nativeMove:(t,p,dx,dy)=>nativeController.move(t,p,dx,dy),constructing:()=>nativeController.active(),
       picked(target){if(target?.type==='native')return;const object=target?.obj||target?.line;nativeController.select(object?.id||(target?.name?'feature:'+target.name:null));},
       liveChanged(){equationEl.textContent=equationText();updateParameterEquation();$('#exploreNotice').hidden=!state.exploring;for(const input of paramsEl.querySelectorAll('input')){const key=input.dataset.key;if(key){input.value=input.type==='range'?P(key):window.DongNumber.input(P(key),state.model.parameterExpressions?.[key]);}}},
@@ -2288,7 +2332,7 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.70.27"></script>
-  <script src="release-support.js?v=0.70.27"></script>
+  <script src="pwa.js?v=0.70.28"></script>
+  <script src="release-support.js?v=0.70.28"></script>
 </body>
 </html>

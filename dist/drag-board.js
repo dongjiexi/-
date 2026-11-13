@@ -5,6 +5,8 @@
     const {canvas, ctx, state, xy, worldX, worldY} = api;
     const undo = [], redo = [];
     let drag = null, selection = null, mode = 'move', snap = false;
+    const touches = new Map();
+    let pinch = null;
     const clone = value => JSON.parse(JSON.stringify(value));
     const $ = id => document.getElementById(id);
     const snapshot = () => ({model:clone(state.model),p:clone(state.p),grid:state.grid,guides:state.guides,exploring:state.exploring===true});
@@ -12,7 +14,12 @@
     const fmt = value => Number(value.toFixed(4)).toString();
     const bounded = v => Math.max(-100000, Math.min(100000,v));
     const snapped = v => bounded(snap ? Math.round(v*2)/2 : v);
-    const screen = event => { const r=canvas.getBoundingClientRect(); return {x:event.clientX-r.left,y:event.clientY-r.top}; };
+    const client = event => ({x:event.clientX,y:event.clientY});
+    const canvasPoint = point => {
+      const r=canvas.getBoundingClientRect();
+      return {x:point.x-r.left,y:point.y-r.top};
+    };
+    const screen = event => canvasPoint(client(event));
     const world = p => ({x:worldX(p.x),y:worldY(p.y)});
     const distance = (p,q) => Math.hypot(p.x-q.x,p.y-q.y);
     function syncButtons() { $('undoDrag').disabled=!undo.length; $('redoDrag').disabled=!redo.length; }
@@ -128,7 +135,8 @@
       if(target?.type==='native'&&!api.nativeBegin(target))return;
       api.picked?.(target);
       selection=target?.type==='rotateLine'?{type:'line',line:target.line}:target;
-      drag={id:event.pointerId,pos,start:world(pos),before:snapshot(),view:clone(state.view),target,moved:false};
+      drag={id:event.pointerId,pos:client(event),before:snapshot(),view:clone(state.view),target,moved:false};
+      if(event.pointerType==='touch'&&target?.point)drag.grabPoint=target.point;
       if(target?.type==='line'){
         drag.line=clone(target.line);
         if(target.line.kind==='through_points'){
@@ -144,11 +152,15 @@
       const pos=screen(event);
       if(!drag){if(state.model&&mode==='move'){const target=hitTest(pos,event.pointerType==='touch');canvas.style.cursor=target?'grab':'crosshair';}return;}
       if(event.pointerId!==drag.id)return;
-      if(!drag.moved&&distance(pos,drag.pos)<3)return;
+      const movement=client(event);
+      movement.x-=drag.pos.x;movement.y-=drag.pos.y;
+      if(!drag.moved&&Math.hypot(movement.x,movement.y)<3)return;
       drag.moved=true;event.preventDefault();
-      const current=world(pos),dx=current.x-drag.start.x,dy=current.y-drag.start.y,t=drag.target,p=state.p,m=state.model;
-      if(!t){const sx=(pos.x-drag.pos.x)/state.cssW*(drag.view.xmax-drag.view.xmin),sy=(pos.y-drag.pos.y)/state.cssH*(drag.view.ymax-drag.view.ymin);state.view={xmin:drag.view.xmin-sx,xmax:drag.view.xmax-sx,ymin:drag.view.ymin+sy,ymax:drag.view.ymax+sy};api.render();return;}
-      const v={x:snapped(current.x),y:snapped(current.y)};
+      const current=world(pos),t=drag.target,p=state.p,m=state.model;
+      const dx=movement.x*(state.view.xmax-state.view.xmin)/state.cssW,dy=-movement.y*(state.view.ymax-state.view.ymin)/state.cssH;
+      if(!t){state.view={xmin:drag.view.xmin-dx,xmax:drag.view.xmax-dx,ymin:drag.view.ymin-dy,ymax:drag.view.ymax-dy};api.render();return;}
+      const grab=drag.grabPoint;
+      const v=grab?{x:snapped(grab.x+dx),y:snapped(grab.y+dy)}:{x:snapped(current.x),y:snapped(current.y)};
       if(t.type==='native')api.nativeMove(t,v,dx,dy);
       if(t.type==='point'){if(window.DongMotion.unrestricted(m))window.DongMotion.setOverride(m,'feature:'+t.name,{type:'point',...v});else m.points[t.name]=[v.x,v.y];}
       if(t.type==='userPoint')Object.assign(t.obj,v);
@@ -188,6 +200,47 @@
       if(cancel){if(previous.target)restore(previous.before);else{state.view=previous.view;api.render();}hint('已取消这次拖动。');return;}
       if(previous.moved&&previous.target){record(previous.before);api.changed();api.render();hint(window.DongMotion.unrestricted(state.model)?'已自由移动；图稿可能不满足题设，关闭“无限制移动”恢复约束。':'已按构造约束重算关联图形。Ctrl+Z 可撤销；解析仍对应原题。');}
     }
+    function pinchFrame(ids){
+      const [a,b]=ids.map(id=>touches.get(id));
+      return a&&b?{center:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},distance:Math.max(8,distance(a,b))}:null;
+    }
+    function handleTouch(event){
+      if(event.pointerType!=='touch'||event.target!==canvas)return;
+      const id=event.pointerId,down=event.type==='pointerdown',moving=event.type==='pointermove';
+      if(!down&&!touches.has(id))return;
+      if(down||moving)touches.set(id,client(event));
+      if(down)canvas.setPointerCapture(id);
+      if(!pinch&&touches.size===2&&down){
+        const ids=[...touches.keys()];
+        if(drag){
+          const previous=drag;drag=null;
+          canvas.style.cursor='crosshair';
+          if(previous.target&&previous.moved)restore(previous.before);
+        }
+        api.cancelConstructionTouch();
+        hint('双指缩放，双指同向移动可平移视野。');
+        api.render();
+        const start=pinchFrame(ids);
+        pinch={ids,start,anchor:canvasPoint(start.center),view:clone(state.view),width:state.cssW,height:state.cssH};
+      }
+      if(!moving&&!down)touches.delete(id);
+      if(!pinch)return;
+      event.stopImmediatePropagation();
+      if(event.cancelable)event.preventDefault();
+      if(moving){
+        const frame=pinchFrame(pinch.ids);
+        if(frame){
+          if(pinch.width!==state.cssW||pinch.height!==state.cssH){
+            Object.assign(pinch,{start:frame,anchor:canvasPoint(frame.center),view:clone(state.view),width:state.cssW,height:state.cssH});
+          }else api.zoomView(pinch.start.distance/frame.distance,pinch.anchor,canvasPoint(frame.center),pinch.view);
+        }
+      }
+      if(!touches.size)pinch=null;
+    }
+    // Intercept multi-touch before construction tools on the canvas receive it.
+    for(const type of ['pointerdown','pointermove','pointerup','pointercancel','lostpointercapture']){
+      canvas.parentElement.addEventListener(type,handleTouch,{capture:true});
+    }
     function draw() {
       if(!state.model||mode==='pan'||api.constructing?.())return;
       ctx.save();
@@ -204,6 +257,7 @@
     canvas.addEventListener('pointermove',move);
     canvas.addEventListener('pointerup',e=>end(e));
     canvas.addEventListener('pointercancel',e=>end(e,true));
+    canvas.addEventListener('lostpointercapture',e=>end(e,true));
     $('undoDrag').addEventListener('click',undoAction);$('redoDrag').addEventListener('click',redoAction);
     $('moveMode').addEventListener('click',()=>{mode='move';$('moveMode').setAttribute('aria-pressed','true');$('panMode').setAttribute('aria-pressed','false');hint('拖点改坐标；拖直线平移，选中后拖手柄旋转；拖空白处移动视野。');api.render();});
     $('panMode').addEventListener('click',()=>{mode='pan';$('moveMode').setAttribute('aria-pressed','false');$('panMode').setAttribute('aria-pressed','true');hint('平移模式：可从画板任意位置拖动视野。');api.render();});
@@ -216,6 +270,6 @@
       if(e.key==='Escape'&&drag)end({pointerId:drag.id},true);
     });
     syncButtons();
-    return {draw,checkpoint:snapshot,record,undo:undoAction,redo:redoAction,reset(){undo.length=0;redo.length=0;drag=null;selection=null;syncButtons();}};
+    return {draw,checkpoint:snapshot,record,undo:undoAction,redo:redoAction,reset(){undo.length=0;redo.length=0;drag=null;selection=null;touches.clear();pinch=null;syncButtons();}};
   }};
 })();
