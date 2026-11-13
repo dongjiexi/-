@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.70.23">
+  <meta name="dongjiexi-version" content="0.70.24">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.70.23">
-  <link rel="stylesheet" href="classroom.css?v=0.70.23">
-  <link rel="stylesheet" href="question-bank.css?v=0.70.23">
+  <link rel="stylesheet" href="learning-ui.css?v=0.70.24">
+  <link rel="stylesheet" href="classroom.css?v=0.70.24">
+  <link rel="stylesheet" href="question-bank.css?v=0.70.24">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -427,13 +427,13 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.70.23">
-  <link rel="stylesheet" href="autumn.css?v=0.70.23">
+  <link rel="stylesheet" href="theme.css?v=0.70.24">
+  <link rel="stylesheet" href="autumn.css?v=0.70.24">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.23 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.24 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -695,59 +695,59 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.70.23"></script>
+  <script src="runtime.js?v=0.70.24"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.70.23"></script>
-  <script src="number-display.js?v=0.70.23"></script>
-  <script src="label-layout.js?v=0.70.23"></script>
-  <script src="step-highlight.js?v=0.70.23"></script>
-  <script src="scene-audit.js?v=0.70.23"></script>
-  <script src="answer-geometry.js?v=0.70.23"></script>
-  <script src="scene-merge.js?v=0.70.23"></script>
-  <script src="tangent-solver.js?v=0.70.23"></script>
-  <script src="ellipse-distance.js?v=0.70.23"></script>
-  <script src="circle-dot.js?v=0.70.23"></script>
-  <script src="orthogonal-chord.js?v=0.70.23"></script>
-  <script src="axis-intercept-chord.js?v=0.70.23"></script>
-  <script src="conic-area.js?v=0.70.23"></script>
-  <script src="basic-conditions.js?v=0.70.23"></script>
-  <script src="parabola-focal-choice.js?v=0.70.23"></script>
-  <script src="algebra-geometry.js?v=0.70.23"></script>
-  <script src="ellipse-area-chord.js?v=0.70.23"></script>
-  <script src="ellipse-tangent-ratio.js?v=0.70.23"></script>
-  <script src="vertex-secant.js?v=0.70.23"></script>
-  <script src="inverse-locus.js?v=0.70.23"></script>
-  <script src="symmetric-chord.js?v=0.70.23"></script>
-  <script src="parabola-locus.js?v=0.70.23"></script>
-  <script src="question-parts.js?v=0.70.23"></script>
-  <script src="goal-coverage.js?v=0.70.23"></script>
-  <script src="solution-review.js?v=0.70.23"></script>
-  <script src="parabola-focal-data.js?v=0.70.23"></script>
-  <script src="circle-fold.js?v=0.70.23"></script>
-  <script src="circle-fold-view.js?v=0.70.23"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.70.23">
-  <script src="hyperbola-iteration.js?v=0.70.23"></script>
-  <script src="hyperbola-asymptote-midpoint.js?v=0.70.23"></script>
-  <script src="conic-parameter.js?v=0.70.23"></script>
-  <script src="ellipse-focal-chord.js?v=0.70.23"></script>
-  <script src="external-ai.js?v=0.70.23"></script>
-  <script src="recognition-pages.js?v=0.70.23"></script>
-  <script src="recognition-review.js?v=0.70.23"></script>
-  <script src="image-review-viewer.js?v=0.70.23"></script>
-  <script src="image-adjust.js?v=0.70.23"></script>
-  <script src="learning-ui.js?v=0.70.23"></script>
-  <script src="classroom.js?v=0.70.23"></script>
-  <script src="question-bank.js?v=0.70.23"></script>
-  <script src="construction-board.js?v=0.70.23"></script>
-  <script src="motion-domain.js?v=0.70.23"></script>
-  <script src="motion-protection.js?v=0.70.23"></script>
-  <script src="drag-board.js?v=0.70.23"></script>
-  <script src="equation-builder.js?v=0.70.23"></script>
-  <script src="math-keyboard.js?v=0.70.23"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.70.23"></script>
-  <script src="geogebra-bridge.js?v=0.70.23"></script>
-  <script src="unified-board.js?v=0.70.23"></script>
+  <script src="math-input.js?v=0.70.24"></script>
+  <script src="number-display.js?v=0.70.24"></script>
+  <script src="label-layout.js?v=0.70.24"></script>
+  <script src="step-highlight.js?v=0.70.24"></script>
+  <script src="scene-audit.js?v=0.70.24"></script>
+  <script src="answer-geometry.js?v=0.70.24"></script>
+  <script src="scene-merge.js?v=0.70.24"></script>
+  <script src="tangent-solver.js?v=0.70.24"></script>
+  <script src="ellipse-distance.js?v=0.70.24"></script>
+  <script src="circle-dot.js?v=0.70.24"></script>
+  <script src="orthogonal-chord.js?v=0.70.24"></script>
+  <script src="axis-intercept-chord.js?v=0.70.24"></script>
+  <script src="conic-area.js?v=0.70.24"></script>
+  <script src="basic-conditions.js?v=0.70.24"></script>
+  <script src="parabola-focal-choice.js?v=0.70.24"></script>
+  <script src="algebra-geometry.js?v=0.70.24"></script>
+  <script src="ellipse-area-chord.js?v=0.70.24"></script>
+  <script src="ellipse-tangent-ratio.js?v=0.70.24"></script>
+  <script src="vertex-secant.js?v=0.70.24"></script>
+  <script src="inverse-locus.js?v=0.70.24"></script>
+  <script src="symmetric-chord.js?v=0.70.24"></script>
+  <script src="parabola-locus.js?v=0.70.24"></script>
+  <script src="question-parts.js?v=0.70.24"></script>
+  <script src="goal-coverage.js?v=0.70.24"></script>
+  <script src="solution-review.js?v=0.70.24"></script>
+  <script src="parabola-focal-data.js?v=0.70.24"></script>
+  <script src="circle-fold.js?v=0.70.24"></script>
+  <script src="circle-fold-view.js?v=0.70.24"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.70.24">
+  <script src="hyperbola-iteration.js?v=0.70.24"></script>
+  <script src="hyperbola-asymptote-midpoint.js?v=0.70.24"></script>
+  <script src="conic-parameter.js?v=0.70.24"></script>
+  <script src="ellipse-focal-chord.js?v=0.70.24"></script>
+  <script src="external-ai.js?v=0.70.24"></script>
+  <script src="recognition-pages.js?v=0.70.24"></script>
+  <script src="recognition-review.js?v=0.70.24"></script>
+  <script src="image-review-viewer.js?v=0.70.24"></script>
+  <script src="image-adjust.js?v=0.70.24"></script>
+  <script src="learning-ui.js?v=0.70.24"></script>
+  <script src="classroom.js?v=0.70.24"></script>
+  <script src="question-bank.js?v=0.70.24"></script>
+  <script src="construction-board.js?v=0.70.24"></script>
+  <script src="motion-domain.js?v=0.70.24"></script>
+  <script src="motion-protection.js?v=0.70.24"></script>
+  <script src="drag-board.js?v=0.70.24"></script>
+  <script src="equation-builder.js?v=0.70.24"></script>
+  <script src="math-keyboard.js?v=0.70.24"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.70.24"></script>
+  <script src="geogebra-bridge.js?v=0.70.24"></script>
+  <script src="unified-board.js?v=0.70.24"></script>
   <script>
   (() => {
     'use strict';
@@ -1651,14 +1651,18 @@
       };
       const q=shown(spec.intersection),m=shown(spec.midpoint);
       const first=shown(spec.tangents?.[0]),second=shown(spec.tangents?.[1]);
+      const tangents=(spec.tangents||[]).map(engine.getObject);
+      const visibleTangents=tangents.filter(item=>item&&visibleForPart(item)).length;
       let html='';
-      if(q?.type==='point')html+=metric(escapeHtml(spec.q||'Q')+'（两切线交点）',`(${exactNumber(q.x)}, ${exactNumber(q.y)})`,true);
+      if(state.model.showConic===false||state.model.showDynamic===false)return metric('双切线','显示主曲线和焦点弦后可核对。');
+      if(ins.length<2)return metric('双切线','当前焦点弦没有两个不同的有限交点，无法构造两条切线。');
+      if(q?.type==='point'&&visibleTangents===2)html+=metric(escapeHtml(spec.q||'Q')+'（两切线交点）',`(${exactNumber(q.x)}, ${exactNumber(q.y)})`,true);
       if(m?.type==='point')html+=metric(escapeHtml(spec.m||'M')+'（弦中点）',`(${exactNumber(m.x)}, ${exactNumber(m.y)})`);
       if(first?.type==='line'&&second?.type==='line'){
         const u=first.d,v=second.d,denominator=Math.hypot(u.x,u.y)*Math.hypot(v.x,v.y);
         const cosine=denominator?(u.x*v.x+u.y*v.y)/denominator:NaN;
-        html+=metric('两切线方向点积',Number.isFinite(cosine)?exactNumber(cosine,8):'未定义',Math.abs(cosine)<1e-7);
-      }
+        html+=metric('两切线方向点积（单位方向）',Number.isFinite(cosine)?exactNumber(cosine,8):'未定义',Math.abs(cosine)<1e-7);
+      }else html+=metric('双切线',tangents.length===2&&tangents.every(Boolean)&&visibleTangents<2?'有切线图层未显示，恢复后可核对垂直关系。':'当前构造未能定位两条切线。');
       const areaPart=spec.parts?.area;
       if(ins.length===2&&areaPart!=null&&visibleForPart({part:areaPart})){
         html+=metric(escapeHtml(`△${spec.source}${spec.endpoints.join('')} 面积`),'0（共线）',true);
@@ -2255,7 +2259,7 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.70.23"></script>
-  <script src="release-support.js?v=0.70.23"></script>
+  <script src="pwa.js?v=0.70.24"></script>
+  <script src="release-support.js?v=0.70.24"></script>
 </body>
 </html>

@@ -836,14 +836,20 @@
             result.quality_notice='已覆盖的小问由内置数学引擎独立复算，最终结论以该小问的核验结果为准。';
           }
         }
-        if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(exactSolution.engineExtensions?.includes('ellipse-focal-range')||exactScene.distanceExtrema?.length||exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
-          if((exactSolution.engineExtensions?.includes('ellipse-focal-range')||exactScene.distanceExtrema?.length||exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra)&&result.scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
+        const exactChord=exactComplete&&exactSolution.verification?.status==='locally-verified'&&
+          (exactScene?.focusChord||exactScene?.fixedPoint?.sourcePoint&&exactScene.objects?.some(node=>node.id==='reflected-chord-m'));
+        const coupledScene=exactScene&&(exactChord||exactSolution.engineExtensions?.includes('ellipse-focal-range')||
+          exactScene.distanceExtrema?.length||exactScene.conicArea||exactScene.vertexSecant||exactScene.inverseLocus||
+          exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||
+          exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra);
+        if(result.mode!=='external-ai'&&exactComplete&&exactScene&&(coupledScene||!result.scene?.objects?.length&&!result.scene?.lines?.length)){
+          if(coupledScene&&result.scene&&!result.model_scene)result.model_scene=JSON.parse(JSON.stringify(result.scene));
           result.scene=exactScene;
-          if(exactScene.asymptoteMidpoint||exactScene.tangentRatio){result.model_title=result.title;result.title=exactSolution.title;}
+          if(exactChord||exactScene.asymptoteMidpoint||exactScene.tangentRatio){result.model_title=result.title;result.title=exactSolution.title;}
           result.scene_notice='已核对题目与答案；已覆盖部分由独立符号模型对齐答案与画板。';
-          if(exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra){result.model_answer=result.model_answer||result.answer;result.answer=exactSolution.answer;}
-          if(exactScene.distanceExtrema?.length||exactScene.vertexSecant||exactScene.conicArea||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra){result.model_scene_warnings=result.scene_warnings;result.scene_warnings=[];}
-          if(exactScene.distanceExtrema?.length||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra){result.model_assumptions=result.assumptions;result.assumptions=[];result.model_strategy=result.strategy;result.strategy=exactSolution.strategy;}
+          if(exactChord||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra){result.model_answer=result.model_answer||result.answer;result.answer=exactSolution.answer;}
+          if(exactChord||exactScene.distanceExtrema?.length||exactScene.vertexSecant||exactScene.conicArea||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra){result.model_scene_warnings=result.scene_warnings;result.scene_warnings=[];}
+          if(exactChord||exactScene.distanceExtrema?.length||exactScene.inverseLocus||exactScene.symmetricChord||exactScene.areaChord||exactScene.tangentRatio||exactScene.asymptoteMidpoint||exactScene.basicConditions||exactScene.focalChoice||exactScene.boundedAlgebra){result.model_assumptions=result.assumptions;result.assumptions=[];result.model_strategy=result.strategy;result.strategy=exactSolution.strategy;}
           if(exactScene.vertexSecant){
             result.model_assumptions=result.assumptions;result.model_strategy=result.strategy;
             result.assumptions=['两个交点均在双曲线左支，且 M 在第二象限；竖直弦允许，渐近方向排除。'];

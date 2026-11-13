@@ -76,3 +76,4 @@ module.exports = async ({page,assert,screenshot}) => {
   await major.evaluate(el=>{el.value='3';el.dispatchEvent(new Event('input',{bubbles:true}));});
   assert.equal(JSON.parse(await page.locator('#sceneJson').inputValue()).fixedPoint.x,9,'半轴变化时定点必须同步重算');
 };
+module.exports.question=QUESTION;

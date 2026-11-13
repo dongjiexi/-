@@ -50,6 +50,19 @@ module.exports = async ({page, context, assert, screenshot}) => {
   await tangentStep.locator('[data-step-graph-index]').click();
   const highlight=()=>page.evaluate(()=>window.DongBoardStep.snapshot()?.ids||[]);
   assert.deepEqual((await highlight()).filter(id=>scene.focusChord.tangents.includes(id)).sort(),[...scene.focusChord.tangents].sort());
+  await page.locator('[data-inspector-view="geometry"]').click();
+  const layer=page.locator('#layers .layer-row').filter({hasText:/^B 点切线/}).locator('input');
+  await layer.uncheck();
+  assert.match(await page.locator('#chordRelationReadout').textContent(),/有切线图层未显示/);
+  assert.deepEqual(await highlight(),[]);
+  await layer.check();
+  await page.locator('#parameterTarget').selectOption('$dynamic');
+  const theta=page.locator('#params [data-key="theta"][data-param-expression]');
+  await theta.fill('0');
+  assert.match(await page.locator('#chordRelationReadout').textContent(),/没有两个不同的有限交点/);
+  await theta.fill('45');
+  assert.match(await page.locator('#chordRelationReadout').textContent(),/两切线方向点积（单位方向）0/);
+  await page.locator('[data-inspector-view="lesson"]').click();
   await page.locator(`[data-study-part="${qPart}"]`).click();
   assert.deepEqual(await highlight(),[]);
   assert.match(await page.locator('#layers').textContent(),/M 的轨迹 · 推导 · 其他小问/);
@@ -138,3 +151,4 @@ module.exports = async ({page, context, assert, screenshot}) => {
   await context.unroute('**/runtime-config.js');
   console.log('PASS: complete focus-chord theorem scene, live tangents, Q/M loci, offline parity, and collapsible input layout.');
 };
+module.exports.question=QUESTION;
