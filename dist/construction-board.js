@@ -243,7 +243,9 @@
     const engine=createEngine({model:()=>state.model,part:()=>state.activePart,features:api.features,visible:api.visible,coeffs:api.coeffs,origin:api.origin,angle:()=>state.p.theta,angle2:api.angle2,conicPoint:api.conicPoint,conicProject:api.conicProject});
     let tool=null,pending=[],staged=[],selected=null,hover=null,pointer=null,snapPreview=null;
     const titles={perp_bisector:'垂直平分线',circumcircle:'三点定圆',point:'点',line:'直线',line_angle:'过点直线',segment:'线段',ray:'射线',circle:'圆',midpoint:'中点',reflect_x:'x 轴对称点',reflect_y:'y 轴对称点',parallel:'平行线',perpendicular:'垂线',intersection:'交点',foot:'垂足',distance:'测距',tangent:'切线',normal:'法线'};
-    const hint=text=>$('dragHint').textContent=text;
+    const hint=text=>{const target=$('dragHint');if(target.textContent!==text)target.textContent=text;};
+    const toolButtons=document.querySelectorAll('[data-construct]');
+    const toolState=$('nativeToolState'),toolName=$('nativeToolName'),exitTool=$('finishNativeTool');
     const uid=()=>globalThis.crypto?.randomUUID?.()||'obj-'+Date.now()+'-'+Math.random().toString(36).slice(2);
     const fmt=n=>window.DongNumber?.text(n)??Number(n.toFixed(4)).toString();
     function label(prefix){const used=new Set([...api.features().map(p=>p.name),...engine.objects().map(o=>o.label),...staged.map(o=>o.label)]);let i=1;while(used.has(prefix+i))i++;return prefix+i;}
@@ -354,14 +356,21 @@
       }
     }
     function resetPending(){pending=[];staged=[];hover=null;pointer=null;snapPreview=null;}
+    function updateToolState(){
+      toolButtons.forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.construct===tool)));
+      toolState.hidden=!tool;
+      toolName.textContent=tool?titles[tool]:'';
+    }
     function setTool(value){
-      resetPending();if(value)api.ensureScene();tool=value;engine.ensureIds();
-      document.querySelectorAll('[data-construct]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.construct===tool)));
+      resetPending();
+      if(value){api.ensureScene();api.stopMotion();}
+      tool=value;engine.ensureIds();
+      updateToolState();
       if(tool){$('moveMode').setAttribute('aria-pressed','false');$('panMode').setAttribute('aria-pressed','false');hint(instruction());}
       api.render();
     }
     function instruction(){
-      if(tool==='circumcircle')return `依次选择三个不共线的点（${pending.length}/3）；空白处可新建点，按 Esc 取消。`;
+      if(tool==='circumcircle')return `依次选择三个不共线的点（${pending.length}/3）。也可点击空白处新建点。`;
       if(tool==='perp_bisector')return pending.length?'再选另一端点，生成始终平分并垂直于两点连线的直线。':'选择两个不同的点，建立垂直平分线。';
       if(['tangent','normal'].includes(tool))return pending.length?`已选 ${title(pending[0])}。再点曲线上的位置或已有点，创建${titles[tool]}；拖动该点可联动。`:`先点击要作${titles[tool]}的圆或圆锥曲线，再选曲线上的点。`;
       if(tool==='line_angle')return pending.length?'定点已锁定。点击确定方向；靠近水平、竖直或 45° 时自动吸附。':'先点击要经过的定点；靠近已有点会吸附，空白处可以新建定点。';
@@ -386,7 +395,7 @@
     function pendingPoint(id){const obj=staged.find(o=>o.id===id);if(!obj)return engine.resolve(id);if(obj.kind==='point')return obj;if(obj.op==='point_on')return engine.pointOn(obj.refs[0],obj);if(obj.op==='intersection')return intersect(engine.resolve(obj.refs[0]),engine.resolve(obj.refs[1]))[obj.branch||0];return null;}
     function commit(objects){
       api.transaction(()=>{for(const obj of [...staged,...objects]){if(state.activePart!=null)obj.part=state.activePart;obj.source='user';state.model.objects.push(obj);}});
-      if(objects.length)select(objects[0].id);resetPending();hint(`已在本地画板创建${titles[tool]}。按 Esc 或点“选择 / 拖动”可移动源点；可继续作图。`);api.render();
+      if(objects.length)select(objects[0].id);resetPending();hint(`已创建${titles[tool]}。可继续作图，或退出工具后拖动图形。`);api.render();
     }
     function click(screen){
       if(!tool)return;
@@ -456,7 +465,10 @@
         else if(shape.type==='circle'){api.path(Array.from({length:181},(_,i)=>({x:shape.x+shape.r*Math.cos(i*Math.PI/90),y:shape.y+shape.r*Math.sin(i*Math.PI/90)})),color,2.2);api.annotation(obj.label,{x:shape.x+shape.r,y:shape.y},color);}
         else if(shape.type==='measure'){const atMaximum=!state.model.unrestrictedMotion&&Number.isFinite(obj.maximum)&&Math.abs(shape.value-obj.maximum)<1e-7;api.annotation(obj.label+' = '+fmt(shape.value)+(atMaximum?'（达到最大值）':''),shape,atMaximum?'#bc355c':'#886012');}
       }
-      for(const obj of staged)if(obj.kind==='point')api.point(obj,'#f09819',obj.label);
+      for(const obj of staged){
+        const p=pendingPoint(obj.id);
+        if(finitePoint(p))api.point(p,'#f09819',obj.label);
+      }
       if(['tangent','normal'].includes(tool)&&pending.length===1&&finitePoint(hover)){const line=curveLine(hover,engine.resolve(pending[0]),tool==='normal'),ends=line&&api.clip(line);if(ends){ctx.save();ctx.setLineDash([5,5]);api.path([ends.a,ends.b],'#f09819',1.6);ctx.restore();}}
       for(const id of pending){const p=pendingPoint(id);if(finitePoint(p)){const s=xy(p.x,p.y);ctx.save();ctx.beginPath();ctx.arc(s.x,s.y,10,0,Math.PI*2);ctx.strokeStyle='#f09819';ctx.lineWidth=2;ctx.stroke();ctx.restore();}}
       if(pending.length===1&&hover){const a=pendingPoint(pending[0]);if(finitePoint(a)){ctx.save();ctx.setLineDash([5,5]);if(tool==='circle'){const r=distance(a,hover);api.path(Array.from({length:91},(_,i)=>({x:a.x+r*Math.cos(i*Math.PI/45),y:a.y+r*Math.sin(i*Math.PI/45)})),'#f09819',1.4);}else if(['line','line_angle','segment','ray','midpoint','distance'].includes(tool)){const shape={type:'line',o:a,d:sub(hover,a),segment:tool!=='line'&&tool!=='line_angle'},ends=api.clip(shape);if(ends)api.path([ends.a,ends.b],'#f09819',1.4);}ctx.restore();}}
@@ -502,16 +514,21 @@
     canvas.addEventListener('pointerup',e=>{if(!tool)return;e.stopImmediatePropagation();e.preventDefault();if(pointer?.id===e.pointerId&&distance(pointer.start,fromEvent(e))<18)click(fromEvent(e));if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);pointer=null;},{capture:true});
     canvas.addEventListener('pointercancel',e=>{if(!tool)return;e.stopImmediatePropagation();if(pointer?.id===e.pointerId)cancelTouch();},{capture:true});
     canvas.addEventListener('lostpointercapture',e=>{if(pointer?.id===e.pointerId)cancelTouch();});
-    document.querySelectorAll('[data-construct]').forEach(button=>button.addEventListener('click',()=>setTool(button.dataset.construct)));
+    toolButtons.forEach(button=>button.addEventListener('click',()=>{setTool(button.dataset.construct);api.showTool();}));
+    exitTool.addEventListener('click',()=>{$('moveMode').click();canvas.focus({preventScroll:true});});
     $('moveMode').addEventListener('click',()=>setTool(null));$('panMode').addEventListener('click',()=>setTool(null));
     $('undoDrag').addEventListener('click',()=>{resetPending();select(null);});$('redoDrag').addEventListener('click',()=>{resetPending();select(null);});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.querySelector('dialog[open]')){setTool(null);$('moveMode').click();}if((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase()))resetPending();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tool&&!document.querySelector('dialog[open]'))$('moveMode').click();if((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase()))resetPending();});
     inspector();objectList();
     function cancelTouch(){
       if(!pointer)return;
       pointer=null;hover=null;snapPreview=null;api.render();
     }
-    return {engine,draw,hit,begin,move,cancelTouch,active:()=>!!tool,select,selectedId:()=>selected,refreshObjects:objectList,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();tool=null;selected=null;document.querySelectorAll('[data-construct]').forEach(b=>b.setAttribute('aria-pressed','false'));inspector();objectList();}};
+    function partChanged(){
+      if(!tool)return;
+      resetPending();hint(instruction());
+    }
+    return {engine,draw,hit,begin,move,cancelTouch,partChanged,active:()=>!!tool,select,selectedId:()=>selected,refreshObjects:objectList,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();tool=null;selected=null;updateToolState();inspector();objectList();}};
   }
   const pointOps=new Set(['point_on','inverse','midpoint','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection']);
   const pointObject=item=>item.kind==='point'||item.kind==='construction'&&pointOps.has(item.op);

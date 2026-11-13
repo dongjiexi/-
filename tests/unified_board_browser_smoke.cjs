@@ -3,11 +3,21 @@ module.exports=async({page,assert,screenshot})=>{
     const names=new Set(),values={},coords={},shown={};window.__unified={names,values,coords,commands:[]};
     window.GGBApplet=class{constructor(params){this.params=params;window.__unified.params=params;}inject(id){
       document.getElementById(id).textContent='统一画板 API 测试替身';
-      const api=new Proxy({exists:n=>names.has(n),isDefined:()=>true,getVisible:n=>shown[n]!==false,setVisible:(n,value)=>shown[n]=value,evalCommand:s=>{names.add(s.split(/[=:]/)[0]);window.__unified.commands.push(s);return true;},setValue:(n,v)=>values[n]=v,setCoords:(n,x,y)=>coords[n]=[x,y],getXcoord:n=>coords[n]?.[0]||0,getYcoord:n=>coords[n]?.[1]||0,getViewProperties:()=>({width:800,height:600}),getBase64:cb=>cb(btoa(JSON.stringify([...names]))),setBase64:(raw,cb)=>{names.clear();JSON.parse(atob(raw)).forEach(n=>names.add(n));cb();},newConstruction:()=>names.clear(),setMode:n=>window.__unified.mode=n},{get:(o,k)=>k in o?o[k]:()=>{}});setTimeout(()=>this.params.appletOnLoad(api),10);
+      const api=new Proxy({exists:n=>names.has(n),isDefined:()=>true,getVisible:n=>shown[n]!==false,setVisible:(n,value)=>shown[n]=value,evalCommand:s=>{names.add(s.split(/[=:]/)[0]);window.__unified.commands.push(s);return true;},setValue:(n,v)=>values[n]=v,setCoords:(n,x,y)=>coords[n]=[x,y],getXcoord:n=>coords[n]?.[0]||0,getYcoord:n=>coords[n]?.[1]||0,getViewProperties:()=>({width:800,height:600}),getBase64:cb=>cb(btoa(JSON.stringify([...names]))),setBase64:(raw,cb)=>{names.clear();JSON.parse(atob(raw)).forEach(n=>names.add(n));cb();},newConstruction:()=>names.clear(),setMode:n=>window.__unified.mode=n},{get:(o,k)=>k in o?o[k]:()=>{}});
+      const loaded=()=>this.params.appletOnLoad(api);
+      if(sessionStorage.getItem('test-applet-ready'))setTimeout(loaded,10);
+      else window.__unified.start=()=>{sessionStorage.setItem('test-applet-ready','1');loaded();};
     }};
   });await page.reload();
   const scene={type:'ellipse',a:3,b:2,showDynamic:false,objects:[{id:'u',kind:'point',source:'user',label:'U',x:1,y:2}]};
   await page.locator('#sceneJson').evaluate((el,value)=>{el.value=JSON.stringify(value);document.querySelector('#applyJson').click();},scene);
+  await page.locator('#toolboxToggle').click();
+  await page.locator('[data-construct="segment"]').click();
+  await page.waitForFunction(()=>typeof window.__unified.start==='function');
+  await page.evaluate(()=>window.__unified.start());
+  await page.waitForFunction(()=>document.querySelector('#boardEngineStatus').textContent.includes('退出后'));
+  assert(await page.locator('#canvas').isVisible(),'Online renderer does not interrupt a selected native construction tool');
+  await page.locator('#finishNativeTool').click();
   await page.waitForFunction(()=>window.DongUnifiedBoard.isActive());
   assert.equal(await page.locator('#openGeoGebraInline').isVisible(),false);
   assert.equal(await page.locator('.dong-ggb-close').isVisible(),false);
@@ -21,8 +31,13 @@ module.exports=async({page,assert,screenshot})=>{
   assert.equal(await page.locator('.unified-tools').evaluate(el=>getComputedStyle(el).overflow),'visible','Shared details styling must not clip this menu');
   await page.locator('.unified-tool-content').getByRole('button',{name:'切线',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.__unified.mode),13);
+  const toolState=page.locator('.dong-ggb-head .board-tool-state');
+  assert.equal(await toolState.locator('strong').textContent(),'切线');
   await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).click();
   assert.equal(await page.locator('.unified-tools').getAttribute('open'),null);
+  await toolState.getByRole('button',{name:'退出工具',exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.__unified.mode),0);
+  assert(await toolState.isHidden());
   await page.evaluate(()=>{window.DongGeoGebra.getAPI().evalCommand('Manual=(7,8)');return window.DongGeoGebra.save();});
   await page.reload();await page.waitForFunction(()=>window.DongUnifiedBoard.isActive());
   assert(await page.evaluate(()=>window.DongGeoGebra.getAPI().exists('Manual')),'Same question reload preserves manual auxiliary work');
@@ -52,7 +67,10 @@ module.exports=async({page,assert,screenshot})=>{
     await page.setViewportSize({width,height:844});await page.locator('[data-mobile-panel="board"]').click();
     await page.locator('.unified-tools summary').click();assert(await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).isVisible());
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-    await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).click();
+    await page.locator('.unified-tool-content').getByRole('button',{name:'切线',exact:true}).click();
+    assert.equal(await page.locator('.unified-tools').getAttribute('open'),null);
+    assert(await toolState.isVisible());
+    await toolState.getByRole('button',{name:'退出工具',exact:true}).click();
   }
   await screenshot('unified-mobile.png',null);
   // Legacy scopes can use numeric strings, empty arrays or the combined view 0.

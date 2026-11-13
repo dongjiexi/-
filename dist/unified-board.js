@@ -4,15 +4,19 @@
 (() => {
   'use strict';
   let options,source=null,started=false,failed=false,active=false,slot,board,status,tools,observer,pendingDraft=null,restoringDraft=null,closePointFinder=()=>{};
+  let toolState,toolName,selectedMode=0,deferredActivation=false;
   const current=()=>options?.scene()||{isFreeBoard:true,objects:[],showDynamic:false};
   const sceneKey=value=>JSON.stringify(value);
   const sameScene=(left,right)=>window.DongGeoGebra.matchesScene?.(left,right)??left===right;
   function message(text){status.querySelector('span').textContent=text;}
   function activate(value){
     if(!value)closePointFinder();
-    active=value;board.dataset.renderer=value?'geogebra':'native';
-    board.toggleAttribute('data-ggb-active',value);
+    const renderer=value?'geogebra':'native';
+    const changed=board.dataset.renderer!==renderer||board.hasAttribute('data-ggb-active')!==value;
+    active=value;board.dataset.renderer=renderer;
     if(value)board.dataset.ggbActive='true';
+    else board.removeAttribute('data-ggb-active');
+    if(!changed)return;
     window.dispatchEvent(new Event('resize'));
   }
   async function ready(report){
@@ -35,8 +39,10 @@
     failed=false;
     const reasons=[...report.skipped];
     if(current().unrestrictedMotion)reasons.push('无限制移动');
-    activate(!reasons.length);
-    message(reasons.length?'已自动保留完整教学构造；当前使用兼容绘制，不会省略题设对象。':'题图已同步 · 拖动与参数联动 · 图稿自动保存在此设备');
+    const constructing=options.isConstructing?.();
+    deferredActivation=!!constructing&&!reasons.length;
+    activate(!reasons.length&&!constructing);
+    message(deferredActivation?'当前作图工具仍在使用，退出后会同步画板。':reasons.length?'已自动保留完整教学构造；当前使用兼容绘制，不会省略题设对象。':'题图已同步 · 拖动与参数联动 · 图稿自动保存在此设备');
     if(ignoredDraft)message('附加图稿与当前题图不匹配，未应用；原文件仍可另行打开。');
     status.querySelector('button').hidden=true;
     status.title=reasons.join('、');
@@ -44,7 +50,7 @@
     return saved;
   }
   function failure(error){
-    failed=true;activate(false);
+    failed=true;deferredActivation=false;activate(false);
     message('在线画板暂未加载，已保留可用画面与全部题设构造。');
     status.title=String(error?.message||'');status.querySelector('button').hidden=false;
   }
@@ -52,6 +58,13 @@
     const button=document.createElement('button');button.type='button';button.textContent=label;
     button.addEventListener('click',()=>{try{action();}catch(error){message(error.message);}});
     parent.append(button);return button;
+  }
+  function selectMode(mode,label=''){
+    window.DongGeoGebra.getAPI()?.setMode(mode);
+    selectedMode=mode;
+    toolState.hidden=mode===0;
+    toolName.textContent=label;
+    for(const button of tools.querySelectorAll('[data-mode]'))button.setAttribute('aria-pressed',String(Number(button.dataset.mode)===mode));
   }
   function makeTools(){
     const host=document.querySelector('.dong-ggb-head');if(!host||tools)return;
@@ -65,10 +78,32 @@
       ['曲线与图形',[[10,'两点定圆'],[11,'三点定圆'],[55,'三点椭圆'],[56,'三点双曲线'],[57,'焦点与准线抛物线'],[12,'五点圆锥曲线'],[16,'多边形'],[51,'正多边形'],[47,'轨迹']]],
       ['测量与演示',[[38,'长度'],[36,'角度'],[49,'面积'],[50,'斜率'],[40,'平移视野'],[62,'画笔'],[27,'隐藏 / 显示'],[28,'显示标签']]]
     ];
-    for(const [title,items]of groups){const group=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=title;group.append(legend);for(const [mode,label]of items)tool(label,()=>{window.DongGeoGebra.getAPI()?.setMode(mode);message('已选择“'+label+'”：请在画板上选择相应对象。');},group);content.append(group);}
+    const graphics=host.parentElement.querySelector('.dong-ggb-host');
+    graphics.tabIndex=-1;
+    for(const [title,items]of groups){
+      const group=document.createElement('fieldset'),legend=document.createElement('legend');
+      legend.textContent=title;group.append(legend);
+      for(const [mode,label]of items){
+        const button=tool(label,()=>{
+          selectMode(mode,label);
+          if(options.mobileLayout?.matches){
+            tools.open=false;
+            options.showDrawingArea(mode?toolState:host,graphics);
+          }
+          message(mode?'已选择“'+label+'”：请在画板上选择相应对象。':'已切回选择 / 拖动。');
+        },group);
+        button.dataset.mode=mode;button.setAttribute('aria-pressed',String(mode===0));
+      }
+      content.append(group);
+    }
     const templates=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent='按参数添加';templates.append(legend);
     for(const [kind,label]of [['ellipse','椭圆'],['hyperbola','双曲线'],['parabola','抛物线'],['circle','圆']])tool(label,()=>document.querySelector('[data-add-conic="'+kind+'"]').click(),templates);
     content.append(templates);host.prepend(tools);
+    toolState=document.createElement('div');toolState.className='board-tool-state';toolState.hidden=true;
+    toolName=document.createElement('strong');toolName.setAttribute('role','status');toolState.append(toolName);
+    const exit=tool('退出工具',()=>{selectMode(0);message('已切回选择 / 拖动。');graphics.focus({preventScroll:true});},toolState);
+    exit.className='button secondary';host.append(toolState);
+    window.addEventListener('dong:board-rebuilt',()=>{if(selectedMode)selectMode(0);});
     const files=host.querySelector('.dong-ggb-tools');
     makePointFinder(host,files);
     tool('整理点名',()=>{const result=window.DongGeoGebra.arrangeLabels();message(result.unresolved?'已整理点名；局部仍拥挤，可放大画面后再次整理。':'已整理点名；只调整文字位置，不改变几何关系。');window.DongGeoGebra.save().catch(failure);files.open=false;},files.querySelector('div'));
@@ -210,6 +245,11 @@
     if(!options)return;
     source=scene||current();
     if(!started)return;
+    if(deferredActivation&&!options.isConstructing?.()){
+      deferredActivation=false;
+      window.DongGeoGebra.syncTeaching(source,{refresh:true});
+      return;
+    }
     if(active&&sceneKey(source)!==window.DongGeoGebra.getReport().signature){message('正在同步当前题目与图形…');}
     window.DongGeoGebra.syncTeaching(source);
   }

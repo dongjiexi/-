@@ -84,6 +84,8 @@ module.exports = async ({ page, context, assert, screenshot }) => {
 
     await page.locator('#toolboxToggle').click();
     await page.locator('[data-construct="point"]').click();
+    assert(await page.locator('#nativeToolbar').isHidden(),'Selecting a tool clears the phone drawing area');
+    assert.equal(await page.locator('#nativeToolName').textContent(),'点');
     await canvas.scrollIntoViewIfNeeded();
     const toolsBox = await canvas.boundingBox();
     const point = (id, x, y) => ({ id, x: toolsBox.x + x, y: toolsBox.y + y });
@@ -97,13 +99,38 @@ module.exports = async ({ page, context, assert, screenshot }) => {
     await contact('touchEnd');
     assert.equal((await get()).scene.objects.length, baseline.scene.objects.length + 1, 'Next single tap constructs normally');
 
-    await page.locator('#toolboxMobileCollapse').click();
+    await page.locator('#finishNativeTool').click();
+    assert(await page.locator('#nativeToolState').isHidden());
     await home.click();
     const beforeKeyboard = await get();
     await canvas.press('+');
     near(shortSide(await get()), .8 * shortSide(beforeKeyboard));
     await canvas.press('Home');
     near(shortSide(await get()), shortSide(beforeKeyboard));
+
+    await page.locator('#toolboxToggle').click();
+    await page.locator('[data-construct="segment"]').click();
+    await page.waitForFunction(()=>document.activeElement?.id==='canvas');
+    const tapCanvas = async (x,y) => {
+      const rect=await canvas.boundingBox();
+      await contact('touchStart',[{id:1,x:rect.x+x,y:rect.y+y}]);
+      await contact('touchEnd');
+    };
+    const beforeSegment=(await get()).scene;
+    await tapCanvas(65,125);
+    assert.match(await page.locator('#dragHint').textContent(),/第二个点/);
+    assert.deepEqual((await get()).scene,beforeSegment,'First endpoint is a preview until construction is complete');
+    const returnToBoard = page.locator('[data-mobile-panel="board"]');
+    await page.locator('[data-mobile-panel="lesson"]').click();
+    await returnToBoard.click();
+    assert.equal(await page.locator('#nativeToolName').textContent(),'线段');
+    assert.match(await page.locator('#dragHint').textContent(),/第二个点/);
+    await tapCanvas(205,150);
+    await page.waitForFunction(()=>JSON.parse(document.querySelector('#sceneJson').value).objects.some(item=>item.op==='segment'));
+    await tapCanvas(95,100);
+    await page.locator('#finishNativeTool').click();
+    assert(await page.locator('#nativeToolState').isHidden());
+    assert.equal((await get()).scene.objects.filter(item=>item.op==='segment').length,1,'Exiting cancels the uncommitted next segment');
     await screenshot('board-touch-viewport.png', '.board-shell');
   } finally {
     await cdp.detach();
