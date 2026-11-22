@@ -17,16 +17,22 @@ module.exports=async({page,context,assert,screenshot})=>{
     near(actual.xmax-actual.xmin,expected.xmax-expected.xmin,'Locating and recentering preserve the horizontal zoom');
     near(actual.ymax-actual.ymin,expected.ymax-expected.ymin,'Locating and recentering preserve the vertical zoom');
   };
-  const scene={type:'circle',r:4,h:0,k:0,points:{},showConic:false,showFeatures:false,showDynamic:false,dynamicLine:false,isFreeBoard:true,lines:[],objects:[
+  const scene={type:'circle',r:4,h:0,k:0,points:{S:[1,-3],'R₂':[-3,-3]},pointParts:{S:[1,2],'R₂':[2]},showConic:false,showFeatures:false,showDynamic:false,dynamicLine:false,isFreeBoard:true,lines:[],objects:[
     {id:'origin',kind:'point',label:'P',x:0,y:0,visible:true},
     {id:'remote',kind:'point',label:'N₁′',x:8,y:3,visible:true},
     {id:'mid',kind:'construction',op:'midpoint',label:'M',refs:['origin','remote'],visible:true},
     {id:'hidden',kind:'point',label:'H',x:0,y:3,visible:false},
     {id:'invalid',kind:'construction',op:'intersection',label:'U',refs:['parallel-a','parallel-b'],visible:true},
+    {id:'hidden-invalid',kind:'construction',op:'intersection',label:'V',refs:['parallel-a','parallel-b'],visible:false},
     {id:'parallel-a',kind:'line',m:0,b:1,visible:false},
-    {id:'parallel-b',kind:'line',m:0,b:2,visible:false}
+    {id:'parallel-b',kind:'line',m:0,b:2,visible:false},
+    {id:'other-point',kind:'point',label:'W₂',x:-2,y:-2,part:2,visible:true},
+    {id:'other-hidden',kind:'point',label:'H₂',x:-2,y:2,part:2,visible:false},
+    {id:'other-invalid',kind:'construction',op:'intersection',label:'U₂',refs:['parallel-a','parallel-b'],part:2,visible:true}
   ]};
   await page.locator('#sceneJson').evaluate((element,value)=>{element.value=value;document.querySelector('#applyJson').click();},JSON.stringify(scene));
+  const setPart=index=>page.evaluate(part=>{const api=window.__pointHoverTest;api.state.activePart=part;api.partChanged();api.render();},index);
+  await setPart(1);
   const canvas=page.locator('#canvas');
   await page.locator('#homeButton').click();
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -44,11 +50,82 @@ module.exports=async({page,context,assert,screenshot})=>{
   const original=await page.locator('#sceneJson').inputValue();
   const zoomed=await viewport();
   const manager=page.locator('#objectManagerDialog'),search=page.locator('#boardObjectSearch');
+  const filter=page.locator('#boardObjectFilter'),resetFilters=page.locator('#resetBoardObjectFilters');
+  const nativeRows=()=>manager.locator('#boardObjects [data-object-action="select"]').evaluateAll(buttons=>buttons.map(button=>button.dataset.objectId).filter(id=>!id.startsWith('feature:')&&id!=='$conic').sort());
+  const expectRows=async(ids,message)=>assert.deepEqual(await nativeRows(),ids.slice().sort(),message);
+  const expectFeatures=async(ids,message)=>assert.deepEqual(await manager.locator('#boardObjects [data-object-action="select"]').evaluateAll(buttons=>buttons.map(button=>button.dataset.objectId).filter(id=>id.startsWith('feature:')).sort()),ids.map(name=>'feature:'+name).sort(),message);
   const inspector=manager.locator('#nativeInspector'),heading=inspector.locator('[data-object-heading]');
   await page.locator('#openObjectManager').click();
   assert(await manager.getByRole('button',{name:'定位 H',exact:true}).isDisabled(),'Hidden point stays hidden');
   assert(await manager.getByRole('button',{name:'定位 U',exact:true}).isDisabled(),'Undefined point cannot be located');
+  const sceneBeforeFilters=await page.evaluate(()=>JSON.stringify(window.__pointHoverTest.sceneData()));
+  const currentIds=['origin','remote','mid','hidden','invalid','hidden-invalid','parallel-a','parallel-b'];
+  const allIds=scene.objects.map(object=>object.id);
+  assert.equal(await filter.inputValue(),'all');
+  await expectRows(allIds,'All objects includes hidden, undefined, and other-part objects');
+  await expectFeatures(['O','S','R₂'],'All objects includes shared, other-part, and layer-hidden named features');
+  assert(await manager.getByRole('button',{name:'定位 O',exact:true}).isDisabled(),'A hidden built-in center cannot be located');
+  assert(await manager.getByRole('button',{name:'定位 R₂',exact:true}).isDisabled(),'A named point belonging to another part cannot be located');
+  assert(await manager.getByRole('button',{name:'定位 S',exact:true}).isEnabled(),'A shared named point stays available when the built-in feature layer is hidden');
+  assert(await manager.locator('[data-object-id="feature:R₂"][data-object-action="visibility"]').isChecked(),'An inactive part does not change a named point’s visibility checkbox');
+  assert.equal(await manager.locator('[data-object-id="feature:O"][data-object-action="visibility"]').isChecked(),false,'The explicitly hidden center has an unchecked visibility checkbox');
+  await manager.locator('[data-object-id="feature:O"][data-object-action="select"]').click();
+  assert.equal(await heading.textContent(),'O');
+  assert.equal(await inspector.getByRole('button',{name:'在画板上定位',exact:true}).count(),0,'Inspecting a hidden center does not offer a point-locate action');
+  assert(await page.locator('#nativePointLocator').isHidden());
+  assert.deepEqual(await viewport(),zoomed,'Inspecting a hidden point does not recenter the board');
+  assert(await resetFilters.isHidden());
+  await manager.locator('[data-object-id="feature:R₂"][data-object-action="select"]').focus();
+  await filter.selectOption('current');
+  await expectRows(currentIds,'Current-part objects includes hidden and undefined objects but excludes other parts');
+  await expectFeatures(['O','S'],'Current-part features includes a layer-hidden center but excludes an unrelated named point');
+  assert(await filter.evaluate(element=>document.activeElement===element),'Filtering a focused other-part row moves focus to the filter control');
+  await manager.locator('[data-object-id="feature:O"][data-object-action="select"]').focus();
+  await filter.selectOption('visible');
+  await expectRows(['origin','remote','mid'],'Visible objects must be current, shown, and defined');
+  await expectFeatures(['S'],'Visible features excludes both a hidden layer and an inactive part');
+  assert(await filter.evaluate(element=>document.activeElement===element),'Filtering a focused hidden-layer row does not retain focus on an excluded row');
+  await filter.selectOption('hidden');
+  await expectRows(['hidden','hidden-invalid','parallel-a','parallel-b'],'Hidden objects includes only current objects explicitly hidden');
+  await expectFeatures(['O'],'An out-of-part named point is not mistaken for a layer-hidden feature');
+  await search.fill('h');
+  await expectRows(['hidden'],'Search combines with the hidden filter and excludes a matching name from another part');
+  await search.fill('');
+  await filter.selectOption('undefined');
+  await expectRows(['invalid','hidden-invalid'],'Undefined objects includes current hidden invalid objects');
+  await expectFeatures([],'Defined built-in and named points do not appear as undefined');
+  await search.fill('u');
+  await expectRows(['invalid'],'Undefined and name filters combine without including undefined objects from another part');
   await search.fill("n_1'");
+  await filter.selectOption('hidden');
+  await expectRows([],'A name matching visible objects does not bypass the hidden filter');
+  assert(await resetFilters.isVisible(),'No matching objects offers a filter reset');
+  await resetFilters.click();
+  assert.equal(await filter.inputValue(),'all','Reset clears the object-state filter');
+  assert.equal(await search.inputValue(),'','Reset clears the text search');
+  await expectRows(allIds,'Reset restores the complete object list');
+  await expectFeatures(['O','S','R₂'],'Reset also restores every feature row');
+  assert(await resetFilters.isHidden());
+  await filter.selectOption('current');
+  await setPart(2);
+  await expectRows(allIds,'The second part includes its own native objects and shared objects');
+  await expectFeatures(['O','S','R₂'],'The shared named point belongs to both parts');
+  await filter.selectOption('visible');
+  await expectRows(['origin','remote','mid','other-point'],'Switching parts updates native visible rows');
+  await expectFeatures(['S','R₂'],'The second part makes its named point visible without exposing the hidden center');
+  assert(await manager.getByRole('button',{name:'定位 R₂',exact:true}).isEnabled(),'A named point becomes locatable only in a part that contains it');
+  await filter.selectOption('hidden');
+  await expectFeatures(['O'],'Part switching preserves the explicit hidden feature layer');
+  await setPart(1);
+  await filter.selectOption('all');
+  await expectFeatures(['O','S','R₂']);
+  assert.equal(await page.locator('#sceneJson').inputValue(),original,'Filtering does not change the serialized scene');
+  assert.equal(await page.evaluate(()=>JSON.stringify(window.__pointHoverTest.sceneData())),sceneBeforeFilters,'Filtering never changes object visibility, geometry, part scopes, or dependencies');
+  assert(await page.locator('#undoDrag').isDisabled(),'Filtering does not create a geometry undo entry');
+  sameZoom(await viewport(),zoomed);
+  await filter.selectOption('visible');
+  await search.fill("n_1'");
+  await expectRows(['remote','mid'],'Visible objects can be searched by normalized names and dependency names');
   assert(await manager.getByRole('button',{name:'定位 N₁′',exact:true}).isVisible(),'Search normalizes subscripts and primes');
   await manager.locator('[data-object-id="mid"][data-object-action="select"]').click();
   assert.equal(await heading.textContent(),'M');
@@ -61,6 +138,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.equal(await inspector.getByRole('button',{name:/^返回 /}).count(),0);
   await inspector.locator('[data-related-object="origin"]').click();
   assert.equal(await search.inputValue(),"n_1'",'Navigating dependencies preserves the search');
+  assert.equal(await filter.inputValue(),'visible','Navigating dependencies preserves the object-state filter');
   assert.equal(await manager.locator('[data-object-id="origin"][data-object-action="select"]').count(),0,'The inspector can select a source excluded by the list filter');
   await inspector.getByRole('group',{name:'依赖此对象的构造',exact:true}).locator('[data-related-object="mid"]').click();
   assert.equal(await heading.textContent(),'M','The source links back to the construction that uses it');
@@ -123,5 +201,5 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#clearLocatedPoint').click();
   assert(await marker.isHidden());
   assert(await page.locator('#locatedPoint').isHidden());
-  console.log('PASS hover and mobile point locator, bidirectional inspector navigation under search, offscreen recentering with unchanged zoom/scene, hidden and undefined points, and live movement.');
+  console.log('PASS hover and mobile point locator, native/feature part and layer filters with safe focus, combined name search/reset and scene nonmutation, bidirectional inspector navigation, offscreen recentering with unchanged zoom/scene, hidden and undefined points, and live movement.');
 };

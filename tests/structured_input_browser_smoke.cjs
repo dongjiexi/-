@@ -80,6 +80,42 @@ module.exports = async ({page, assert, screenshot}) => {
   assert.equal(object.family, 'sine');
   assert(Math.abs(object.params.w - Math.PI/2) < 1e-9);
 
+  // Function templates render outside the construction resolver. Their normal
+  // domains and asymptotes must not turn valid plots into undefined objects.
+  const functionChecks = await page.evaluate(() => {
+    const builder = window.DongEquationBuilder;
+    const objects = builder.templates.function.map(template => {
+      const values = Object.fromEntries(template.fields.map(field => [field.key, field.value]));
+      const object = builder.buildTemplate(template, values).object;
+      object.id = 'function-check-' + template.id;
+      return object;
+    });
+    const unsupported = {id:'unsupported-function', kind:'function', family:'unknown', params:{}};
+    const missing = {id:'missing-function', kind:'function', family:'sine', params:{A:1}};
+    const invalidBase = {id:'invalid-logarithm', kind:'function', family:'logarithm', params:{a:1,b:1,h:0,k:0}};
+    const engine = window.DongConstruct.createEngine({model:()=>({objects:[...objects,unsupported,missing,invalidBase]})});
+    return {
+      normal: objects.map(item=>({family:item.family, reason:engine.invalidReason(item.id)})),
+      unsupported: engine.invalidReason(unsupported.id),
+      missing: engine.invalidReason(missing.id),
+      invalidBase: engine.invalidReason(invalidBase.id)
+    };
+  });
+  assert.equal(functionChecks.normal.length, 10);
+  for (const check of functionChecks.normal) assert.equal(check.reason, '', `${check.family} is a valid function plot`);
+  assert.match(functionChecks.unsupported, /类型尚不支持/);
+  assert.match(functionChecks.missing, /参数缺失/);
+  assert.match(functionChecks.invalidBase, /底数/);
+
+  await page.locator('#openObjectManager').click();
+  const sineRow = page.locator(`#boardObjects button[data-object-id="${object.id}"][data-object-action="select"]`);
+  await sineRow.click();
+  assert.doesNotMatch(await sineRow.locator('..').innerText(), /退化|参数无效|未定义/);
+  const functionDescription = await page.locator('#nativeInspector [data-live-equation]').innerText();
+  assert.match(functionDescription, /sin/);
+  assert.doesNotMatch(functionDescription, /退化|参数无效|未定义/);
+  await page.locator('#closeObjectManager').click();
+
   await page.locator('#question').fill('已知');
   await page.locator('.controls [data-open-math-keyboard]').click();
   await page.locator('.math-keyboard-tabs button', {hasText:'几何与圆锥'}).click();

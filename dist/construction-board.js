@@ -205,6 +205,15 @@
     function invalidReason(id){
       if(resolve(id))return '';
       const object=getObject(id);if(!object)return '引用的对象不存在';
+      if(object.kind==='function'){
+        // Function plots are sampled by the board renderer, not resolve().
+        // Validate their actual template instead of sampling a potentially
+        // excluded x value (for example x=0 in a logarithm or reciprocal).
+        const template=window.DongEquationBuilder?.templates?.function?.find(item=>item.id===object.family);
+        if(!template)return '函数类型尚不支持';
+        if(!template.fields.every(field=>Number.isFinite(object.params?.[field.key])))return '函数参数缺失或不是有限数值';
+        try{template.build(object.params);return '';}catch(error){return '函数参数无效：'+(error.message||'请检查参数');}
+      }
       if((object.refs||[]).some(ref=>!resolve(ref)))return '源对象未定义、缺失或构造关系循环';
       if(object.op==='point_on')return '当前位置不满足动点范围，或范围配置无效';
       if(['tangent','normal'].includes(object.op)||linkedCurveLine(object))return '所选点不在曲线上，或曲线在此处退化';
@@ -352,17 +361,43 @@
       api.render();
     });
     $('clearLocatedPoint').addEventListener('click',()=>{clearLocation();canvas.focus({preventScroll:true});});
+    const objectSearch=$('boardObjectSearch'), objectFilter=$('boardObjectFilter');
+    const clearFilters=$('resetBoardObjectFilters');
+    function resetFilters(){
+      objectSearch.value='';
+      objectFilter.value='all';
+    }
+    function matchesFilter(row,filter){
+      if(filter==='all')return true;
+      if(!row.active)return false;
+      if(filter==='visible')return row.shown&&!row.reason;
+      if(filter==='hidden')return !row.shown;
+      if(filter==='undefined')return !!row.reason;
+      return true;
+    }
     let objectListKey='';
     function objectList(){
       const box=$('boardObjects');if(!box)return;
-      const query=normalizeObjectQuery(($('boardObjectSearch')?.value||'').trim()),all=engine.objects();
+      const query=normalizeObjectQuery(objectSearch.value.trim()),all=engine.objects();
       const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
-      const entries=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:o.kind==='through_points'?[o.a,o.b].filter(Boolean):sourceRefs(o).map(title),point:window.DongConstruct.pointObject(o)}));
+      const entries=all.map(object=>{
+        const active=api.inCurrentPart(object);
+        const reason=engine.invalidReason(object.id)||
+          (active&&!api.visible({...object,visible:true})?'当前参数不满足题设条件':'');
+        return {
+          id:object.id, label:object.label||'未命名对象',
+          type:names[object.op]||names[object.kind]||'关联构造',
+          shown:object.visible!==false, active, reason,
+          refs:object.kind==='through_points'?[object.a,object.b].filter(Boolean):sourceRefs(object).map(title),
+          point:window.DongConstruct.pointObject(object)
+        };
+      });
       if(state.model&&!state.model.isFreeBoard)entries.unshift({id:'$conic',label:'主圆锥曲线',type:'主曲线（参数入口编辑）',shown:state.model.showConic!==false,active:true,refs:[],readonly:true});
-      const seenFeatures=new Set();for(const feature of api.features()){if(seenFeatures.has(feature.name))continue;seenFeatures.add(feature.name);entries.push({id:'feature:'+feature.name,label:feature.name,type:'题设 / 内置点（只读）',shown:api.featureVisible?api.featureVisible(feature):true,active:true,refs:[],readonly:true,point:true});}
-      const rows=entries.filter(o=>!query||normalizeObjectQuery(o.label+' '+o.type+' '+o.refs.join(' ')).includes(query));
+      const seenFeatures=new Set();for(const feature of api.features()){if(seenFeatures.has(feature.name))continue;seenFeatures.add(feature.name);entries.push({id:'feature:'+feature.name,label:feature.name,type:'题设 / 内置点（只读）',shown:api.featureLayerShown(feature),active:api.featureInPart(feature),refs:[],readonly:true,point:true});}
+      const rows=entries.filter(o=>matchesFilter(o,objectFilter.value)&&(!query||normalizeObjectQuery(o.label+' '+o.type+' '+o.refs.join(' ')).includes(query)));
+      clearFilters.hidden=!entries.length||(!query&&objectFilter.value==='all');
       $('boardObjectsCount').textContent=`（${rows.length}/${entries.length}）`;
-      const key=JSON.stringify([selected,rows]);if(key===objectListKey)return;objectListKey=key;
+      const key=JSON.stringify([selected,rows,entries.length===0]);if(key===objectListKey)return;objectListKey=key;
       const focus=document.activeElement,focusId=box.contains(focus)?focus.dataset.objectId:null,focusAction=focus?.dataset.objectAction;
       box.replaceChildren();
       if(!rows.length){const p=document.createElement('p');p.className='help';p.textContent=entries.length?'没有匹配的对象。':'暂无追加对象，可用作图工具添加点、线或曲线。';box.append(p);}
@@ -382,9 +417,14 @@
         }
         const detail=document.createElement('p');detail.className='help';detail.style.margin='.25rem 0';detail.textContent=row.type+(row.active?'':' · 不属于当前小问')+(row.reason?' · '+row.reason:'')+(row.refs.length?' · 依赖：'+row.refs.join('、'):'');item.append(detail);box.append(item);
       }
-      if(focusId)Array.from(box.querySelectorAll('[data-object-id]')).find(n=>n.dataset.objectId===focusId&&n.dataset.objectAction===focusAction)?.focus({preventScroll:true});
+      if(focusId){
+        const previous=Array.from(box.querySelectorAll('[data-object-id]')).find(n=>n.dataset.objectId===focusId&&n.dataset.objectAction===focusAction);
+        (previous||objectFilter).focus({preventScroll:true});
+      }
     }
-    $('boardObjectSearch')?.addEventListener('input',objectList);
+    objectSearch.addEventListener('input',objectList);
+    objectFilter.addEventListener('change',objectList);
+    clearFilters.addEventListener('click',()=>{resetFilters();objectList();objectSearch.focus();});
     $('openObjectManager')?.addEventListener('click',()=>{navigation.length=0;objectList();$('objectInspectorSlot').append($('nativeInspector'));$('objectManagerDialog').showModal();inspector();});
     $('closeObjectManager')?.addEventListener('click',()=>$('objectManagerDialog').close());
     $('objectManagerDialog')?.addEventListener('close',()=>{$('nativeInspectorHome').append($('nativeInspector'));});
@@ -434,6 +474,12 @@
       box.append(group);
     }
     function describe(shape,object){
+      if(object?.kind==='function'){
+        const builder=window.DongEquationBuilder,template=builder?.templates?.function?.find(item=>item.id===object.family);
+        if(!template)return '函数类型尚不支持';
+        if(!template.fields.every(field=>Number.isFinite(object.params?.[field.key])))return '函数参数缺失或不是有限数值';
+        try{return builder.buildTemplate(template,object.params).equation;}catch(error){return '函数参数无效：'+(error.message||'请检查参数');}
+      }
       if(!shape)return '暂未定义：检查依赖对象是否存在，或两条曲线当前是否相交。';
       const equation=window.DongEquationBuilder?.curveEquation(object);if(equation)return equation;
       if(shape.type==='point')return `(${fmt(shape.x)}, ${fmt(shape.y)})`;
@@ -461,7 +507,9 @@
       if(object&&!api.visible(object)){
         const status=document.createElement('p');
         status.className='help';
-        status.textContent=api.visible({...object,visible:true})?'此对象已隐藏。':'此对象不在当前小问的图层中。';
+        if(!api.inCurrentPart(object))status.textContent='此对象不在当前小问的图层中。';
+        else if(object.visible===false)status.textContent='此对象已隐藏。';
+        else status.textContent='当前参数不满足题设条件。';
         box.append(status);
       }
       if(!object){const note=document.createElement('p');note.className='help';note.textContent='主曲线和题设 / 内置点在此只读，避免误改题设或断开构造；主曲线请在参数入口编辑。';box.append(note);}
@@ -680,7 +728,7 @@
       if(!tool)return;
       resetPending();hint(instruction());
     }
-    return {engine,draw,hit,begin,move,cancelTouch,partChanged,active:()=>!!tool,select,selectedId:()=>selected,refreshObjects:objectList,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();clearLocation();tool=null;selected=null;updateToolState();inspector();objectList();}};
+    return {engine,draw,hit,begin,move,cancelTouch,partChanged,active:()=>!!tool,select,selectedId:()=>selected,refreshObjects:objectList,remove:removeObject,description:id=>describe(engine.resolve(id)),hoverPoint(screen,threshold=14){const found=pointAt(screen,threshold);return found?{name:title(found.id),x:found.x,y:found.y}:null;},reset(){resetPending();clearLocation();resetFilters();tool=null;selected=null;updateToolState();inspector();objectList();}};
   }
   const pointOps=new Set(['point_on','inverse','midpoint','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection']);
   const pointObject=item=>item.kind==='point'||item.kind==='construction'&&pointOps.has(item.op);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.70.32">
+  <meta name="dongjiexi-version" content="0.70.33">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.70.32">
-  <link rel="stylesheet" href="classroom.css?v=0.70.32">
-  <link rel="stylesheet" href="question-bank.css?v=0.70.32">
+  <link rel="stylesheet" href="learning-ui.css?v=0.70.33">
+  <link rel="stylesheet" href="classroom.css?v=0.70.33">
+  <link rel="stylesheet" href="question-bank.css?v=0.70.33">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -333,6 +333,9 @@
     #locatedPoint .button { pointer-events:auto;flex:none;min-height:32px; }
     #locatedPoint[data-outside-view] { flex-wrap:wrap; }
     #locatedPoint[data-outside-view] #locatedPointValue { flex:1 0 100%; }
+    .board-object-filters { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));gap:.5rem; }
+    .board-object-filters label { display:grid;gap:.25rem;min-width:0; }
+    .board-object-filters input,.board-object-filters select { width:100%;min-width:0;min-height:44px; }
     .board-object-locate { margin-left:.3rem; }
     @media (pointer:coarse) { #locatedPoint .button,.board-object-locate,.board-inspector-locate,.object-relations button { min-height:44px; } }
     #addConicDialog { width:min(560px,calc(100vw - 24px)); }
@@ -455,13 +458,13 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.70.32">
-  <link rel="stylesheet" href="autumn.css?v=0.70.32">
+  <link rel="stylesheet" href="theme.css?v=0.70.33">
+  <link rel="stylesheet" href="autumn.css?v=0.70.33">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.32 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.33 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -593,7 +596,16 @@
           <div class="empty" id="emptyState"><div><strong>直接在这里作图</strong>选择上方“点”“直线”或“圆”，再点击画板。不必先输入标准方程；也可以在左侧导入题目。</div></div>
         </div>
         <p id="undefinedObjects" class="native-warning" role="status"></p>
-        <dialog id="objectManagerDialog" class="study-dialog" aria-label="对象管理"><header><h2>对象管理</h2><button id="closeObjectManager" class="button secondary" type="button">返回画板</button></header><details id="boardObjectsPanel" open><summary>对象管理 <span id="boardObjectsCount"></span></summary><div style="padding:.6rem"><label>查找对象 <input id="boardObjectSearch" type="search" placeholder="名称、构造类型或依赖点" style="max-width:100%"></label><p class="help">点击名称查看属性，点击「定位」在画板上标出可见的点。</p><div id="boardObjects" style="max-height:18rem;overflow:auto"></div></div></details><section id="objectInspectorSlot" aria-label="对象属性"></section></dialog>
+        <dialog id="objectManagerDialog" class="study-dialog" aria-label="对象管理"><header><h2>对象管理</h2><button id="closeObjectManager" class="button secondary" type="button">返回画板</button></header><details id="boardObjectsPanel" open><summary>对象管理 <span id="boardObjectsCount"></span></summary><div style="padding:.6rem"><div class="board-object-filters">
+            <label>查找对象<input id="boardObjectSearch" type="search" placeholder="名称、构造类型或依赖点"></label>
+            <label>筛选范围<select id="boardObjectFilter">
+              <option value="all">所有小问的对象</option>
+              <option value="current">当前小问（含共用）</option>
+              <option value="visible">当前小问 · 已显示</option>
+              <option value="hidden">当前小问 · 已隐藏</option>
+              <option value="undefined">当前小问 · 未定义</option>
+            </select></label>
+          </div><p class="help">点击名称查看属性，点击「定位」在画板上标出可见的点。</p><div id="boardObjects" style="max-height:18rem;overflow:auto"></div><button id="resetBoardObjectFilters" type="button" class="button secondary" hidden>清除筛选与搜索</button></div></details><section id="objectInspectorSlot" aria-label="对象属性"></section></dialog>
         <details id="locusRangeAudit" hidden><summary id="locusRangeSummary">轨迹范围核对</summary><div id="locusRangeDetails" class="help" style="padding:.5rem 1rem;overflow-wrap:anywhere"></div></details>
         <div class="legend"><span style="--c:#0f9f99">圆锥曲线</span><span style="--c:#f2a33c">动直线</span><span style="--c:#e58c21">题设图形</span><span style="--c:#7c5ac9">题设点线</span><span style="--c:#df5b62">交点</span><span style="--c:#3f78d8">焦点 / 圆心</span></div>
         <details id="inverseDistancePanel" hidden><summary>距离最值与定位</summary><div id="inverseDistanceReadout"></div></details>
@@ -730,59 +742,59 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.70.32"></script>
+  <script src="runtime.js?v=0.70.33"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.70.32"></script>
-  <script src="number-display.js?v=0.70.32"></script>
-  <script src="label-layout.js?v=0.70.32"></script>
-  <script src="step-highlight.js?v=0.70.32"></script>
-  <script src="scene-audit.js?v=0.70.32"></script>
-  <script src="answer-geometry.js?v=0.70.32"></script>
-  <script src="scene-merge.js?v=0.70.32"></script>
-  <script src="tangent-solver.js?v=0.70.32"></script>
-  <script src="ellipse-distance.js?v=0.70.32"></script>
-  <script src="circle-dot.js?v=0.70.32"></script>
-  <script src="orthogonal-chord.js?v=0.70.32"></script>
-  <script src="axis-intercept-chord.js?v=0.70.32"></script>
-  <script src="conic-area.js?v=0.70.32"></script>
-  <script src="basic-conditions.js?v=0.70.32"></script>
-  <script src="parabola-focal-choice.js?v=0.70.32"></script>
-  <script src="algebra-geometry.js?v=0.70.32"></script>
-  <script src="ellipse-area-chord.js?v=0.70.32"></script>
-  <script src="ellipse-tangent-ratio.js?v=0.70.32"></script>
-  <script src="vertex-secant.js?v=0.70.32"></script>
-  <script src="inverse-locus.js?v=0.70.32"></script>
-  <script src="symmetric-chord.js?v=0.70.32"></script>
-  <script src="parabola-locus.js?v=0.70.32"></script>
-  <script src="question-parts.js?v=0.70.32"></script>
-  <script src="goal-coverage.js?v=0.70.32"></script>
-  <script src="solution-review.js?v=0.70.32"></script>
-  <script src="parabola-focal-data.js?v=0.70.32"></script>
-  <script src="circle-fold.js?v=0.70.32"></script>
-  <script src="circle-fold-view.js?v=0.70.32"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.70.32">
-  <script src="hyperbola-iteration.js?v=0.70.32"></script>
-  <script src="hyperbola-asymptote-midpoint.js?v=0.70.32"></script>
-  <script src="conic-parameter.js?v=0.70.32"></script>
-  <script src="ellipse-focal-chord.js?v=0.70.32"></script>
-  <script src="external-ai.js?v=0.70.32"></script>
-  <script src="recognition-pages.js?v=0.70.32"></script>
-  <script src="recognition-review.js?v=0.70.32"></script>
-  <script src="image-review-viewer.js?v=0.70.32"></script>
-  <script src="image-adjust.js?v=0.70.32"></script>
-  <script src="learning-ui.js?v=0.70.32"></script>
-  <script src="classroom.js?v=0.70.32"></script>
-  <script src="question-bank.js?v=0.70.32"></script>
-  <script src="construction-board.js?v=0.70.32"></script>
-  <script src="motion-domain.js?v=0.70.32"></script>
-  <script src="motion-protection.js?v=0.70.32"></script>
-  <script src="drag-board.js?v=0.70.32"></script>
-  <script src="equation-builder.js?v=0.70.32"></script>
-  <script src="math-keyboard.js?v=0.70.32"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.70.32"></script>
-  <script src="geogebra-bridge.js?v=0.70.32"></script>
-  <script src="unified-board.js?v=0.70.32"></script>
+  <script src="math-input.js?v=0.70.33"></script>
+  <script src="number-display.js?v=0.70.33"></script>
+  <script src="label-layout.js?v=0.70.33"></script>
+  <script src="step-highlight.js?v=0.70.33"></script>
+  <script src="scene-audit.js?v=0.70.33"></script>
+  <script src="answer-geometry.js?v=0.70.33"></script>
+  <script src="scene-merge.js?v=0.70.33"></script>
+  <script src="tangent-solver.js?v=0.70.33"></script>
+  <script src="ellipse-distance.js?v=0.70.33"></script>
+  <script src="circle-dot.js?v=0.70.33"></script>
+  <script src="orthogonal-chord.js?v=0.70.33"></script>
+  <script src="axis-intercept-chord.js?v=0.70.33"></script>
+  <script src="conic-area.js?v=0.70.33"></script>
+  <script src="basic-conditions.js?v=0.70.33"></script>
+  <script src="parabola-focal-choice.js?v=0.70.33"></script>
+  <script src="algebra-geometry.js?v=0.70.33"></script>
+  <script src="ellipse-area-chord.js?v=0.70.33"></script>
+  <script src="ellipse-tangent-ratio.js?v=0.70.33"></script>
+  <script src="vertex-secant.js?v=0.70.33"></script>
+  <script src="inverse-locus.js?v=0.70.33"></script>
+  <script src="symmetric-chord.js?v=0.70.33"></script>
+  <script src="parabola-locus.js?v=0.70.33"></script>
+  <script src="question-parts.js?v=0.70.33"></script>
+  <script src="goal-coverage.js?v=0.70.33"></script>
+  <script src="solution-review.js?v=0.70.33"></script>
+  <script src="parabola-focal-data.js?v=0.70.33"></script>
+  <script src="circle-fold.js?v=0.70.33"></script>
+  <script src="circle-fold-view.js?v=0.70.33"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.70.33">
+  <script src="hyperbola-iteration.js?v=0.70.33"></script>
+  <script src="hyperbola-asymptote-midpoint.js?v=0.70.33"></script>
+  <script src="conic-parameter.js?v=0.70.33"></script>
+  <script src="ellipse-focal-chord.js?v=0.70.33"></script>
+  <script src="external-ai.js?v=0.70.33"></script>
+  <script src="recognition-pages.js?v=0.70.33"></script>
+  <script src="recognition-review.js?v=0.70.33"></script>
+  <script src="image-review-viewer.js?v=0.70.33"></script>
+  <script src="image-adjust.js?v=0.70.33"></script>
+  <script src="learning-ui.js?v=0.70.33"></script>
+  <script src="classroom.js?v=0.70.33"></script>
+  <script src="question-bank.js?v=0.70.33"></script>
+  <script src="construction-board.js?v=0.70.33"></script>
+  <script src="motion-domain.js?v=0.70.33"></script>
+  <script src="motion-protection.js?v=0.70.33"></script>
+  <script src="drag-board.js?v=0.70.33"></script>
+  <script src="equation-builder.js?v=0.70.33"></script>
+  <script src="math-keyboard.js?v=0.70.33"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.70.33"></script>
+  <script src="geogebra-bridge.js?v=0.70.33"></script>
+  <script src="unified-board.js?v=0.70.33"></script>
   <script>
   (() => {
     'use strict';
@@ -1481,13 +1493,24 @@
     function drawLine(o){const rad=P('theta')*Math.PI/180,span=Math.max(state.view.xmax-state.view.xmin,state.view.ymax-state.view.ymin)*1.3,dx=Math.cos(rad),dy=Math.sin(rad);const end={x:o.x+span*dx,y:o.y+span*dy};strokePath([{x:o.x-span*dx,y:o.y-span*dy},end],'#f2a33c',2);annotation(state.model.dynamicLineLabel||'动直线',end,'#9a6507');}
     function namedObject(name){const derived=(state.model.objects||[]).find(o=>o.kind==='construction'&&o.label===name);if(derived){const shape=nativeController?.engine.resolve(derived.id);if(shape?.type==='point')return shape;}const known=features().find(item=>item.name===name)||(state.model.objects||[]).find(o=>o.kind==='point'&&o.label===name);if(known)return known;if(name===state.model.fixedPoint?.name&&Number.isFinite(state.model.fixedPoint.x))return state.model.fixedPoint;const index=(state.model.dynamicIntersectionLabels||['A','B']).indexOf(name);if(index>=0)return intersections()[index]||null;const second=state.model.pairedChord?.labels.indexOf(name)??-1;return second>=0?secondIntersections()[second]||null:null;}
     function visibleForPart(item){if(state.model?.parabolaFocalData?.graphValid===false&&item?.source==='derived'&&String(item.id||'').startsWith('focal-data-'))return false;return window.DongSceneAudit.visible(item,state.activePart);}
-    function featureVisible(p){
-      if(p.nativeFixed)return visibleForPart(state.model.fixedPoint);
-      if(p.nativeDynamic)return state.model.showDynamic!==false&&state.model.showConic!==false&&
-        visibleForPart({part:state.model.dynamicLinePart,parts:state.model.dynamicLineParts})&&
-        (!p.nativeSecondary||visibleForPart(state.model.pairedChord));
-      return (p.kind==='point'||state.model.showFeatures!==false)&&visibleForPart({parts:state.model.pointParts?.[p.name]});
+    function inCurrentPart(item){
+      return window.DongSceneAudit.visible({...item,visible:true},state.activePart);
     }
+    function featureInPart(p){
+      const model=state.model;
+      if(p.nativeFixed)return inCurrentPart(model.fixedPoint);
+      if(p.nativeDynamic)return inCurrentPart({part:model.dynamicLinePart,parts:model.dynamicLineParts})&&
+        (!p.nativeSecondary||inCurrentPart(model.pairedChord));
+      return inCurrentPart({parts:model.pointParts?.[p.name]});
+    }
+    function featureLayerShown(p){
+      const model=state.model;
+      if(p.nativeFixed)return model.fixedPoint?.visible!==false;
+      if(p.nativeDynamic)return model.showDynamic!==false&&model.showConic!==false&&
+        (!p.nativeSecondary||model.pairedChord?.visible!==false);
+      return p.kind==='point'||model.showFeatures!==false;
+    }
+    function featureVisible(p){return featureInPart(p)&&featureLayerShown(p);}
     function endpointsForLine(line){
       if(line.kind==='construction'||['tangent','normal'].includes(line.role)&&line.refs?.length===2){const shape=nativeController?.engine.resolve(line.id);return shape?.type==='line'?clipNativeLine(shape):null;}
       if(line.kind==='through_points'){
@@ -2307,7 +2330,7 @@
     function conicPoint(t,branch=1){const h=P('h'),k=P('k'),vertical=state.model.orientation==='vertical',kind=state.model.type;if(kind==='circle')return{x:h+P('r')*Math.cos(t),y:k+P('r')*Math.sin(t)};if(kind==='ellipse')return{x:h+(vertical?P('b'):P('a'))*Math.cos(t),y:k+(vertical?P('a'):P('b'))*Math.sin(t)};if(kind==='hyperbola')return vertical?{x:h+P('b')*Math.sinh(t),y:k+branch*P('a')*Math.cosh(t)}:{x:h+branch*P('a')*Math.cosh(t),y:k+P('b')*Math.sinh(t)};const major=(P('direction')||1)*t*t/(4*P('p'));return vertical?{x:h+t,y:k+major}:{x:h+major,y:k+t};}
     function conicProject(point){const x=point.x-P('h'),y=point.y-P('k'),vertical=state.model.orientation==='vertical',kind=state.model.type;if(kind==='circle')return{t:Math.atan2(y,x)};if(kind==='ellipse')return{t:Math.atan2(y/(vertical?P('a'):P('b')),x/(vertical?P('b'):P('a')))};if(kind==='hyperbola')return{t:Math.asinh((vertical?x:y)/P('b')),branch:(vertical?y:x)<0?-1:1};return{t:vertical?x:y};}
     function nativeFeatures(){if(!state.model)return [];const fs=features();if(!state.model.isFreeBoard)intersections().forEach((p,i)=>{const name=(state.model.dynamicIntersectionLabels||['A','B'])[i];if(name&&!fs.some(f=>f.name===name))fs.push({...p,name,nativeDynamic:true});});if(state.model.pairedChord)secondIntersections().forEach((p,i)=>{const name=state.model.pairedChord.labels[i];if(name&&!fs.some(f=>f.name===name))fs.push({...p,name,nativeDynamic:true,nativeSecondary:true});});if(Number.isFinite(state.model.fixedPoint?.x))fs.push({...state.model.fixedPoint,name:state.model.fixedPoint.name||'T',nativeFixed:true});return fs;}
-    nativeController=window.DongConstruct.attach({state,canvas,ctx,xy,features:nativeFeatures,featureVisible,coeffs,origin:lineOrigin,angle2:()=>P('theta2'),conicPoint,conicProject,visible:visibleForPart,render,
+    nativeController=window.DongConstruct.attach({state,canvas,ctx,xy,features:nativeFeatures,featureVisible,featureInPart,featureLayerShown,inCurrentPart,coeffs,origin:lineOrigin,angle2:()=>P('theta2'),conicPoint,conicProject,visible:visibleForPart,render,
       centerPoint,showPoint:()=>showDrawingArea(canvas,canvas),
       stopMotion:()=>stopMotion(false),
       showTool(){
@@ -2380,7 +2403,7 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.70.32"></script>
-  <script src="release-support.js?v=0.70.32"></script>
+  <script src="pwa.js?v=0.70.33"></script>
+  <script src="release-support.js?v=0.70.33"></script>
 </body>
 </html>
