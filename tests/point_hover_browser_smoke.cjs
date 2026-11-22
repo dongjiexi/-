@@ -56,6 +56,10 @@ module.exports=async({page,context,assert,screenshot})=>{
   await inspector.locator('[data-related-object="origin"]').click();
   assert.equal(await heading.textContent(),'P','A dependency link selects its source point');
   assert.match(await inspector.locator('[data-live-equation]').textContent(),/\(0, 0\)/);
+  await inspector.getByRole('button',{name:'返回 M',exact:true}).click();
+  assert.equal(await heading.textContent(),'M');
+  assert.equal(await inspector.getByRole('button',{name:/^返回 /}).count(),0);
+  await inspector.locator('[data-related-object="origin"]').click();
   assert.equal(await search.inputValue(),"n_1'",'Navigating dependencies preserves the search');
   assert.equal(await manager.locator('[data-object-id="origin"][data-object-action="select"]').count(),0,'The inspector can select a source excluded by the list filter');
   await inspector.getByRole('group',{name:'依赖此对象的构造',exact:true}).locator('[data-related-object="mid"]').click();

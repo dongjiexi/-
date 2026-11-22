@@ -292,7 +292,18 @@
       const target=add(origin,{x:length*Math.cos(nearest),y:length*Math.sin(nearest)});
       if(distance(xy(target.x,target.y),xy(point.x,point.y))<10){snapPreview={point:target,label:`方向吸附 ${((Math.round(nearest*180/Math.PI)%360)+360)%360}°`};return target;}return point;
     }
-    function select(id){selected=id;inspector();objectList();}
+    const navigation = [];
+    function select(id, keepHistory = false){
+      if(!keepHistory) navigation.length = 0;
+      selected=id;
+      inspector();
+      objectList();
+    }
+    function navigate(id){
+      select(id, true);
+      $('nativeInspector').querySelector('[data-object-heading]')?.focus();
+      api.render();
+    }
     function pointLocation(id){
       const object=engine.getObject(id);
       if(object&&!api.visible(object))return null;
@@ -374,7 +385,7 @@
       if(focusId)Array.from(box.querySelectorAll('[data-object-id]')).find(n=>n.dataset.objectId===focusId&&n.dataset.objectAction===focusAction)?.focus({preventScroll:true});
     }
     $('boardObjectSearch')?.addEventListener('input',objectList);
-    $('openObjectManager')?.addEventListener('click',()=>{objectList();$('objectInspectorSlot').append($('nativeInspector'));$('objectManagerDialog').showModal();inspector();});
+    $('openObjectManager')?.addEventListener('click',()=>{navigation.length=0;objectList();$('objectInspectorSlot').append($('nativeInspector'));$('objectManagerDialog').showModal();inspector();});
     $('closeObjectManager')?.addEventListener('click',()=>$('objectManagerDialog').close());
     $('objectManagerDialog')?.addEventListener('close',()=>{$('nativeInspectorHome').append($('nativeInspector'));});
     function title(id){
@@ -415,9 +426,8 @@
         button.disabled=!exists;
         if(!exists)button.title='源对象当前不可查看';
         button.onclick=()=>{
-          select(id);
-          box.querySelector('[data-object-heading]')?.focus();
-          api.render();
+          if($('objectManagerDialog').open && selected !== id) navigation.push(selected);
+          navigate(id);
         };
         group.append(button);
       }
@@ -439,6 +449,14 @@
       const heading=document.createElement('strong');
       heading.textContent=title(selected);heading.tabIndex=-1;heading.dataset.objectHeading='';
       box.append(heading);
+      if($('objectManagerDialog').open && navigation.length){
+        const back=document.createElement('button');
+        back.type='button';
+        back.className='button secondary';
+        back.textContent='返回 '+title(navigation[navigation.length-1]);
+        back.onclick=()=>navigate(navigation.pop());
+        box.append(back);
+      }
       const object=engine.getObject(selected),p=document.createElement('p');p.dataset.liveEquation='';p.textContent=selected==='$conic'?api.primaryEquation?.()||describe(engine.resolve(selected)):engine.invalidReason(selected)||describe(engine.resolve(selected),object);box.append(p);
       if(object&&!api.visible(object)){
         const status=document.createElement('p');
