@@ -235,7 +235,7 @@
       }
       object.label=name;return true;
     }
-    return {objects,ensureIds,getObject,resolve,resolveNamedPoint,project,pointOn,driver,moveDriver,dragDriver,freePoint,descendants,intersect,invalidReason,renameObject};
+    return {objects,ensureIds,getObject,resolve,namedPointRef,resolveNamedPoint,project,pointOn,driver,moveDriver,dragDriver,freePoint,descendants,intersect,invalidReason,renameObject};
   }
 
   function attach(api){
@@ -247,6 +247,8 @@
     const toolButtons=document.querySelectorAll('[data-construct]');
     const toolState=$('nativeToolState'),toolName=$('nativeToolName'),exitTool=$('finishNativeTool');
     const marker=$('nativePointLocator'),located=$('locatedPoint'),locatedValue=$('locatedPointValue');
+    const recenter=$('recenterLocatedPoint');
+    const locationMargin=24;
     let locatedId=null,locationText='';
     const uid=()=>globalThis.crypto?.randomUUID?.()||'obj-'+Date.now()+'-'+Math.random().toString(36).slice(2);
     const fmt=n=>window.DongNumber?.text(n)??Number(n.toFixed(4)).toString();
@@ -310,28 +312,41 @@
       const visible=pos.x>=0&&pos.x<=state.cssW&&pos.y>=0&&pos.y<=state.cssH;
       marker.hidden=!visible;
       if(visible){marker.style.left=pos.x+'px';marker.style.top=pos.y+'px';}
-      const value=title(locatedId)+describe(point)+(visible?'':' · 视野外');
+      const needsCenter=nearViewEdge(pos);
+      if(!needsCenter&&document.activeElement===recenter)canvas.focus({preventScroll:true});
+      recenter.hidden=!needsCenter;
+      located.toggleAttribute('data-outside-view',!visible);
+      const value=title(locatedId)+describe(point);
       if(value!==locationText){
         locationText=value;locatedValue.textContent=value;
         window.DongMathInput?.formula(locatedValue,value);
       }
     }
+    function nearViewEdge(pos){
+      return pos.x<locationMargin||pos.x>state.cssW-locationMargin||
+        pos.y<locationMargin||pos.y>state.cssH-locationMargin;
+    }
     function locate(id){
       const point=pointLocation(id);
       if(!point)return;
       locatedId=id;located.hidden=false;
-      const pos=xy(point.x,point.y),margin=24;
-      if(pos.x<margin||pos.x>state.cssW-margin||pos.y<margin||pos.y>state.cssH-margin)api.centerPoint(point);
+      if(nearViewEdge(xy(point.x,point.y)))api.centerPoint(point);
       $('objectManagerDialog').close();
       api.render();canvas.focus({preventScroll:true});api.showPoint();
     }
+    recenter.addEventListener('click',()=>{
+      const point=locatedId&&pointLocation(locatedId);
+      if(!point){clearLocation();return;}
+      api.centerPoint(point);
+      api.render();
+    });
     $('clearLocatedPoint').addEventListener('click',()=>{clearLocation();canvas.focus({preventScroll:true});});
     let objectListKey='';
     function objectList(){
       const box=$('boardObjects');if(!box)return;
       const query=normalizeObjectQuery(($('boardObjectSearch')?.value||'').trim()),all=engine.objects();
       const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
-      const entries=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:(o.refs||[]).map(title),point:window.DongConstruct.pointObject(o)}));
+      const entries=all.map(o=>({id:o.id,label:o.label||'未命名对象',type:names[o.op]||names[o.kind]||'关联构造',shown:o.visible!==false,active:api.visible({...o,visible:true}),reason:engine.invalidReason(o.id)||'',refs:o.kind==='through_points'?[o.a,o.b].filter(Boolean):sourceRefs(o).map(title),point:window.DongConstruct.pointObject(o)}));
       if(state.model&&!state.model.isFreeBoard)entries.unshift({id:'$conic',label:'主圆锥曲线',type:'主曲线（参数入口编辑）',shown:state.model.showConic!==false,active:true,refs:[],readonly:true});
       const seenFeatures=new Set();for(const feature of api.features()){if(seenFeatures.has(feature.name))continue;seenFeatures.add(feature.name);entries.push({id:'feature:'+feature.name,label:feature.name,type:'题设 / 内置点（只读）',shown:api.featureVisible?api.featureVisible(feature):true,active:true,refs:[],readonly:true,point:true});}
       const rows=entries.filter(o=>!query||normalizeObjectQuery(o.label+' '+o.type+' '+o.refs.join(' ')).includes(query));
@@ -362,7 +377,52 @@
     $('openObjectManager')?.addEventListener('click',()=>{objectList();$('objectInspectorSlot').append($('nativeInspector'));$('objectManagerDialog').showModal();inspector();});
     $('closeObjectManager')?.addEventListener('click',()=>$('objectManagerDialog').close());
     $('objectManagerDialog')?.addEventListener('close',()=>{$('nativeInspectorHome').append($('nativeInspector'));});
-    function title(id){if(id==='$conic')return '主圆锥曲线';if(id==='$dynamic')return '动直线';if(id?.startsWith('feature:'))return id.slice(8);return engine.getObject(id)?.label||staged.find(o=>o.id===id)?.label||'对象';}
+    function title(id){
+      if(id==='$conic')return '主圆锥曲线';
+      if(id==='$dynamic')return state.model?.dynamicLineLabel||'动直线';
+      if(id==='$dynamic2')return state.model?.pairedChord?.lineLabel||'第二条动直线';
+      if(id?.startsWith('feature:'))return id.slice(8);
+      return engine.getObject(id)?.label||staged.find(o=>o.id===id)?.label||'对象';
+    }
+    function sourceRefs(object){
+      if(object?.kind==='through_points'){
+        if(!api.visible({...object,visible:true}))return [];
+        return [engine.namedPointRef(object.a),engine.namedPointRef(object.b)].filter(Boolean);
+      }
+      return Array.isArray(object?.refs)?object.refs.filter(ref=>typeof ref==='string'&&ref):[];
+    }
+    function appendRelations(box,label,ids){
+      if(!ids.length)return;
+      const group=document.createElement('div');
+      group.className='object-relations';
+      group.setAttribute('role','group');
+      group.setAttribute('aria-label',label);
+      const heading=document.createElement('span');
+      heading.textContent=label;
+      group.append(heading);
+      for(const id of new Set(ids)){
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='button secondary';
+        button.dataset.relatedObject=id;
+        button.textContent=title(id);
+        const exists=engine.getObject(id)||(
+          id==='$conic'?!state.model?.isFreeBoard:
+          id==='$dynamic'?state.model&&!state.model.isFreeBoard:
+          id==='$dynamic2'?state.model?.pairedChord:
+          id.startsWith('feature:')&&api.features().some(point=>point.name===id.slice(8))
+        );
+        button.disabled=!exists;
+        if(!exists)button.title='源对象当前不可查看';
+        button.onclick=()=>{
+          select(id);
+          box.querySelector('[data-object-heading]')?.focus();
+          api.render();
+        };
+        group.append(button);
+      }
+      box.append(group);
+    }
     function describe(shape,object){
       if(!shape)return '暂未定义：检查依赖对象是否存在，或两条曲线当前是否相交。';
       const equation=window.DongEquationBuilder?.curveEquation(object);if(equation)return equation;
@@ -375,11 +435,36 @@
     }
     function inspector(){
       const box=$('nativeInspector');if(!selected){box.textContent='点击画板上的对象，查看坐标、方程与构造关系。';return;}
-      box.replaceChildren();const heading=document.createElement('strong');heading.textContent=title(selected);box.append(heading);
+      box.replaceChildren();
+      const heading=document.createElement('strong');
+      heading.textContent=title(selected);heading.tabIndex=-1;heading.dataset.objectHeading='';
+      box.append(heading);
       const object=engine.getObject(selected),p=document.createElement('p');p.dataset.liveEquation='';p.textContent=selected==='$conic'?api.primaryEquation?.()||describe(engine.resolve(selected)):engine.invalidReason(selected)||describe(engine.resolve(selected),object);box.append(p);
+      if(object&&!api.visible(object)){
+        const status=document.createElement('p');
+        status.className='help';
+        status.textContent=api.visible({...object,visible:true})?'此对象已隐藏。':'此对象不在当前小问的图层中。';
+        box.append(status);
+      }
       if(!object){const note=document.createElement('p');note.className='help';note.textContent='主曲线和题设 / 内置点在此只读，避免误改题设或断开构造；主曲线请在参数入口编辑。';box.append(note);}
       if(selected==='$conic'&&api.openPrimaryParameters){const edit=document.createElement('button');edit.className='button secondary';edit.textContent='调节主曲线参数';edit.dataset.primaryParameters='';edit.onclick=()=>{$('objectManagerDialog').close();api.openPrimaryParameters();};box.append(edit);}
-      if(object?.refs){const refs=document.createElement('p');refs.className='help';refs.textContent='依赖：'+object.refs.map(title).join('、')+'。拖动源点会自动重算。';box.append(refs);}
+      const sources=sourceRefs(object);
+      appendRelations(box,'查看依赖',sources);
+      if(object?.kind==='through_points'&&sources.length!==2){
+        const endpoints=document.createElement('p');
+        endpoints.className='help';
+        endpoints.textContent='端点 '+[object.a,object.b].filter(Boolean).join('、');
+        box.append(endpoints);
+      }
+      appendRelations(box,'依赖此对象的构造',engine.objects().filter(item=>item.id!==selected&&sourceRefs(item).includes(selected)).map(item=>item.id));
+      if($('objectManagerDialog').open&&pointLocation(selected)){
+        const button=document.createElement('button');
+        button.type='button';button.className='button secondary board-inspector-locate';
+        button.textContent='在画板上定位';
+        const id=selected;
+        button.onclick=()=>locate(id);
+        box.append(button);
+      }
       if(object){
         if(api.editableConic?.(object)){const edit=document.createElement('button');edit.className='button secondary';edit.textContent='编辑曲线参数';edit.onclick=()=>api.editConic(object.id);box.append(edit);}
         if(object.op==='line_angle'){
