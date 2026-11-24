@@ -1,6 +1,13 @@
 module.exports=async({page,context,assert,screenshot})=>{
   await page.evaluate(async()=>{for(const sw of await navigator.serviceWorker.getRegistrations())await sw.unregister();for(const key of await caches.keys())await caches.delete(key);});
   await context.route('**/runtime-config.js',route=>route.fulfill({contentType:'application/javascript',body:`window.DONGJIEXI_CONFIG=Object.freeze({version:'0.23.1',deployment:'web',apiBase:'',apiEnabled:false,requiresAuth:false});`}));
+  await context.addInitScript(()=>{
+    let construct;
+    Object.defineProperty(window,'DongConstruct',{configurable:true,get:()=>construct,set:value=>{
+      construct=value;const attach=value.attach;
+      value.attach=api=>{const controller=attach(api);window.__curvePointTest={api,controller};return controller;};
+    }});
+  });
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#toolboxToggle').click();
   const scene=async()=>JSON.parse(await page.locator('#sceneJson').inputValue());
@@ -116,5 +123,54 @@ module.exports=async({page,context,assert,screenshot})=>{
   await install(edited);await page.reload();await page.waitForFunction(()=>JSON.parse(document.querySelector('#sceneJson').value).objects?.some(o=>o.id==='c'));
   assert.equal((await scene()).objects.find(o=>o.id==='c').equation,'(x−(1/2))²+y²=4');
   assert.equal((await constructed('normal')).length,1);
-  console.log('PASS: pure-web tangent/normal preview and linked motion, in-place curve edits with stable IDs, live equations, undo, invalid-point warnings and persistence.');
+
+  // Keep declared intersection identities when a moving line becomes tangent
+  // or disjoint; a missing branch must never receive fabricated coordinates.
+  await install({type:'circle',r:1,h:0,k:0,theta:0,lineThrough:'point:P',points:{P:[2,1]},
+    showConic:true,showDynamic:true,showFeatures:true,dynamicIntersectionLabels:['A','B'],lines:[],objects:[]});
+  await page.locator('[data-inspector-view="geometry"]').click();
+  await page.locator('#parameterTarget').selectOption('$dynamic');
+  const manager=page.locator('#objectManagerDialog'),filter=page.locator('#boardObjectFilter');
+  const selectPoint=name=>manager.locator(`[data-object-id="feature:${name}"][data-object-action="select"]`);
+  const locatePoint=name=>manager.locator(`[data-object-id="feature:${name}"][data-object-action="locate"]`);
+  const featureRows=()=>manager.locator('[data-object-action="select"][data-object-id^="feature:"]').evaluateAll(buttons=>buttons.map(button=>button.dataset.objectId).sort());
+  const actualPoints=()=>page.evaluate(()=>{
+    const {api,controller}=window.__curvePointTest;
+    return ['A','B'].map(name=>{const point=api.features().find(item=>item.name===name);return{name,finite:!!point&&Number.isFinite(point.x)&&Number.isFinite(point.y),shape:controller.engine.resolve('feature:'+name)};});
+  });
+  for(const stage of [{angle:0,missing:['B']},{angle:90,missing:['A','B']},{angle:45,missing:[]}]){
+    await page.locator('#params input[data-key="theta"][data-param-expression]').fill(String(stage.angle));
+    await page.locator('#openObjectManager').click();
+    await filter.selectOption('all');
+    for(const name of ['A','B']){
+      assert.equal(await selectPoint(name).count(),1,'Declared moving points keep their stable object-manager IDs');
+      assert.equal(await locatePoint(name).isDisabled(),stage.missing.includes(name),'Only a finite visible intersection can be located');
+    }
+    await filter.selectOption('undefined');
+    assert.deepEqual(await featureRows(),stage.missing.map(name=>'feature:'+name).sort(),'Undefined filter reflects actual tangent/disjoint/secant geometry');
+    for(const name of stage.missing){
+      await selectPoint(name).click();
+      assert.match(await manager.locator('#nativeInspector').innerText(),/没有有限实交点/);
+      for(const source of ['$dynamic','$conic']){
+        const link=manager.locator(`#nativeInspector [data-related-object="${source}"]`);
+        assert.equal(await link.count(),1);assert(await link.isEnabled(),'Missing intersections still expose their defining line and curve');
+        await link.click();
+        const returnToPoint=manager.locator(`#nativeInspector [data-related-object="feature:${name}"]`);
+        assert(await returnToPoint.isEnabled(),'A source links back to its declared but undefined intersection');
+        await returnToPoint.click();
+        assert.equal(await manager.locator('#nativeInspector [data-object-heading]').textContent(),name);
+      }
+    }
+    for(const point of await actualPoints()){
+      assert.equal(point.finite,!stage.missing.includes(point.name));
+      if(stage.missing.includes(point.name))assert.equal(point.shape,null,'Absent intersections must not resolve to placeholder coordinates');
+    }
+    const current=await scene();
+    assert.equal(current.points.A,undefined);assert.equal(current.points.B,undefined);
+    assert.equal(current.objects.length,0,'Object listing does not write fabricated intersection points into the scene');
+    await page.locator('#closeObjectManager').click();
+  }
+  const recovered=await actualPoints();
+  for(const point of recovered){assert(Math.abs(point.shape.x**2+point.shape.y**2-1)<1e-8);assert(Math.abs(point.shape.y-point.shape.x+1)<1e-8);}
+  console.log('PASS: tangent/normal motion, in-place curve edits, live equations, undo, persistence and declared moving intersections across tangent/disjoint/secant states without fabricated coordinates.');
 };

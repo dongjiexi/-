@@ -103,9 +103,41 @@ module.exports = async ({page, context, assert, screenshot, errors}) => {
   await page.locator('#geometrySnap').check();
   const hidden=structuredClone(model);hidden.objects[0].visible=false;await install(hidden);await page.locator('[data-construct="point"]').click();await click(-2,2,0,-5);
   assert.equal((await scene()).objects.at(-1).kind,'point','隐藏曲线不能被吸附');
+
+  // Use the real point tool near only the secondary line, far from the conic,
+  // its intersections, the primary line, and every existing point.
+  const paired={...model,showDynamic:true,theta:0,theta2:90,lineThrough:'point:P',points:{P:[.75,0]},objects:[],
+    pairedChord:{labels:['C','D'],lineLabel:'l′',visible:true}};
+  await install(paired);await page.locator('[data-construct="point"]').click();
+  await move(.75,3.1,4,0);assert.match(await page.locator('#snapStatus').innerText(),/吸附到 l′/);
+  await click(.75,3.1,4,0);
+  const secondaryPoint=(await scene()).objects.at(-1);
+  assert.equal(secondaryPoint.op,'point_on','点工具应在第二条动线上创建受约束点');
+  assert.deepEqual(secondaryPoint.refs,['$dynamic2'],'不能误绑到第一条动线或主曲线');
+  const resolvedSecondary=async()=>page.evaluate(({data,id})=>window.DongSceneAudit.frame(data,window.DongConstruct).engine.resolve(id),{data:await scene(),id:secondaryPoint.id});
+  const beforeTurn=await resolvedSecondary();
+  assert(Math.abs(beforeTurn.x-.75)<1e-5&&Math.abs(beforeTurn.y-3.1)<1e-5,'吸附位置应投影到可见的第二条动线');
+  await page.locator('#moveMode').click();
+  await page.locator('[data-inspector-view="geometry"]').click();
+  await page.locator('#parameterTarget').selectOption('$dynamic');
+  await page.locator('#params input[data-key="theta2"][data-param-expression]').fill('60');
+  const afterTurn=await scene(),followedSecondary=await resolvedSecondary();
+  assert.equal(afterTurn.theta,0,'修改第二条动线不应改变第一条动线');
+  assert.equal(afterTurn.theta2,60);
+  assert.equal(afterTurn.objects.find(o=>o.id===secondaryPoint.id).t,secondaryPoint.t,'旋转应保留附点的线参数');
+  assert(Math.abs(followedSecondary.x-(.75+secondaryPoint.t/2))<1e-8&&Math.abs(followedSecondary.y-secondaryPoint.t*Math.sqrt(3)/2)<1e-8,'附点随 θ₂ 旋转并保持与第二条动线的依赖');
+  assert(Math.hypot(followedSecondary.x-beforeTurn.x,followedSecondary.y-beforeTurn.y)>1,'参数编辑后附点必须实际移动');
+  const hiddenSecondary={...paired,pairedChord:{...paired.pairedChord,visible:false}};
+  await install(hiddenSecondary);await page.locator('[data-construct="point"]').click();
+  await move(.75,3.1,4,0);assert.doesNotMatch(await page.locator('#snapStatus').innerText(),/吸附/);
+  await click(.75,3.1,4,0);
+  const independentPoint=(await scene()).objects.at(-1);
+  assert.equal(independentPoint.kind,'point','隐藏第二条动线后，同一空白位置只能生成自由点');
+  assert.equal(independentPoint.refs,undefined,'隐藏动线不能留下不可见的吸附依赖');
+
   await install(moved);await page.reload();await page.waitForFunction(()=>JSON.parse(document.querySelector('#sceneJson').value).objects?.some(o=>o.op==='point_on'));
   assert.equal((await scene()).objects.find(o=>o.id===bound.id).refs[0],'extra','本地恢复应保留引用');
   await screenshot('additive-conics-and-snap.png',null);
   assert.deepEqual(errors,[]);
-  console.log('PASS: additive conic templates, unique IDs, math keyboard, undo/redo, exact snap, fixed-pivot rotation, linked curve points, intersections, hidden/off snapping, persistence.');
+  console.log('PASS: additive conic templates, unique IDs, math keyboard, undo/redo, exact snap, fixed-pivot rotation, linked curve points, intersections, secondary-line snapping and rotation, hidden/off snapping, persistence.');
 };

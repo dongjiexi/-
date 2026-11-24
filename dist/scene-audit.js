@@ -52,12 +52,13 @@
     else if(scene.lineThrough==='focus1'||scene.lineThrough==='focus2')origin=fs.find(p=>p.name===(scene.lineThrough==='focus1'?'F₁':'F₂'))||fs.find(p=>p.name==='F')||origin;
     else if(scene.lineThrough==='vertex')origin=fs.find(p=>p.name==='V')||origin;
     const theta=Number.isFinite(scene.theta)?scene.theta:42,theta2=Number.isFinite(scene.theta2)?scene.theta2:116;
-    if(scene.orthogonalChord&&root.DongOrthogonalChord)origin=root.DongOrthogonalChord.origin(scene,scene,theta);
-    const secant=(angle,names)=>{const rad=angle*Math.PI/180;construct.intersect({type:'line',o:origin,d:{x:Math.cos(rad),y:Math.sin(rad)}},{type:'conic',q:curve.q}).slice(0,2).forEach((p,i)=>{if(!fs.some(f=>f.name===names[i]))add(names[i],p.x,p.y);});};
+    const fixedOrigin=origin,originAt=(angle=theta)=>scene.orthogonalChord&&root.DongOrthogonalChord?root.DongOrthogonalChord.origin(scene,scene,angle):fixedOrigin;
+    origin=originAt(theta);
+    const secant=(angle,names)=>{const rad=angle*Math.PI/180;construct.intersect({type:'line',o:originAt(angle),d:{x:Math.cos(rad),y:Math.sin(rad)}},{type:'conic',q:curve.q}).slice(0,2).forEach((p,i)=>{if(!fs.some(f=>f.name===names[i]))add(names[i],p.x,p.y);});};
     if(scene.showDynamic!==false&&(scene.showDynamic===true||scene.dynamicLine===true))secant(theta,scene.dynamicIntersectionLabels||['A','B']);
     if(scene.pairedChord)secant(theta2,scene.pairedChord.labels||['C','D']);
     if(finite(scene.fixedPoint))add(scene.fixedPoint.name||'T',scene.fixedPoint.x,scene.fixedPoint.y);
-    const engine=construct.createEngine({model:()=>scene,features:()=>fs,coeffs:()=>curve.q,origin:()=>origin,angle:()=>theta,angle2:()=>theta2,conicPoint:curve.pointAt,conicProject:curve.project});
+    const engine=construct.createEngine({model:()=>scene,features:()=>fs,coeffs:()=>curve.q,origin:originAt,angle:()=>theta,angle2:()=>theta2,conicPoint:curve.pointAt,conicProject:curve.project});
     return {curve,features:fs,origin,engine};
   }
   function prepare(scene,question,parts=[]){

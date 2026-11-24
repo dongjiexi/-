@@ -112,8 +112,8 @@
         const override=window.DongMotion?.overridden(api.model(),id,null);
         if(override){cache.set(id,override);return override;}
         if(id==='$conic')result={type:'conic',conicType:api.model()?.type,q:api.coeffs(),pointAt:api.conicPoint,project:api.conicProject};
-        else if(id==='$dynamic'){const t=api.angle()*Math.PI/180;result={type:'line',o:api.origin(),d:{x:Math.cos(t),y:Math.sin(t)}};}
-        else if(id==='$dynamic2'&&api.angle2){const t=api.angle2()*Math.PI/180;result={type:'line',o:api.origin(),d:{x:Math.cos(t),y:Math.sin(t)}};}
+        else if(id==='$dynamic'){const angle=api.angle(),t=angle*Math.PI/180;result={type:'line',o:api.origin(angle),d:{x:Math.cos(t),y:Math.sin(t)}};}
+        else if(id==='$dynamic2'&&api.angle2){const angle=api.angle2(),t=angle*Math.PI/180;result={type:'line',o:api.origin(angle),d:{x:Math.cos(t),y:Math.sin(t)}};}
         else if(String(id).startsWith('feature:'))result=pointValue(api.features().find(p=>p.name===id.slice(8)));
         else{
           const obj=getObject(id);if(!obj)return null;
@@ -263,7 +263,7 @@
     const fmt=n=>window.DongNumber?.text(n)??Number(n.toFixed(4)).toString();
     const normalizeObjectQuery=value=>String(value).normalize('NFKC').replace(/[′’]/g,"'").replace(/_/g,'').toLowerCase();
     function label(prefix){const used=new Set([...api.features().map(p=>p.name),...engine.objects().map(o=>o.label),...staged.map(o=>o.label)]);let i=1;while(used.has(prefix+i))i++;return prefix+i;}
-    function visible(id){if(id==='$conic')return state.model?.showConic!==false;if(id==='$dynamic')return state.model?.showDynamic!==false&&api.visible({part:state.model.dynamicLinePart,parts:state.model.dynamicLineParts});if(id.startsWith('feature:')){const p=api.features().find(p=>p.name===id.slice(8));return p&&(api.featureVisible?api.featureVisible(p):state.model?.showFeatures!==false);}const o=engine.getObject(id);return o&&api.visible(o);}
+    function visible(id){if(id==='$conic')return state.model?.showConic!==false;if(id==='$dynamic'||id==='$dynamic2')return api.dynamicLineVisible(id==='$dynamic2');if(id.startsWith('feature:')){const p=api.features().find(p=>p.name===id.slice(8));return p&&(api.featureVisible?api.featureVisible(p):state.model?.showFeatures!==false);}const o=engine.getObject(id);return o&&api.visible(o);}
     function points(){return [...api.features().filter(p=>api.featureVisible?api.featureVisible(p):state.model?.showFeatures!==false).map(p=>({id:'feature:'+p.name,...p})),...engine.objects().filter(o=>api.visible(o)).map(o=>({id:o.id,...engine.resolve(o.id)})).filter(o=>o.type==='point')];}
     function pointAt(screen,threshold=14){return points().map(p=>({...p,d:distance(xy(p.x,p.y),screen)})).filter(p=>p.d<threshold).sort((a,b)=>a.d-b.d)[0];}
     function shapeDistance(shape,p){
@@ -274,7 +274,7 @@
     }
     function shapeAt(screen,exclude=[],onlyLine=false,onlyCurve=false){
       const p=api.world(screen),unit=(state.view.xmax-state.view.xmin)/state.cssW;
-      return [...engine.objects().map(o=>o.id),'$dynamic','$conic'].filter(id=>visible(id)&&!exclude.includes(id)).map(id=>({id,shape:engine.resolve(id)})).filter(o=>(!onlyLine||o.shape?.type==='line')&&(!onlyCurve||curveCoefficients(o.shape))).map(o=>({...o,d:shapeDistance(o.shape,p)/unit})).filter(o=>o.d<15).sort((a,b)=>a.d-b.d)[0];
+      return [...engine.objects().map(o=>o.id),'$dynamic','$dynamic2','$conic'].filter(id=>visible(id)&&!exclude.includes(id)).map(id=>({id,shape:engine.resolve(id)})).filter(o=>(!onlyLine||o.shape?.type==='line')&&(!onlyCurve||curveCoefficients(o.shape))).map(o=>({...o,d:shapeDistance(o.shape,p)/unit})).filter(o=>o.d<15).sort((a,b)=>a.d-b.d)[0];
     }
     const smartSnap=()=>$('geometrySnap')?.checked!==false;
     function pointSnap(screen){
@@ -282,7 +282,7 @@
       if(existing)return{point:existing,ref:existing.id,label:`吸附到点 ${title(existing.id)}`};
       if(!smartSnap())return null;
       const world=api.world(screen),unit=(state.view.xmax-state.view.xmin)/state.cssW;
-      const shapes=[...engine.objects().map(obj=>obj.id),'$dynamic','$conic'].filter(visible)
+      const shapes=[...engine.objects().map(obj=>obj.id),'$dynamic','$dynamic2','$conic'].filter(visible)
         .map(id=>({id,shape:engine.resolve(id)})).filter(item=>shapeDistance(item.shape,world)/unit<22)
         .sort((a,b)=>shapeDistance(a.shape,world)-shapeDistance(b.shape,world)).slice(0,12);
       let crossing=null;
@@ -393,7 +393,19 @@
         };
       });
       if(state.model&&!state.model.isFreeBoard)entries.unshift({id:'$conic',label:'主圆锥曲线',type:'主曲线（参数入口编辑）',shown:state.model.showConic!==false,active:true,refs:[],readonly:true});
-      const seenFeatures=new Set();for(const feature of api.features()){if(seenFeatures.has(feature.name))continue;seenFeatures.add(feature.name);entries.push({id:'feature:'+feature.name,label:feature.name,type:'题设 / 内置点（只读）',shown:api.featureLayerShown(feature),active:api.featureInPart(feature),refs:[],readonly:true,point:true});}
+      if(state.model&&!state.model.isFreeBoard){
+        const ids=state.model.pairedChord?['$dynamic','$dynamic2']:['$dynamic'];
+        for(const id of ids){
+          const secondary=id==='$dynamic2';
+          entries.push({id,label:title(id),type:'动直线',shown:api.dynamicLineLayerShown(secondary),
+            active:api.dynamicLineInPart(secondary),refs:[],readonly:true});
+        }
+      }
+      for(const feature of listedFeatures()){
+        entries.push({id:'feature:'+feature.name,label:feature.name,type:'题设 / 内置点（只读）',
+          shown:api.featureLayerShown(feature),active:api.featureInPart(feature),
+          refs:featureRefs(feature).map(title),reason:feature.missingReason,readonly:true,point:true});
+      }
       const rows=entries.filter(o=>matchesFilter(o,objectFilter.value)&&(!query||normalizeObjectQuery(o.label+' '+o.type+' '+o.refs.join(' ')).includes(query)));
       clearFilters.hidden=!entries.length||(!query&&objectFilter.value==='all');
       $('boardObjectsCount').textContent=`（${rows.length}/${entries.length}）`;
@@ -431,9 +443,31 @@
     function title(id){
       if(id==='$conic')return '主圆锥曲线';
       if(id==='$dynamic')return state.model?.dynamicLineLabel||'动直线';
-      if(id==='$dynamic2')return state.model?.pairedChord?.lineLabel||'第二条动直线';
+      if(id==='$dynamic2')return state.model?.pairedChord?.lineLabel||'l′';
       if(id?.startsWith('feature:'))return id.slice(8);
       return engine.getObject(id)?.label||staged.find(o=>o.id===id)?.label||'对象';
+    }
+    function listedFeatures(){
+      const named=new Map();
+      for(const feature of api.features())if(!named.has(feature.name))named.set(feature.name,feature);
+      const model=state.model;
+      if(model&&!model.isFreeBoard){
+        // Keep declared branches inspectable when a moving secant loses an intersection.
+        // These entries live in the inspector only. The renderer receives finite points.
+        const addMissing=(labels,secondary)=>{
+          for(const name of labels){
+            if(typeof name!=='string'||!name||named.has(name))continue;
+            named.set(name,{name,nativeDynamic:true,nativeSecondary:secondary,
+              missingReason:'当前角度下，此分支没有有限实交点。'});
+          }
+        };
+        addMissing(model.dynamicIntersectionLabels||['A','B'],false);
+        if(model.pairedChord)addMissing(model.pairedChord.labels||['C','D'],true);
+      }
+      return [...named.values()];
+    }
+    function featureRefs(feature){
+      return feature?.nativeDynamic?[feature.nativeSecondary?'$dynamic2':'$dynamic','$conic']:[];
     }
     function sourceRefs(object){
       if(object?.kind==='through_points'){
@@ -442,7 +476,7 @@
       }
       return Array.isArray(object?.refs)?object.refs.filter(ref=>typeof ref==='string'&&ref):[];
     }
-    function appendRelations(box,label,ids){
+    function appendRelations(box,label,ids,features){
       if(!ids.length)return;
       const group=document.createElement('div');
       group.className='object-relations';
@@ -461,7 +495,7 @@
           id==='$conic'?!state.model?.isFreeBoard:
           id==='$dynamic'?state.model&&!state.model.isFreeBoard:
           id==='$dynamic2'?state.model?.pairedChord:
-          id.startsWith('feature:')&&api.features().some(point=>point.name===id.slice(8))
+          id.startsWith('feature:')&&features.some(point=>point.name===id.slice(8))
         );
         button.disabled=!exists;
         if(!exists)button.title='源对象当前不可查看';
@@ -503,7 +537,13 @@
         back.onclick=()=>navigate(navigation.pop());
         box.append(back);
       }
-      const object=engine.getObject(selected),p=document.createElement('p');p.dataset.liveEquation='';p.textContent=selected==='$conic'?api.primaryEquation?.()||describe(engine.resolve(selected)):engine.invalidReason(selected)||describe(engine.resolve(selected),object);box.append(p);
+      const features=listedFeatures();
+      const feature=features.find(point=>'feature:'+point.name===selected);
+      const object=engine.getObject(selected),p=document.createElement('p');
+      p.dataset.liveEquation='';
+      if(selected==='$conic')p.textContent=api.primaryEquation?.()||describe(engine.resolve(selected));
+      else p.textContent=feature?.missingReason||engine.invalidReason(selected)||describe(engine.resolve(selected),object);
+      box.append(p);
       if(object&&!api.visible(object)){
         const status=document.createElement('p');
         status.className='help';
@@ -512,17 +552,35 @@
         else status.textContent='当前参数不满足题设条件。';
         box.append(status);
       }
-      if(!object){const note=document.createElement('p');note.className='help';note.textContent='主曲线和题设 / 内置点在此只读，避免误改题设或断开构造；主曲线请在参数入口编辑。';box.append(note);}
-      if(selected==='$conic'&&api.openPrimaryParameters){const edit=document.createElement('button');edit.className='button secondary';edit.textContent='调节主曲线参数';edit.dataset.primaryParameters='';edit.onclick=()=>{$('objectManagerDialog').close();api.openPrimaryParameters();};box.append(edit);}
-      const sources=sourceRefs(object);
-      appendRelations(box,'查看依赖',sources);
+      const moving=selected==='$dynamic'||selected==='$dynamic2';
+      if(!object&&!moving){const note=document.createElement('p');note.className='help';note.textContent='主曲线和题设 / 内置点在此只读，避免误改题设或断开构造；主曲线请在参数入口编辑。';box.append(note);}
+      if(selected==='$conic'&&api.openBoardParameters){const edit=document.createElement('button');edit.className='button secondary';edit.textContent='调节主曲线参数';edit.dataset.primaryParameters='';edit.onclick=()=>{$('objectManagerDialog').close();api.openBoardParameters();};box.append(edit);}
+      if(moving){
+        const secondary=selected==='$dynamic2';
+        if(!api.dynamicLineVisible(secondary)){
+          const note=document.createElement('p');
+          note.className='help';
+          note.textContent=api.dynamicLineInPart(secondary)?'此直线已隐藏。':'此直线不在当前小问的图层中。';
+          box.append(note);
+        }
+        if(state.model.showDynamic!==false){
+          const edit=document.createElement('button');
+          edit.type='button';edit.className='button secondary';edit.textContent='调节动直线角度';
+          edit.onclick=()=>{$('objectManagerDialog').close();api.openBoardParameters('$dynamic',secondary?'theta2':'theta');};
+          box.append(edit);
+        }
+      }
+      const sources=object?sourceRefs(object):featureRefs(feature);
+      appendRelations(box,'查看依赖',sources,features);
       if(object?.kind==='through_points'&&sources.length!==2){
         const endpoints=document.createElement('p');
         endpoints.className='help';
         endpoints.textContent='端点 '+[object.a,object.b].filter(Boolean).join('、');
         box.append(endpoints);
       }
-      appendRelations(box,'依赖此对象的构造',engine.objects().filter(item=>item.id!==selected&&sourceRefs(item).includes(selected)).map(item=>item.id));
+      const dependents=engine.objects().filter(item=>item.id!==selected&&sourceRefs(item).includes(selected)).map(item=>item.id);
+      for(const feature of features)if(featureRefs(feature).includes(selected))dependents.push('feature:'+feature.name);
+      appendRelations(box,'依赖此对象的构造',dependents,features);
       if($('objectManagerDialog').open&&pointLocation(selected)){
         const button=document.createElement('button');
         button.type='button';button.className='button secondary board-inspector-locate';

@@ -57,9 +57,9 @@
     }
     function chords(){
       const m=state.model;
-      if(m.showDynamic===false||!visible({part:m.dynamicLinePart,parts:m.dynamicLineParts}))return [];
+      if(!api.dynamicLineVisible())return [];
       const first={key:'theta',points:api.intersections,color:'#b7790e',name:m.dynamicLineLabel||'动直线'};
-      if(!m.pairedChord||!visible(m.pairedChord))return [first];
+      if(!api.dynamicLineVisible(true))return [first];
       return [first,{key:'theta2',points:api.secondIntersections,color:'#356cb0',name:m.pairedChord.lineLabel||'第二条动直线'}];
     }
     function handles() {
@@ -90,7 +90,7 @@
         else list.push({type:'focus',point:vertical?{x:p.h,y:p.k+(p.direction||1)*p.p}:{x:p.h+(p.direction||1)*p.p,y:p.k},label:'拖动焦点调整开口与焦距'});
       }
       for(const chord of chords()){
-        const origin=api.lineOrigin(),rad=p[chord.key]*Math.PI/180;
+        const origin=api.lineOrigin(p[chord.key]),rad=p[chord.key]*Math.PI/180;
         const d=(state.view.xmax-state.view.xmin)/state.cssW*110;
         list.push({type:'dynamic',key:chord.key,color:chord.color,point:{x:origin.x+d*Math.cos(rad),y:origin.y+d*Math.sin(rad)},label:'拖动手柄旋转 '+chord.name});
         if(m.showConic!==false)for(const point of chord.points())list.push({type:'dynamic',key:chord.key,color:chord.color,point,label:'交点受约束：拖动以旋转 '+chord.name});
@@ -120,12 +120,12 @@
         if(segmentDistance(p,xy(ends.a.x,ends.a.y),xy(ends.b.x,ends.b.y),line.infinite!==false)<threshold)
           return {type:'line',line,label:`拖动平移 ${line.label||'直线'}；选中后可拖动旋转手柄`};
       }
-      const origin=api.lineOrigin(),a=xy(origin.x,origin.y);
       const near=chords().map(chord=>{
-        const rad=state.p[chord.key]*Math.PI/180,b=xy(origin.x+Math.cos(rad),origin.y+Math.sin(rad));
+        const angle=state.p[chord.key],origin=api.lineOrigin(angle),a=xy(origin.x,origin.y);
+        const rad=angle*Math.PI/180,b=xy(origin.x+Math.cos(rad),origin.y+Math.sin(rad));
         return {key:chord.key,name:chord.name,distance:segmentDistance(p,a,b,true)};
       }).filter(chord=>chord.distance<threshold).sort((left,right)=>left.distance-right.distance)[0];
-      if(near)return {type:'dynamic',key:near.key,label:'旋转 '+near.name+'，保持通过题设定点'};
+      if(near)return {type:'dynamic',key:near.key,label:'旋转 '+near.name+'，保持题设约束'};
       return null;
     }
     function begin(event) {
@@ -147,6 +147,27 @@
       }
       canvas.setPointerCapture(event.pointerId);canvas.style.cursor='grabbing';event.preventDefault();
       hint(target?.label||'拖动画布平移视野');api.render();
+    }
+    function dynamicAngle(model,values,key,point){
+      const previous=values[key];
+      if(model.orthogonalChord){
+        const circle=window.DongOrthogonalChord.parameters(model,values);
+        if(!circle)return null;
+        const dx=point.x-circle.h,dy=point.y-circle.k;
+        const radius=Math.hypot(dx,dy);
+        if(radius<circle.r)return null;
+        // The two tangents through the pointer have the same signed
+        // distance to the centre. Choose the one closest to the current angle.
+        const phi=Math.atan2(dy,dx),delta=Math.asin(circle.r/radius);
+        const degrees=rad=>((rad*180/Math.PI)%360+360)%360;
+        const first=degrees(phi-delta),second=degrees(phi+delta-Math.PI);
+        const turn=angle=>Math.abs(((angle-previous)%360+540)%360-180);
+        return turn(first)<=turn(second)?first:second;
+      }
+      const origin=api.lineOrigin(previous);
+      if(distance(origin,point)<=.01)return null;
+      const angle=Math.atan2(point.y-origin.y,point.x-origin.x)*180/Math.PI;
+      return ((angle%180)+180)%180;
     }
     function move(event) {
       const pos=screen(event);
@@ -176,7 +197,8 @@
       if(t.type==='minor'){p.b=Math.max(.05,Math.abs(m.orientation==='vertical'?v.x-p.h:v.y-p.k));if(m.type==='ellipse')p.b=Math.min(p.b,p.a-.01);}
       if(t.type==='focus'){const d=m.orientation==='vertical'?v.y-p.k:v.x-p.h;p.p=Math.max(.05,Math.abs(d));p.direction=d<0?-1:1;}
       if(t.type==='dynamic'){
-        const origin=api.lineOrigin();if(distance(origin,v)>.01){let angle=Math.atan2(v.y-origin.y,v.x-origin.x)*180/Math.PI;angle=((angle%180)+180)%180;p[t.key]=snap?Math.round(angle/5)*5:angle;}
+        const angle=dynamicAngle(m,p,t.key,v);
+        if(angle!=null)p[t.key]=snap?Math.round(angle/5)*5:angle;
       }
       if(t.type==='line'){
         const line=t.line,initial=drag.line;

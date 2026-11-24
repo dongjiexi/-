@@ -56,6 +56,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   const expectFeatures=async(ids,message)=>assert.deepEqual(await manager.locator('#boardObjects [data-object-action="select"]').evaluateAll(buttons=>buttons.map(button=>button.dataset.objectId).filter(id=>id.startsWith('feature:')).sort()),ids.map(name=>'feature:'+name).sort(),message);
   const inspector=manager.locator('#nativeInspector'),heading=inspector.locator('[data-object-heading]');
   await page.locator('#openObjectManager').click();
+  assert.equal(await manager.locator('[data-object-id="$dynamic"],[data-object-id="$dynamic2"]').count(),0,'A free board does not acquire built-in dynamic-line rows');
   assert(await manager.getByRole('button',{name:'定位 H',exact:true}).isDisabled(),'Hidden point stays hidden');
   assert(await manager.getByRole('button',{name:'定位 U',exact:true}).isDisabled(),'Undefined point cannot be located');
   const sceneBeforeFilters=await page.evaluate(()=>JSON.stringify(window.__pointHoverTest.sceneData()));
@@ -201,5 +202,98 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('#clearLocatedPoint').click();
   assert(await marker.isHidden());
   assert(await page.locator('#locatedPoint').isHidden());
-  console.log('PASS hover and mobile point locator, native/feature part and layer filters with safe focus, combined name search/reset and scene nonmutation, bidirectional inspector navigation, offscreen recentering with unchanged zoom/scene, hidden and undefined points, and live movement.');
+
+  const pairedScene={type:'circle',r:4,h:0,k:0,theta:35,theta2:120,lineThrough:'center',showConic:true,showFeatures:false,showDynamic:true,dynamicLine:true,dynamicLineLabel:'l₁',dynamicLinePart:1,dynamicIntersectionLabels:['A','B'],pairedChord:{labels:['C','D'],lineLabel:'l₂',part:2,visible:true},points:{},lines:[],objects:[]};
+  const pickObject=id=>manager.locator(`[data-object-id="${id}"][data-object-action="select"]`);
+  const visibility=id=>manager.locator(`[data-object-id="${id}"][data-object-action="visibility"]`);
+  const expectDynamicRows=async(ids,message)=>assert.deepEqual(await manager.locator('#boardObjects [data-object-action="select"]').evaluateAll(buttons=>buttons.map(button=>button.dataset.objectId).filter(id=>id==='$dynamic'||id==='$dynamic2').sort()),ids.slice().sort(),message);
+  const loadPaired=async(model,part)=>{
+    if(await manager.isVisible())await page.locator('#closeObjectManager').click();
+    await page.locator('[data-mobile-panel="board"]').click();
+    await page.locator('#sceneJson').evaluate((element,value)=>{element.value=value;document.querySelector('#applyJson').click();},JSON.stringify(model));
+    await setPart(part);
+    await page.locator('#openObjectManager').click();
+    await search.fill('');await filter.selectOption('all');
+  };
+  const sceneSnapshot=()=>page.evaluate(()=>JSON.stringify(window.__pointHoverTest.sceneData()));
+  await loadPaired(pairedScene,1);
+  const pairedOriginal=await page.locator('#sceneJson').inputValue(),pairedSnapshot=await sceneSnapshot();
+  await expectDynamicRows(['$dynamic','$dynamic2'],'All objects exposes both named built-in lines regardless of part');
+  assert.equal(await pickObject('$dynamic').textContent(),'l₁');
+  assert.equal(await pickObject('$dynamic2').textContent(),'l₂');
+  for(const id of ['$dynamic','$dynamic2']){
+    assert(await visibility(id).isDisabled(),'Built-in line visibility is read-only in the object list');
+    assert(await visibility(id).isChecked(),'Part membership does not change the line layer checkbox');
+  }
+  await filter.selectOption('current');
+  await expectDynamicRows(['$dynamic'],'The primary line belongs to part 1; the secondary also needs its own part scope');
+  await expectFeatures(['O','A','B']);
+  await filter.selectOption('visible');
+  await expectDynamicRows(['$dynamic']);
+  await expectFeatures(['A','B'],'Only intersections of the visible primary line are locatable in part 1');
+  await filter.selectOption('hidden');
+  await expectDynamicRows([],'An out-of-part secondary line is not reported as hidden');
+  await setPart(2);
+  await filter.selectOption('current');
+  await expectDynamicRows([],'The secondary line still requires the primary line to belong to the current part');
+  await expectFeatures(['O'],'Secondary intersections inherit both parent and secondary part scopes');
+  await filter.selectOption('visible');
+  await expectDynamicRows([]);
+  await expectFeatures([]);
+  await filter.selectOption('all');
+  assert(await manager.getByRole('button',{name:'定位 C',exact:true}).isDisabled(),'Matching only the secondary scope cannot locate its intersection');
+  assert(await manager.getByRole('button',{name:'定位 D',exact:true}).isDisabled());
+  await setPart(null);
+  await filter.selectOption('visible');
+  await expectDynamicRows(['$dynamic','$dynamic2'],'Combined view displays both scoped lines');
+  await expectFeatures(['A','B','C','D']);
+  await filter.selectOption('all');
+  const relations=label=>inspector.getByRole('group',{name:label,exact:true});
+  for(const [lineId,lineLabel,names] of [['$dynamic','l₁',['A','B']],['$dynamic2','l₂',['C','D']]]){
+    for(const name of names){
+      await pickObject('feature:'+name).click();
+      assert.equal(await heading.textContent(),name);
+      assert.deepEqual(await relations('查看依赖').locator('[data-related-object]').evaluateAll(buttons=>buttons.map(button=>button.dataset.relatedObject).sort()),[lineId,'$conic'].sort(),'Each built-in intersection identifies its own line and the primary conic');
+      await relations('查看依赖').locator(`[data-related-object="${lineId}"]`).click();
+      assert.equal(await heading.textContent(),lineLabel);
+      assert.deepEqual(await relations('依赖此对象的构造').locator('[data-related-object^="feature:"]').evaluateAll(buttons=>buttons.map(button=>button.dataset.relatedObject).sort()),names.map(value=>'feature:'+value).sort(),'Each built-in line links back to its own defined intersection points');
+      await relations('依赖此对象的构造').locator(`[data-related-object="feature:${name}"]`).click();
+      assert.equal(await heading.textContent(),name,'The source line navigates back to the selected intersection');
+      await relations('查看依赖').locator('[data-related-object="$conic"]').click();
+      assert.equal(await heading.textContent(),'主圆锥曲线');
+    }
+  }
+  await pickObject('$dynamic2').click();
+  assert.equal(await inspector.getByRole('textbox',{name:'对象名称',exact:true}).count(),0,'Built-in lines do not expose native-object renaming');
+  await inspector.getByRole('button',{name:'调节动直线角度',exact:true}).click();
+  assert(await manager.isHidden());
+  assert.equal(await page.locator('#parameterTarget').inputValue(),'$dynamic','The secondary line uses the existing moving-line parameter target');
+  await page.waitForFunction(()=>document.activeElement?.matches('#params input[data-key="theta2"][data-param-expression]'),null,{timeout:5000});
+  assert.equal(await page.locator('#params input[data-key="theta2"][data-param-expression]').inputValue(),'120','The secondary-line shortcut focuses its own angle without changing it');
+  await setPart(1);
+  assert.equal(await page.locator('#sceneJson').inputValue(),pairedOriginal,'Part browsing and source navigation leave the paired-chord scene unchanged');
+  assert.equal(await sceneSnapshot(),pairedSnapshot);
+  assert(await page.locator('#undoDrag').isDisabled(),'Built-in relationship navigation adds no geometry undo entries');
+
+  const globalPaired={...pairedScene,dynamicLinePart:null,pairedChord:{...pairedScene.pairedChord,part:null}};
+  for(const [model,visibleLines,hiddenLines,visiblePoints,hiddenPoints] of [
+    [{...globalPaired,pairedChord:{...globalPaired.pairedChord,visible:false}},['$dynamic'],['$dynamic2'],['A','B'],['O','C','D']],
+    [{...globalPaired,showConic:false},['$dynamic','$dynamic2'],[],[],['O','A','B','C','D']],
+    [{...globalPaired,showDynamic:false,dynamicLine:false},[],['$dynamic','$dynamic2'],[],['O','A','B','C','D']]
+  ]){
+    await loadPaired(model,null);
+    const originalVariant=await page.locator('#sceneJson').inputValue(),variantSnapshot=await sceneSnapshot();
+    await filter.selectOption('visible');
+    await expectDynamicRows(visibleLines,'Built-in line visibility follows the primary and secondary line layers');
+    await expectFeatures(visiblePoints,'Intersection-point visibility also requires the primary conic layer');
+    await filter.selectOption('hidden');
+    await expectDynamicRows(hiddenLines);
+    await expectFeatures(hiddenPoints);
+    for(const name of hiddenPoints)assert(await manager.getByRole('button',{name:'定位 '+name,exact:true}).isDisabled(),'A hidden feature cannot be located through the object manager');
+    assert.equal(await page.locator('#sceneJson').inputValue(),originalVariant);
+    assert.equal(await sceneSnapshot(),variantSnapshot,'Filtering built-in lines never rewrites visibility, angles, scopes, or dependencies');
+    assert(await page.locator('#undoDrag').isDisabled());
+  }
+  await screenshot('built-in-line-relations-mobile.png',null);
+  console.log('PASS hover and mobile point locator, native/feature/built-in line scope and visibility filters, bidirectional intersection/source navigation and angle shortcut, scene nonmutation, safe focus, offscreen recentering, hidden and undefined points, and live movement.');
 };
