@@ -6,8 +6,8 @@
     if(node.kind==='point'||pointOps.has(node.op))return 'point';
     if(node.kind==='circle'||node.op==='circle')return 'circle';
     if(node.kind==='conic')return 'conic';
-    if(node.op==='distance')return 'measure';
-    return ['line','slope','vertical','through_points'].includes(node.kind)||['line','segment','ray','parallel','perpendicular','tangent','normal','line_angle'].includes(node.op)?'line':node.kind||node.op;
+    if(['distance','angle_measure'].includes(node.op))return 'measure';
+    return ['line','slope','vertical','through_points'].includes(node.kind)||['line','segment','ray','parallel','perpendicular','tangent','normal','line_angle','perp_bisector','angle_bisector'].includes(node.op)?'line':node.kind||node.op;
   }
   function remapReferences(value,mapping){
     if(typeof value==='string')return mapping[value]||value;
@@ -71,7 +71,7 @@
     target.provenance={...target.provenance,derivedIdMap:{...target.provenance?.derivedIdMap,...mapping},mergeWarnings:warnings};
     return selected.size;
   }
-  const auxiliaryOps=new Set(['segment','line','ray','vector','midpoint','distance','perp_bisector','parallel','perpendicular','foot','circle','circumcircle']);
+  const auxiliaryOps=new Set(['segment','line','ray','vector','midpoint','distance','angle_measure','angle_bisector','perp_bisector','parallel','perpendicular','foot','circle','circumcircle']);
   const unordered=new Set(['segment','line','midpoint','distance','perp_bisector','circumcircle']);
   const sameNumber=(a,b)=>Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<=1e-9*Math.max(1,Math.abs(a),Math.abs(b));
   const samePoint=(a,b)=>Array.isArray(a)&&Array.isArray(b)&&a.length===2&&b.length===2&&a.every((value,i)=>sameNumber(value,b[i]));
@@ -80,7 +80,8 @@
   const namedKey=label=>String(label||'').replace(/['’]/g,'′').replace(/_/g,'').replace(/[₀₁₂₃₄₅₆₇₈₉]/g,c=>'₀₁₂₃₄₅₆₇₈₉'.indexOf(c));
   function signature(node){
     if(!node.op||!Array.isArray(node.refs))return '';
-    const refs=unordered.has(node.op)?[...node.refs].sort():node.refs;
+    let refs=unordered.has(node.op)?[...node.refs].sort():node.refs;
+    if(['angle_bisector','angle_measure'].includes(node.op)&&refs[0]>refs[2])refs=[refs[2],refs[1],refs[0]];
     return JSON.stringify([node.op,refs]);
   }
   function keepAuxiliaries(target,reply,parts,audit,construct){

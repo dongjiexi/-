@@ -25,6 +25,14 @@
     const rounded=Number(shape.value.toFixed(2));
     return (Math.abs(rounded-shape.value)>1e-8?'约 ':'')+rounded+'°';
   }
+  function angleBisector(a,vertex,c){
+    const angle=angleMeasure(a,vertex,c);
+    if(!angle)return null;
+    // Half the signed turn stays well-conditioned even for opposite rays.
+    const half=angle.sweep/2,cos=Math.cos(half),sin=Math.sin(half),u=angle.from;
+    return {type:'line',o:{x:vertex.x,y:vertex.y},
+      d:{x:u.x*cos-u.y*sin,y:u.x*sin+u.y*cos},halfAngle:angle.value/2};
+  }
   function curveCoefficients(shape){return validCircle(shape)?{A:1,B:0,C:1,D:-2*shape.x,E:-2*shape.y,F:shape.x*shape.x+shape.y*shape.y-shape.r*shape.r}:shape?.type==='conic'?shape.q:null;}
   function curveLine(point,shape,normal=false){
     const q=curveCoefficients(shape);if(!finitePoint(point)||!q)return null;
@@ -175,6 +183,7 @@
               if(hits.some(p=>distance(p,a)<=tolerance))result=pointValue(hits.find(p=>distance(p,a)>tolerance));
             }
             if(obj.op==='angle_measure'&&refs.length===3&&refs.every(ref=>ref?.type==='point'))result=angleMeasure(a,b,refs[2]);
+            if(obj.op==='angle_bisector'&&refs.length===3&&refs.every(ref=>ref?.type==='point'))result=angleBisector(a,b,refs[2]);
             if(obj.op==='distance'&&a?.type==='point'&&b?.type==='point')result={type:'measure',...mul(add(a,b),.5),value:distance(a,b)};
             if(obj.op==='point_on'&&a){
               const spec=driver(obj);
@@ -238,6 +247,7 @@
       if(object.op==='intersection')return '当前无此分支的实交点（可能相离、相切合并或重合）';
       if(object.op==='perp_bisector')return '两端点重合，不能确定垂直平分线';
       if(object.op==='angle_measure')return '角的顶点与某个端点重合，或选取的对象无法确定角度';
+      if(object.op==='angle_bisector')return '角的顶点与边上的点须分开，且三个引用都应为点';
       if(object.op==='circumcircle')return '三点重合、共线或接近共线，不能可靠确定圆';
       return '构造退化或参数无效';
     }
@@ -269,7 +279,7 @@
     const {state,canvas,ctx,xy}=api,$=id=>document.getElementById(id);
     const engine=createEngine({model:()=>state.model,part:()=>state.activePart,features:api.features,visible:api.visible,coeffs:api.coeffs,origin:api.origin,angle:()=>state.p.theta,angle2:api.angle2,conicPoint:api.conicPoint,conicProject:api.conicProject});
     let tool=null,pending=[],staged=[],selected=null,hover=null,pointer=null,snapPreview=null;
-    const titles={perp_bisector:'垂直平分线',circumcircle:'三点定圆',point:'点',line:'直线',line_angle:'过点直线',segment:'线段',ray:'射线',circle:'圆',midpoint:'中点',reflect_x:'x 轴对称点',reflect_y:'y 轴对称点',parallel:'平行线',perpendicular:'垂线',intersection:'交点',foot:'垂足',distance:'测距',angle_measure:'角度',tangent:'切线',normal:'法线'};
+    const titles={perp_bisector:'垂直平分线',angle_bisector:'角平分线',circumcircle:'三点定圆',point:'点',line:'直线',line_angle:'过点直线',segment:'线段',ray:'射线',circle:'圆',midpoint:'中点',reflect_x:'x 轴对称点',reflect_y:'y 轴对称点',parallel:'平行线',perpendicular:'垂线',intersection:'交点',foot:'垂足',distance:'测距',angle_measure:'角度',tangent:'切线',normal:'法线'};
     const hint=text=>{const target=$('dragHint');if(target.textContent!==text)target.textContent=text;};
     const toolButtons=document.querySelectorAll('[data-construct]');
     const toolState=$('nativeToolState'),toolName=$('nativeToolName'),exitTool=$('finishNativeTool');
@@ -283,7 +293,14 @@
     function label(prefix){const used=new Set([...api.features().map(p=>p.name),...engine.objects().map(o=>o.label),...staged.map(o=>o.label)]);let i=1;while(used.has(prefix+i))i++;return prefix+i;}
     function visible(id){if(id==='$conic')return state.model?.showConic!==false;if(id==='$dynamic'||id==='$dynamic2')return api.dynamicLineVisible(id==='$dynamic2');if(id.startsWith('feature:')){const p=api.features().find(p=>p.name===id.slice(8));return p&&(api.featureVisible?api.featureVisible(p):state.model?.showFeatures!==false);}const o=engine.getObject(id);return o&&api.visible(o);}
     function points(){return [...api.features().filter(p=>api.featureVisible?api.featureVisible(p):state.model?.showFeatures!==false).map(p=>({id:'feature:'+p.name,...p})),...engine.objects().filter(o=>api.visible(o)).map(o=>({id:o.id,...engine.resolve(o.id)})).filter(o=>o.type==='point')];}
-    function pointAt(screen,threshold=14){return points().map(p=>({...p,d:distance(xy(p.x,p.y),screen)})).filter(p=>p.d<threshold).sort((a,b)=>a.d-b.d)[0];}
+    function pointAt(screen,threshold=14){
+      const candidates=points();
+      for(const obj of staged){
+        const p=pendingPoint(obj.id);
+        if(finitePoint(p))candidates.push({id:obj.id,x:p.x,y:p.y});
+      }
+      return candidates.map(p=>({...p,d:distance(xy(p.x,p.y),screen)})).filter(p=>p.d<threshold).sort((a,b)=>a.d-b.d)[0];
+    }
     function shapeDistance(shape,p){
       if(validLine(shape)){const t=dot(sub(p,shape.o),shape.d)/dot(shape.d,shape.d),clamped=shape.segment?Math.max(0,Math.min(1,t)):shape.ray?Math.max(0,t):t;return distance(p,add(shape.o,mul(shape.d,clamped)));}
       if(validCircle(shape))return Math.abs(distance(p,shape)-shape.r);
@@ -397,7 +414,7 @@
     function objectList(){
       const box=$('boardObjects');if(!box)return;
       const query=normalizeObjectQuery(objectSearch.value.trim()),all=engine.objects();
-      const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',angle_measure:'角度',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
+      const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',angle_measure:'角度',angle_bisector:'角平分线',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
       const entries=all.map(object=>{
         const active=api.inCurrentPart(object);
         const reason=engine.invalidReason(object.id)||
@@ -545,7 +562,15 @@
         return `距离 = ${fmt(shape.value)}`;
       }
       if(shape.vector)return `向量 = (${fmt(shape.d.x)}, ${fmt(shape.d.y)})，模长 = ${fmt(Math.hypot(shape.d.x,shape.d.y))}`;
-      if(shape.type==='line'){if(Math.abs(shape.d.x)<EPS)return `x = ${fmt(shape.o.x)}`;const m=shape.d.y/shape.d.x,b=shape.o.y-m*shape.o.x;return `y = ${fmt(m)}x ${b<0?'−':'+'} ${fmt(Math.abs(b))}`;}
+      if(shape.type==='line'){
+        let equation;
+        if(Math.abs(shape.d.x)<EPS)equation=`x = ${fmt(shape.o.x)}`;
+        else{
+          const m=shape.d.y/shape.d.x,b=shape.o.y-m*shape.o.x;
+          equation=`y = ${fmt(m)}x ${b<0?'−':'+'} ${fmt(Math.abs(b))}`;
+        }
+        return Number.isFinite(shape.halfAngle)?equation+'，两侧角各为 '+angleValue({value:shape.halfAngle}):equation;
+      }
       return '圆锥曲线：拖动中心和蓝色手柄调整参数';
     }
     function inspector(){
@@ -651,7 +676,7 @@
       api.render();
     }
     function instruction(){
-      if(tool==='angle_measure')return [
+      if(tool==='angle_measure'||tool==='angle_bisector')return [
         '先选择第一条边上的点。',
         '再选择角的顶点。',
         '最后选择另一条边上的点。'
@@ -698,7 +723,7 @@
         if(!obj){select(id);hint(`已选中点 ${title(id)}，没有重复建立重合点。`);api.render();return;}
         staged=staged.filter(item=>item.id!==id);commit([obj]);return;
       }
-      if(tool==='angle_measure'){
+      if(tool==='angle_measure'||tool==='angle_bisector'){
         const stagedBefore=staged.length,ref=pickPoint(screen),point=pendingPoint(ref);
         const adjacent=pending.length&&pendingPoint(pending.at(-1));
         if(!finitePoint(point)||adjacent&&distance(point,adjacent)<=EPS){
@@ -709,8 +734,8 @@
         pending.push(ref);
         if(pending.length<3){hint(instruction());api.render();return;}
         const names=pending.map(title);
-        commit([{id:uid(),kind:'construction',op:'angle_measure',refs:[...pending],
-          label:'∠'+names.join(names.every(name=>/^[A-Z][₀-₉′]*$/.test(name))?'':'·'),visible:true}]);
+        const name=tool==='angle_bisector'?label('ℓ'):'∠'+names.join(names.every(name=>/^[A-Z][₀-₉′]*$/.test(name))?'':'·');
+        commit([{id:uid(),kind:'construction',op:tool,refs:[...pending],label:name,visible:true}]);
         return;
       }
       if(tool==='circumcircle'){
@@ -799,6 +824,16 @@
       }
       if(['tangent','normal'].includes(tool)&&pending.length===1&&finitePoint(hover)){const line=curveLine(hover,engine.resolve(pending[0]),tool==='normal'),ends=line&&api.clip(line);if(ends){ctx.save();ctx.setLineDash([5,5]);api.path([ends.a,ends.b],'#f09819',1.6);ctx.restore();}}
       for(const id of pending){const p=pendingPoint(id);if(finitePoint(p)){const s=xy(p.x,p.y);ctx.save();ctx.beginPath();ctx.arc(s.x,s.y,10,0,Math.PI*2);ctx.strokeStyle='#f09819';ctx.lineWidth=2;ctx.stroke();ctx.restore();}}
+      if(tool==='angle_bisector'&&pending.length===2&&finitePoint(hover)){
+        const first=pendingPoint(pending[0]),vertex=pendingPoint(pending[1]);
+        const preview=angleBisector(first,vertex,hover),ends=preview&&api.clip(preview);
+        if(ends){
+          ctx.save();ctx.setLineDash([5,5]);
+          api.path([first,vertex,hover],'#885724',1.2);
+          api.path([ends.a,ends.b],'#f09819',1.6);
+          ctx.restore();
+        }
+      }
       if(pending.length===1&&hover){const a=pendingPoint(pending[0]);if(finitePoint(a)){ctx.save();ctx.setLineDash([5,5]);if(tool==='circle'){const r=distance(a,hover);api.path(Array.from({length:91},(_,i)=>({x:a.x+r*Math.cos(i*Math.PI/45),y:a.y+r*Math.sin(i*Math.PI/45)})),'#f09819',1.4);}else if(['line','line_angle','segment','ray','midpoint','distance'].includes(tool)){const shape={type:'line',o:a,d:sub(hover,a),segment:tool!=='line'&&tool!=='line_angle'},ends=api.clip(shape);if(ends)api.path([ends.a,ends.b],'#f09819',1.4);}ctx.restore();}}
       if(snapPreview&&finitePoint(snapPreview.point)){const s=xy(snapPreview.point.x,snapPreview.point.y);ctx.save();ctx.strokeStyle='#087f80';ctx.lineWidth=2;ctx.beginPath();ctx.arc(s.x,s.y,10,0,Math.PI*2);ctx.stroke();ctx.restore();api.annotation(snapPreview.label,snapPreview.point,'#087f80');}
       if($('snapStatus'))$('snapStatus').textContent=snapPreview?.label||'';
@@ -839,7 +874,7 @@
     canvas.addEventListener('dblclick',e=>{if(tool)return;const found=shapeAt(fromEvent(e),[],false,true),object=found&&engine.getObject(found.id);if(api.editableConic?.(object)){e.preventDefault();api.editConic(object.id);}});
     canvas.addEventListener('pointerdown',e=>{if(!tool||e.button>0)return;e.stopImmediatePropagation();e.preventDefault();pointer={id:e.pointerId,start:fromEvent(e)};canvas.setPointerCapture(e.pointerId);},{capture:true});
     canvas.addEventListener('pointermove',e=>{if(!tool)return;e.stopImmediatePropagation();const screen=fromEvent(e);if(['tangent','normal'].includes(tool)&&pending.length){const target=curveTarget(screen,pending[0]);hover=target.point||null;snapPreview=hover?{point:hover,label:titles[tool]+'预览 · '+title(pending[0])}:null;}else{snapPreview=pointSnap(screen);hover=snapPreview?.point||api.snap(api.world(screen));if(!snapPreview&&pending.length===1&&['line','line_angle','segment','ray'].includes(tool)){const origin=pendingPoint(pending[0]);if(finitePoint(origin))hover=directionPoint(origin,hover);}}api.render();},{capture:true});
-    canvas.addEventListener('pointerleave',()=>{snapPreview=null;if($('snapStatus'))$('snapStatus').textContent='';api.render();});
+    canvas.addEventListener('pointerleave',()=>{hover=null;snapPreview=null;if($('snapStatus'))$('snapStatus').textContent='';api.render();});
     canvas.addEventListener('pointerup',e=>{if(!tool)return;e.stopImmediatePropagation();e.preventDefault();if(pointer?.id===e.pointerId&&distance(pointer.start,fromEvent(e))<18)click(fromEvent(e));if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);pointer=null;},{capture:true});
     canvas.addEventListener('pointercancel',e=>{if(!tool)return;e.stopImmediatePropagation();if(pointer?.id===e.pointerId)cancelTouch();},{capture:true});
     canvas.addEventListener('lostpointercapture',e=>{if(pointer?.id===e.pointerId)cancelTouch();});

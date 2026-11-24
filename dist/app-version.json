@@ -1,7 +1,7 @@
 {
   "name": "董解析",
-  "version": "0.70.38",
+  "version": "0.70.39",
   "channel": "stable",
-  "released": "2026-11-12",
+  "released": "2026-11-24",
   "minimum_schema": 1
 }

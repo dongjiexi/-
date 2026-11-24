@@ -19,6 +19,7 @@ module.exports=async({page,context,baseURL,assert,screenshot})=>{
     {id:'u',kind:'point',label:'U',x:-2,y:0},{id:'v',kind:'point',label:'V',x:2,y:0},{id:'w',kind:'point',label:'W',x:0,y:2},
     {id:'circle',kind:'construction',op:'circumcircle',refs:['u','v','w'],label:'c'},
     {id:'bis',kind:'construction',op:'perp_bisector',refs:['u','v'],label:'b'},
+    {id:'angleBis',kind:'construction',op:'angle_bisector',refs:['w','u','v'],label:'h'},
     {id:'moving',kind:'construction',op:'point_on',refs:['circle'],t:.5,label:'T'},
     {id:'bounded',kind:'construction',op:'point_on',refs:['circle'],t:.5,label:'S',motionDomain:{parameter:{min:0,max:1}}},
     {id:'limited',kind:'construction',op:'point_on',refs:['circle'],t:.5,label:'受限点',motionDomain:{parameter:{min:0,max:1,minClosed:false}}},
@@ -32,6 +33,7 @@ module.exports=async({page,context,baseURL,assert,screenshot})=>{
   assert.equal(await page.locator('#canvas').isVisible(),false);
   const calls=await page.evaluate(()=>window.__ggbCalls.join('\n'));
   for(const name of ['Midpoint(U,V)','Circle(U,V,W)','PerpendicularBisector(U,V)','Polygon(U,V,W)'])assert(calls.includes(name),name);
+  assert(calls.includes('h=AngleBisector(W,U,V)'),'GeoGebra must keep the selected vertex in the second argument');
   assert(!calls.includes('调半径'),'Free board must not synthesize a primary curve');
   assert(calls.includes('T=Point(c)'),'Unrestricted path point remains attached');
   assert(calls.includes('E2:(y-(-2))^2/(4^2)+(x-(1))^2/(2^2)=1'),'Additional vertical ellipse retains its own axes and centre');

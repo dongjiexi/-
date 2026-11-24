@@ -29,6 +29,16 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.locator('[data-step-graph-index="1"]').click();
   assert.match(await page.locator('[data-step-graph-status]').textContent(),/高亮/);
   await screenshot('answer-auxiliary-point-foot-tangent.png',null);
+  answer.parts[0].steps.push('作 $\\angle ACB$ 的内角平分线，与对边 AB 交于点 T。');
+  await page.locator('#solveButton').click();
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution?.scene?.objects?.some(n=>n.op==='angle_bisector'));
+  const enriched=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution.scene);
+  const divider=enriched.objects.find(n=>n.op==='angle_bisector');
+  const onSide=enriched.objects.find(n=>n.label==='T');
+  assert.deepEqual(divider.refs,['feature:A','feature:C','feature:B']);
+  assert.equal(onSide.op,'intersection');
+  assert(onSide.refs.includes(divider.id));
+  assert.equal(onSide.parts[0],0);
   answer.parts[0].steps.push('作点A处的切线。设点Z为未知线段UV的中点。观察△PAZ。');
   await page.locator('#solveButton').click();
   await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled&&document.querySelector('.geometry-notice')?.textContent.includes('A 点切线'));

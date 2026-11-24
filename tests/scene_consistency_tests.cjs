@@ -9,6 +9,24 @@ assert(audit.inspect({type:'circle',r:1,showDynamic:false},'直线l经过原点'
   const {safeConstructionScene}=await import('../dist/scene-contract.mjs');
   const {safeExternalScene}=await import('../dist/external-contract.mjs');
   let count=0;const check=f=>{f();count++;},copy=x=>JSON.parse(JSON.stringify(x));
+  check(()=>{
+    const raw={type:'circle',r:3,points:{U:[2,0],V:[0,0],W:[0,3]},constructions:[
+      {id:'bis',op:'angle_bisector',refs:['U','V','W'],label:'l'},
+      {id:'angle',op:'angle_measure',refs:['U','V','W'],label:'alpha'},
+      {id:'foot',op:'foot',refs:['U','line:l'],label:'H'}
+    ]};
+    const result=safeConstructionScene(raw);
+    assert.equal(result.valid,true,JSON.stringify(result.warnings));
+    const engine=audit.frame(result.scene,construct).engine;
+    assert.equal(engine.resolve('angle').value,90);
+    const foot=engine.resolve('foot');
+    assert(Math.abs(foot.x-1)<1e-9&&Math.abs(foot.y-1)<1e-9);
+    raw.constructions[2].refs[1]='angle';
+    assert.equal(safeConstructionScene(raw).valid,false,'A measurement cannot be used as a line');
+    raw.constructions.pop();
+    raw.constructions[1].refs[0]='bis';
+    assert.equal(safeConstructionScene(raw).valid,false,'A line cannot be used as an angle endpoint');
+  });
   check(()=>{const raw={type:'circle',r:3,points:{U:[-2,0],V:[2,0],W:[0,2]},constructions:[{id:'bis',op:'perp_bisector',refs:['feature:U','feature:V'],label:'l'},{id:'circ',op:'circumcircle',refs:['feature:U','feature:V','feature:W'],label:'c'},{id:'bound',op:'point_on',refs:['circ'],t:0,label:'T'}]};const result=safeConstructionScene(raw);assert.equal(result.valid,true,JSON.stringify(result.warnings));assert.equal(result.scene.objects.length,3);raw.constructions[1].refs[2]='bis';assert.equal(safeConstructionScene(raw).valid,false,'Circle requires three points, not a line');});
   check(()=>{const scene={type:'circle',r:3,objects:[{id:'p',kind:'point',label:'P',x:1,y:2},{id:'q',kind:'point',label:'Q',x:2,y:1}],points:{P:[1,2]}};audit.prepare(scene,'已知f(1)=2，点P(1,2)。\n（1）求圆的方程。\n（2）连接PQ，点Q(2,1)。',[{index:1,body:'求圆的方程。'},{index:2,body:'连接PQ，点Q(2,1)。'}]);assert(!scene.objects[0].parts,'Function argument must not truncate shared givens');assert(!scene.pointParts.P);assert.deepEqual(Array.from(scene.objects[1].parts),[2]);});
   check(()=>{const scene={type:'circle',r:3,objects:[{id:'p',kind:'point',label:'P',x:1,y:2}],points:{}};audit.prepare(scene,'在（1）的条件下，点P(1,2)满足公共约束。',[{index:2,body:'连接PA。'}]);assert(!scene.objects[0].parts,'A reference is not a new question heading');});

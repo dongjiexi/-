@@ -5,9 +5,12 @@
   const pointOps=new Set(['point_on','midpoint','inverse','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection']);
   const token='([A-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?)';
   const pointName=token.slice(1,-1),alias='[a-z](?:[A-Z]|[0-9₀₁₂₃₄₅₆₇₈₉]{1,3})?[′]?',lineName='(?:'+pointName+pointName+'|'+alias+')';
-  const lineOps=new Set(['line','segment','ray','parallel','perpendicular','line_angle','tangent','normal']),lineKinds=new Set(['line','slope','vertical','through_points']);
+  const lineOps=new Set(['line','segment','ray','parallel','perpendicular','line_angle','angle_bisector','tangent','normal']),lineKinds=new Set(['line','slope','vertical','through_points']);
   const lineNode=n=>lineOps.has(n.op)||lineKinds.has(n.kind);
-  const clean=text=>(root.DongMathInput?.toPlain(text)??String(text||'')).replace(/\\(?:left|right|prime)/g,m=>m.endsWith('prime')?'′':'').replace(/[_{}$\s]/g,'').replace(/'/g,'′');
+  const clean=text=>(root.DongMathInput?.toPlain(text)??String(text||'')).replace(/\\angle\b/g,'∠').replace(/\\(?:left|right|prime)/g,m=>m.endsWith('prime')?'′':'').replace(/[_{}$\s]/g,'').replace(/'/g,'′');
+  const drawBisector=new RegExp('(?:作|画)(?:出)?(?:∠|角)'+token+token+token+'的?(?:内角|角)?平分线','g');
+  const sideName='(?:对边|(?:对边|线段|边)?'+token+token+')';
+  const meetsSide=new RegExp('^(?:'+token+token+')?[，,]?(?:交'+sideName+'于|与'+sideName+'交于)(?:点)?'+token+'(?![A-Za-z0-9₀₁₂₃₄₅₆₇₈₉′])');
   function install(scene,parts,construct){
     const report={added:[],unresolved:[],conflicts:[],limitReached:false};if(!scene||!construct||!root.DongSceneAudit?.frame)return report;
     scene.objects||=[];scene.lines||=[];
@@ -54,7 +57,13 @@
     };
     const add=(part,node)=>{
       if(pointOps.has(node.op)&&existingPoint(part,node.label))return null;
-      const existing=all().find(n=>(n.op===node.op||node.role&&n.role===node.role)&&JSON.stringify(n.refs)===JSON.stringify(node.refs));
+      const forward=JSON.stringify(node.refs);
+      const reverse=['angle_bisector','segment'].includes(node.op)?JSON.stringify([...node.refs].reverse()):null;
+      const existing=all().find(n=>{
+        if(n.op!==node.op&&(!node.role||n.role!==node.role))return false;
+        const refs=JSON.stringify(n.refs);
+        return refs===forward||refs===reverse;
+      });
       if(existing&&!pointOps.has(node.op)){
         return share(part,existing);
       }
@@ -109,6 +118,22 @@
         const before=report.added.length;
         for(const s of clauses){
           if(root.DongSceneAudit.declared(s).some(name=>blockedPoints.has(aliasKey(part,name))))continue;
+          for(const match of s.matchAll(drawBisector)){
+            const [a,b,c]=match.slice(1),refs=[point(a),point(b),point(c)];
+            const label='∠'+a+b+c+' 的角平分线';
+            if(refs.some(ref=>!ref)){pending(part,label,'角的三个点尚未定位');continue;}
+            const bisector=add(part,{op:'angle_bisector',refs,label});
+            const hit=meetsSide.exec(s.slice(match.index+match[0].length));
+            if(!bisector||!hit)continue;
+            const [,start,end,firstHit,lastHit,firstMet,lastMet,name]=hit;
+            if(start&&(start!==b||end!==name))continue;
+            const first=firstHit||firstMet,last=lastHit||lastMet;
+            if(first&&!((first===a&&last===c)||(first===c&&last===a)))continue;
+            const side=add(part,{op:'segment',refs:[refs[0],refs[2]],label:a+c});
+            if(!side)continue;
+            const parents=[bisector.id,side.id];
+            if(!checkExisting(part,name,'intersection',parents))add(part,{op:'intersection',refs:parents,branch:0,label:name});
+          }
           for(const re of [new RegExp('(?:设|取|记)?(?:点)?'+token+'(?:为|是)(?:线段|弦)?'+token+token+'的?中点','g'),new RegExp('(?:线段|弦)'+token+token+'的?中点(?:为|是|记为)(?:点)?'+token,'g')])for(const m of s.matchAll(re)){
             const order=m[0].startsWith('线段')||m[0].startsWith('弦')?[m[3],m[1],m[2]]:[m[1],m[2],m[3]],refs=[point(order[1]),point(order[2])];
             if(checkExisting(part,order[0],'midpoint',refs))continue;

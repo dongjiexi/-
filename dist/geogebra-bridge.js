@@ -604,6 +604,7 @@
           const names={line:'Line',segment:'Segment',ray:'Ray',vector:'Vector',midpoint:'Midpoint',circle:'Circle',circumcircle:'Circle',perp_bisector:'PerpendicularBisector',parallel:'Line',perpendicular:'PerpendicularLine',tangent:'Tangent',distance:'Distance'};
           let expression=null,seed=null;
           if(item.kind==='through_points')expression=(item.infinite?'Line':'Segment')+'('+refs.join(',')+')';
+          else if(item.op==='angle_bisector'&&refs.length===3)expression='AngleBisector('+refs.join(',')+')';
           else if(names[item.op])expression=names[item.op]+'('+refs.join(',')+')';
           else if(item.op==='intersection')expression='Intersect('+refs.join(',')+','+((item.branch||0)+1)+')';
           else if(item.op==='normal')expression='PerpendicularLine('+refs[0]+',Tangent('+refs.join(',')+'))';

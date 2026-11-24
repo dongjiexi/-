@@ -55,4 +55,25 @@ test(()=>{const scene=copy(base);geometry.install(scene,[{index:1,answer:'N为AB
 test(()=>{const scene=copy(base);scene.objects.push({id:'n1',kind:'point',label:'N',part:1,x:1,y:1,source:'user'},{id:'n2',kind:'point',label:'N',part:2,x:2,y:2,source:'user'});geometry.install(scene,[{index:1,answer:'连接PN。'},{index:2,answer:'连接PN。'}],construct);const segments=scene.objects.filter(n=>n.op==='segment');assert.equal(segments.length,2);assert(segments.some(n=>n.refs[1]==='n1'&&n.parts.includes(1)));assert(segments.some(n=>n.refs[1]==='n2'&&n.parts.includes(2)));});
 test(()=>{const scene=copy(base);scene.objects.push({id:'n1',kind:'point',label:'N',part:1,x:1,y:1,source:'user'},{id:'n2',kind:'point',label:'N',part:1,x:2,y:2,source:'user'});const report=install(scene,'N为AB的中点。连接PN。');assert.equal(scene.objects.length,2,'Ambiguous existing names must not create a third point');assert(report.unresolved.some(n=>n.label==='N'));});
 test(()=>{const scene=copy(base);scene.objects.push({id:'n1',kind:'point',label:'N',part:1,x:1,y:1,visible:false,source:'user'},{id:'n2',kind:'point',label:'N',part:2,x:2,y:2,source:'user'});install(scene,'连接PN。');assert.equal(node(scene,'PN').refs[1],'n1','Hidden current-part point must not be replaced by another part point');assert.equal(scene.objects[0].visible,false);});
-console.log('PASS answer dependency: '+checks+' symmetry, named-tangent, conservative-preservation, deferred-intersection and live-chain property checks');
+test(()=>{
+  const scene=copy(base);
+  const answer='作 $\\angle ABC$ 的内角平分线，与边 CA 交于点 E。';
+  const report=install(scene,answer);
+  const bisector=scene.objects.find(n=>n.op==='angle_bisector'),side=node(scene,'AC');
+  assert.deepEqual(Array.from(bisector.refs),['feature:A','feature:B','feature:C']);
+  assert.deepEqual(Array.from(node(scene,'E').refs),[bisector.id,side.id]);
+  assert.equal(report.unresolved.length,0);
+  assert(Math.abs(resolve(scene,'E').x-2)<1e-10);
+  scene.points.A=[6,4];scene.points.C=[2,1];
+  const e=resolve(scene,'E');
+  assert(Math.abs(e.x-26/7)<1e-8&&Math.abs(e.y-16/7)<1e-8,'Intersection follows the 4:3 angle-bisector theorem');
+  install(scene,'画∠CBA的角平分线BE，交对边于E。',2);
+  assert.equal(scene.objects.length,3,'Reversing the endpoints preserves the same bisector and side');
+  assert.deepEqual(Array.from(node(scene,'E').parts),[1,2]);
+});
+test(()=>{
+  const scene=copy(base),report=install(scene,'作∠AXC的平分线，交AC于E。若作∠ABC的平分线，交AC于H。作∠ABC的外角平分线。');
+  assert.equal(scene.objects.length,0);
+  assert(report.unresolved.some(n=>n.label.includes('AXC')));
+});
+console.log('PASS answer dependency: '+checks+' symmetry, angle-bisector, tangent, intersection and live-chain property checks');
