@@ -145,4 +145,25 @@ module.exports=async({page,assert,screenshot})=>{
   assert(await play.isDisabled(),'Hiding both chords disables line playback');
   assert(!(await metricLabels()).includes('|CD|'),'Hidden secondary intersections are omitted from the readings');
 
+  const choice=page.locator('#motionLineChoice');
+  assert(await choice.isDisabled(),'There is no choice when both lines are hidden');
+  await page.locator('#openObjectManager').click();
+  await checkbox('$dynamic').check();
+  await checkbox('$dynamic2').check();
+  await page.locator('#closeObjectManager').click();
+  assert(await choice.isVisible(),'Two visible lines can be selected independently for playback');
+  const angles=()=>page.evaluate(()=>({...window.__pairedGeometry.learning.api.state.p}));
+  const before=await angles();
+  await choice.selectOption('theta2');
+  await play.click();
+  await page.waitForFunction(start=>window.__pairedGeometry.learning.api.state.p.theta2>start+1,before.theta2);
+  const switched=await angles();
+  assert.equal(switched.theta,before.theta,'The unselected primary remains an on-screen reference');
+  await choice.selectOption('theta');
+  const fixedSecondary=(await angles()).theta2;
+  await page.waitForFunction(start=>window.__pairedGeometry.learning.api.state.p.theta>start+1,switched.theta);
+  await play.click();
+  assert.equal((await angles()).theta2,fixedSecondary,'The previously selected secondary stops at the switching point');
+
+
 };
