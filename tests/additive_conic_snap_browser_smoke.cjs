@@ -53,7 +53,7 @@ module.exports = async ({page, context, assert, screenshot, errors}) => {
     await page.locator('#homeButton').click();
   }
   await install(model);
-  const box=await page.locator('#canvas').boundingBox(),scale=Math.max(10.5/box.width,7.6/box.height);
+  let box=await page.locator('#canvas').boundingBox(),scale=Math.max(10.5/box.width,7.6/box.height);
   const xy=(x,y)=>({x:box.x+box.width/2+x/scale,y:box.y+box.height/2-y/scale});
   const move=async (x,y,dx=0,dy=0)=>{const p=xy(x,y);await page.mouse.move(p.x+dx,p.y+dy);};
   const click=async (x,y,dx=0,dy=0)=>{const p=xy(x,y);await page.mouse.click(p.x+dx,p.y+dy);};
@@ -109,6 +109,8 @@ module.exports = async ({page, context, assert, screenshot, errors}) => {
   const paired={...model,showDynamic:true,theta:0,theta2:90,lineThrough:'point:P',points:{P:[.75,0]},objects:[],
     pairedChord:{labels:['C','D'],lineLabel:'l′',visible:true}};
   await install(paired);await page.locator('[data-construct="point"]').click();
+  await page.locator('#canvas').scrollIntoViewIfNeeded();
+  box=await page.locator('#canvas').boundingBox();scale=Math.max(10.5/box.width,7.6/box.height);
   await move(.75,3.1,4,0);assert.match(await page.locator('#snapStatus').innerText(),/吸附到 l′/);
   await click(.75,3.1,4,0);
   const secondaryPoint=(await scene()).objects.at(-1);
@@ -129,6 +131,8 @@ module.exports = async ({page, context, assert, screenshot, errors}) => {
   assert(Math.hypot(followedSecondary.x-beforeTurn.x,followedSecondary.y-beforeTurn.y)>1,'参数编辑后附点必须实际移动');
   const hiddenSecondary={...paired,pairedChord:{...paired.pairedChord,visible:false}};
   await install(hiddenSecondary);await page.locator('[data-construct="point"]').click();
+  await page.locator('#canvas').scrollIntoViewIfNeeded();
+  box=await page.locator('#canvas').boundingBox();scale=Math.max(10.5/box.width,7.6/box.height);
   await move(.75,3.1,4,0);assert.doesNotMatch(await page.locator('#snapStatus').innerText(),/吸附/);
   await click(.75,3.1,4,0);
   const independentPoint=(await scene()).objects.at(-1);
