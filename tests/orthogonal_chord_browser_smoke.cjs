@@ -164,6 +164,35 @@ module.exports=async({page,assert,screenshot})=>{
   await page.waitForFunction(start=>window.__pairedGeometry.learning.api.state.p.theta>start+1,switched.theta);
   await play.click();
   assert.equal((await angles()).theta2,fixedSecondary,'The previously selected secondary stops at the switching point');
+  const played=await angles();
+  await page.locator('#undoDrag').click();
+  assert.deepEqual(await angles(),before,'One undo restores both angles from the start of playback');
+  await page.locator('#redoDrag').click();
+  assert.deepEqual(await angles(),played,'Redo restores the paused position');
+
+  const speed=page.locator('#motionSpeed');
+  assert.equal(await speed.inputValue(),'1');
+  for(const [rate,delta] of [['0.5',.7],['2',2.8]]){
+    await speed.selectOption(rate);
+    const advanced=await page.evaluate(()=>{
+      const schedule=window.requestAnimationFrame;
+      const state=window.__pairedGeometry.learning.api.state;
+      const start=state.p.theta;
+      let step;
+      try{
+        window.requestAnimationFrame=callback=>{
+          if(callback.name==='motionStep'){step=callback;return 0;}
+          return schedule.call(window,callback);
+        };
+        document.querySelector('#motionPlay').click();
+        step(1000);step(1050);
+        document.querySelector('#motionPlay').click();
+        return state.p.theta-start;
+      }finally{window.requestAnimationFrame=schedule;}
+    });
+    assert(Math.abs(advanced-delta)<1e-7,'Playback scales angular advance with the selected speed');
+  }
+
 
 
 };

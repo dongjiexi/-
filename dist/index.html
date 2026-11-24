@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="dongjiexi-version" content="0.70.36">
+  <meta name="dongjiexi-version" content="0.70.37">
   <meta name="description" content="高中解析几何动态图形工作台：从题干识别标准圆锥曲线，调节参数，观察交点与定值。">
   <meta name="theme-color" content="#0c1b33">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="vendor/mathlive/mathlive-fonts.css">
-  <link rel="stylesheet" href="learning-ui.css?v=0.70.36">
-  <link rel="stylesheet" href="classroom.css?v=0.70.36">
-  <link rel="stylesheet" href="question-bank.css?v=0.70.36">
+  <link rel="stylesheet" href="learning-ui.css?v=0.70.37">
+  <link rel="stylesheet" href="classroom.css?v=0.70.37">
+  <link rel="stylesheet" href="question-bank.css?v=0.70.37">
   <style>
     :root { --ink:#0c1b33; --ink-2:#1a3152; --paper:#f6f8fb; --panel:#ffffff; --line:#d7e0eb; --muted:#64748b; --teal:#0f9f99; --teal-soft:#e1f7f4; --amber:#f2a33c; --amber-soft:#fff2d9; --red:#df5b62; --blue:#3f78d8; --shadow:0 10px 30px rgba(12,27,51,.09); }
     * { box-sizing:border-box; }
@@ -164,7 +164,8 @@
     .workspace { align-items:start; grid-template-columns:300px minmax(0,1fr) 290px; max-width:1920px; padding:1rem; }
     .board-shell { position:sticky; top:12px; height:calc(100vh - 108px); min-height:540px; }
     .controls,.inspect { max-height:calc(100vh - 108px); overflow:auto; scrollbar-width:thin; }
-    #motionLineChoice { min-width:0;width:9rem;max-width:100%;min-height:40px;padding:.35rem;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:.82rem; }
+    #motionLineChoice { width:9rem; }
+    #motionLineChoice,#motionSpeed { min-width:0;max-width:100%;min-height:40px;padding:.35rem;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:.82rem; }
     .drag-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; padding:.6rem .8rem; border-bottom:1px solid var(--line); background:#f5f8fc; }
     .drag-toolbar button { min-height:36px; padding:.35rem .55rem; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); font-size:.875rem; }
     .drag-toolbar button[aria-pressed=true] { background:#0b6868; color:white; border-color:#0b6868; }
@@ -459,13 +460,13 @@
     body[data-cloud-only="true"] #pullModel,body[data-cloud-only="true"] #useLocalSolver,
     body[data-cloud-only="true"] #cloudAuthUseLocal { display:none!important; }
   </style>
-  <link rel="stylesheet" href="theme.css?v=0.70.36">
-  <link rel="stylesheet" href="autumn.css?v=0.70.36">
+  <link rel="stylesheet" href="theme.css?v=0.70.37">
+  <link rel="stylesheet" href="autumn.css?v=0.70.37">
 </head>
 <body data-cloud-only="true">
   <main class="app">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.36 · 更新记录</button></div>
+      <div class="brand"><span class="brand-mark">董</span><span class="brand-name">董解析</span><button class="version-button" id="versionButton" title="查看版本、更新记录和能力边界">v0.70.37 · 更新记录</button></div>
       <div class="top-actions"><span class="top-note">云端解题 · 动态几何 · 我的题本</span><button id="openQuestionBank" class="button secondary" type="button" aria-haspopup="dialog">高考真题题库</button><button id="cloudOutageShortcut" class="install-button" type="button" title="云端暂不可用，点击查看连接状态；题稿会保留" hidden>云端中断 · 查看状态</button><button id="pwaInstall" class="install-button" hidden>安装到设备</button></div>
     </header>
     <section id="pwaBanner" class="pwa-banner" hidden role="status"><span id="pwaMessage"></span><button id="pwaUpdate" hidden>立即更新</button><button id="pwaDismiss">稍后</button></section>
@@ -559,6 +560,11 @@
           <select id="motionLineChoice" aria-label="选择播放的动直线" title="选择哪条直线参与联动" hidden>
             <option value="theta">第一条动直线</option>
             <option value="theta2">第二条动直线</option>
+          </select>
+          <select id="motionSpeed" aria-label="联动播放速度" title="联动播放速度" hidden>
+            <option value="0.5">0.5× 慢速</option>
+            <option value="1" selected>1× 常速</option>
+            <option value="2">2× 快速</option>
           </select>
           <button id="undoDrag" disabled title="Ctrl+Z">撤销</button><button id="redoDrag" disabled title="Ctrl+Y">重做</button>
           <label class="toggle" title="靠近点、交点和曲线时吸附；建立依赖后会随源对象移动"><input type="checkbox" id="geometrySnap" checked>点线吸附</label>
@@ -747,59 +753,59 @@
   </dialog>
 
   <script src="runtime-config.js"></script>
-  <script src="runtime.js?v=0.70.36"></script>
+  <script src="runtime.js?v=0.70.37"></script>
   <script src="vendor/katex/katex.min.js"></script>
   <script src="vendor/katex/contrib/auto-render.min.js"></script>
-  <script src="math-input.js?v=0.70.36"></script>
-  <script src="number-display.js?v=0.70.36"></script>
-  <script src="label-layout.js?v=0.70.36"></script>
-  <script src="step-highlight.js?v=0.70.36"></script>
-  <script src="scene-audit.js?v=0.70.36"></script>
-  <script src="answer-geometry.js?v=0.70.36"></script>
-  <script src="scene-merge.js?v=0.70.36"></script>
-  <script src="tangent-solver.js?v=0.70.36"></script>
-  <script src="ellipse-distance.js?v=0.70.36"></script>
-  <script src="circle-dot.js?v=0.70.36"></script>
-  <script src="orthogonal-chord.js?v=0.70.36"></script>
-  <script src="axis-intercept-chord.js?v=0.70.36"></script>
-  <script src="conic-area.js?v=0.70.36"></script>
-  <script src="basic-conditions.js?v=0.70.36"></script>
-  <script src="parabola-focal-choice.js?v=0.70.36"></script>
-  <script src="algebra-geometry.js?v=0.70.36"></script>
-  <script src="ellipse-area-chord.js?v=0.70.36"></script>
-  <script src="ellipse-tangent-ratio.js?v=0.70.36"></script>
-  <script src="vertex-secant.js?v=0.70.36"></script>
-  <script src="inverse-locus.js?v=0.70.36"></script>
-  <script src="symmetric-chord.js?v=0.70.36"></script>
-  <script src="parabola-locus.js?v=0.70.36"></script>
-  <script src="question-parts.js?v=0.70.36"></script>
-  <script src="goal-coverage.js?v=0.70.36"></script>
-  <script src="solution-review.js?v=0.70.36"></script>
-  <script src="parabola-focal-data.js?v=0.70.36"></script>
-  <script src="circle-fold.js?v=0.70.36"></script>
-  <script src="circle-fold-view.js?v=0.70.36"></script>
-  <link rel="stylesheet" href="circle-fold.css?v=0.70.36">
-  <script src="hyperbola-iteration.js?v=0.70.36"></script>
-  <script src="hyperbola-asymptote-midpoint.js?v=0.70.36"></script>
-  <script src="conic-parameter.js?v=0.70.36"></script>
-  <script src="ellipse-focal-chord.js?v=0.70.36"></script>
-  <script src="external-ai.js?v=0.70.36"></script>
-  <script src="recognition-pages.js?v=0.70.36"></script>
-  <script src="recognition-review.js?v=0.70.36"></script>
-  <script src="image-review-viewer.js?v=0.70.36"></script>
-  <script src="image-adjust.js?v=0.70.36"></script>
-  <script src="learning-ui.js?v=0.70.36"></script>
-  <script src="classroom.js?v=0.70.36"></script>
-  <script src="question-bank.js?v=0.70.36"></script>
-  <script src="construction-board.js?v=0.70.36"></script>
-  <script src="motion-domain.js?v=0.70.36"></script>
-  <script src="motion-protection.js?v=0.70.36"></script>
-  <script src="drag-board.js?v=0.70.36"></script>
-  <script src="equation-builder.js?v=0.70.36"></script>
-  <script src="math-keyboard.js?v=0.70.36"></script>
-  <script type="module" src="mathlive-adapter.js?v=0.70.36"></script>
-  <script src="geogebra-bridge.js?v=0.70.36"></script>
-  <script src="unified-board.js?v=0.70.36"></script>
+  <script src="math-input.js?v=0.70.37"></script>
+  <script src="number-display.js?v=0.70.37"></script>
+  <script src="label-layout.js?v=0.70.37"></script>
+  <script src="step-highlight.js?v=0.70.37"></script>
+  <script src="scene-audit.js?v=0.70.37"></script>
+  <script src="answer-geometry.js?v=0.70.37"></script>
+  <script src="scene-merge.js?v=0.70.37"></script>
+  <script src="tangent-solver.js?v=0.70.37"></script>
+  <script src="ellipse-distance.js?v=0.70.37"></script>
+  <script src="circle-dot.js?v=0.70.37"></script>
+  <script src="orthogonal-chord.js?v=0.70.37"></script>
+  <script src="axis-intercept-chord.js?v=0.70.37"></script>
+  <script src="conic-area.js?v=0.70.37"></script>
+  <script src="basic-conditions.js?v=0.70.37"></script>
+  <script src="parabola-focal-choice.js?v=0.70.37"></script>
+  <script src="algebra-geometry.js?v=0.70.37"></script>
+  <script src="ellipse-area-chord.js?v=0.70.37"></script>
+  <script src="ellipse-tangent-ratio.js?v=0.70.37"></script>
+  <script src="vertex-secant.js?v=0.70.37"></script>
+  <script src="inverse-locus.js?v=0.70.37"></script>
+  <script src="symmetric-chord.js?v=0.70.37"></script>
+  <script src="parabola-locus.js?v=0.70.37"></script>
+  <script src="question-parts.js?v=0.70.37"></script>
+  <script src="goal-coverage.js?v=0.70.37"></script>
+  <script src="solution-review.js?v=0.70.37"></script>
+  <script src="parabola-focal-data.js?v=0.70.37"></script>
+  <script src="circle-fold.js?v=0.70.37"></script>
+  <script src="circle-fold-view.js?v=0.70.37"></script>
+  <link rel="stylesheet" href="circle-fold.css?v=0.70.37">
+  <script src="hyperbola-iteration.js?v=0.70.37"></script>
+  <script src="hyperbola-asymptote-midpoint.js?v=0.70.37"></script>
+  <script src="conic-parameter.js?v=0.70.37"></script>
+  <script src="ellipse-focal-chord.js?v=0.70.37"></script>
+  <script src="external-ai.js?v=0.70.37"></script>
+  <script src="recognition-pages.js?v=0.70.37"></script>
+  <script src="recognition-review.js?v=0.70.37"></script>
+  <script src="image-review-viewer.js?v=0.70.37"></script>
+  <script src="image-adjust.js?v=0.70.37"></script>
+  <script src="learning-ui.js?v=0.70.37"></script>
+  <script src="classroom.js?v=0.70.37"></script>
+  <script src="question-bank.js?v=0.70.37"></script>
+  <script src="construction-board.js?v=0.70.37"></script>
+  <script src="motion-domain.js?v=0.70.37"></script>
+  <script src="motion-protection.js?v=0.70.37"></script>
+  <script src="drag-board.js?v=0.70.37"></script>
+  <script src="equation-builder.js?v=0.70.37"></script>
+  <script src="math-keyboard.js?v=0.70.37"></script>
+  <script type="module" src="mathlive-adapter.js?v=0.70.37"></script>
+  <script src="geogebra-bridge.js?v=0.70.37"></script>
+  <script src="unified-board.js?v=0.70.37"></script>
   <script>
   (() => {
     'use strict';
@@ -835,7 +841,7 @@
     const scanResult = $('#scanResult');
     const state = { model:null, p:{}, grid:true, guides:true, activePart:null, solution:null, view:{xmin:-5,xmax:5,ymin:-4,ymax:4}, cssW:0, cssH:0, original:null };
     let dragController = null, nativeController = null, stepHighlighter = null, motionController = null;
-    let motionFrame = null, motionPrevious = 0, motionElapsed = 0;
+    let motionFrame = null, motionPrevious = 0, motionBefore = null;
     const motionDirections=new Map();
     let pendingSceneSource = '题干条件';
     const equationBuilder = window.DongEquationBuilder.attach({typeSelect:$('#objectType'),templateSelect:$('#equationTemplate'),fields:$('#equationFields'),preview:$('#equationPreview'),error:$('#equationBuilderError')});
@@ -1267,7 +1273,7 @@
       learningUI?.clearStepHighlight();stepHighlighter?.clear();
       labelSceneKey++;boardLabels.clear();
       $('#dragHint').textContent=mobileLayout.matches?'单指拖动，双指缩放或平移视野。':'拖点改坐标；拖直线平移，选中后拖手柄旋转；拖空白处移动视野。';$('#snapStatus').textContent='';
-      stopMotion(false);$('#motionLineChoice').value='theta';extremeScan=null;scanResult.textContent='—';$('#jumpMinimum').hidden=$('#jumpMaximum').hidden=true;nativeController?.reset();parameterTarget='';state.model=scene.model; state.p=scene.values; nativeController?.engine.ensureIds();if(!state.model.isFreeBoard&&!['场景配置','快捷新建','图稿文件','自由画板','本地自由画板','上次保存'].includes(source)&&question.value.trim())state.model.problemMotion=true;state.model.unrestrictedMotion=false;delete state.model.motionOverrides;if(window.DongMotion.protectedScene(state.model)&&restored?.original?.model?.type===state.model.type){const baseline=cloneScene(restored.original);baseline.model.problemMotion=true;delete baseline.model.motionBaseline;window.DongMotion.capture(baseline.model,baseline.values);state.model.motionBaseline=baseline.model.motionBaseline;}window.DongMotion.capture(state.model,state.p);window.DongMotion.restorePremises(state.model,state.p);motionController?.sync();state.original=cloneScene(restored?.original||scene); state.exploring=!window.DongMotion.protectedScene(state.model)&&restored?.exploring===true; dragController?.reset(); $('#exploreNotice').hidden=!state.exploring; homeView(); buildParams(); updateSceneJson(); refreshLayers();syncMotionButton();
+      stopMotion(false);preferredMotionLine='theta';extremeScan=null;scanResult.textContent='—';$('#jumpMinimum').hidden=$('#jumpMaximum').hidden=true;nativeController?.reset();parameterTarget='';state.model=scene.model; state.p=scene.values; nativeController?.engine.ensureIds();if(!state.model.isFreeBoard&&!['场景配置','快捷新建','图稿文件','自由画板','本地自由画板','上次保存'].includes(source)&&question.value.trim())state.model.problemMotion=true;state.model.unrestrictedMotion=false;delete state.model.motionOverrides;if(window.DongMotion.protectedScene(state.model)&&restored?.original?.model?.type===state.model.type){const baseline=cloneScene(restored.original);baseline.model.problemMotion=true;delete baseline.model.motionBaseline;window.DongMotion.capture(baseline.model,baseline.values);state.model.motionBaseline=baseline.model.motionBaseline;}window.DongMotion.capture(state.model,state.p);window.DongMotion.restorePremises(state.model,state.p);motionController?.sync();state.original=cloneScene(restored?.original||scene); state.exploring=!window.DongMotion.protectedScene(state.model)&&restored?.exploring===true; dragController?.reset(); $('#exploreNotice').hidden=!state.exploring; homeView(); buildParams(); updateSceneJson(); refreshLayers();syncMotionButton();
       boardTitle.textContent=state.model.title || '已载入图形'; emptyState.hidden=true;
       setStatus(`${source}已转为「${typeName()}」模型。请核对方程和动直线经过的点，再调节参数。`); render();if(manualReplacement)learningUI?.renderSolution();
       const prompt=question.value;
@@ -1331,7 +1337,7 @@
       fields.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();apply.click();}});
       paramsEl.append(fields,error,apply);
     }
-    function trackParameterHistory(input,range){let textBefore=null,rangeBefore=null;const commitText=()=>{if(textBefore)dragController?.record(textBefore);textBefore=null;};input.addEventListener('focus',()=>{textBefore=dragController?.checkpoint();});input.addEventListener('blur',commitText);input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing)commitText();});if(range){range.addEventListener('pointerdown',()=>{rangeBefore=dragController?.checkpoint();});range.addEventListener('keydown',event=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','PageUp','PageDown','Home','End'].includes(event.key)&&!rangeBefore)rangeBefore=dragController?.checkpoint();});range.addEventListener('change',()=>{if(rangeBefore)dragController?.record(rangeBefore);rangeBefore=null;});}}
+    function trackParameterHistory(input,range){let textBefore=null,rangeBefore=null;const commitText=()=>{if(textBefore)dragController?.record(textBefore);textBefore=null;};input.addEventListener('focus',()=>{pauseForEdit();textBefore=dragController?.checkpoint();});input.addEventListener('blur',commitText);input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing)commitText();});if(range){range.addEventListener('pointerdown',()=>{pauseForEdit();rangeBefore=dragController?.checkpoint();});range.addEventListener('keydown',event=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','PageUp','PageDown','Home','End'].includes(event.key)&&!rangeBefore){pauseForEdit();rangeBefore=dragController?.checkpoint();}});range.addEventListener('change',()=>{if(rangeBefore)dragController?.record(rangeBefore);rangeBefore=null;});}}
     function buildParams() {
       refreshParameterTargets();paramsEl.innerHTML='';
       if(!parameterTarget){paramsEl.innerHTML='<p class="help">图形与参数选择相互独立。先选择上方对象，再显示对应参数；题设锁定的参数仍需开启自由探索才能修改。</p>';return;}
@@ -1766,6 +1772,9 @@
         choice.options[1].textContent='播放 '+(state.model.pairedChord.lineLabel||'第二条动直线');
       }
       button.disabled=!(sources.line||sources.points.length);
+      const speed=$('#motionSpeed');
+      speed.hidden=!state.model;
+      speed.disabled=button.disabled;
       button.setAttribute('aria-pressed',String(playing));
       button.textContent=playing?'⏸ 暂停联动':'▶ 播放联动';
     }
@@ -1775,11 +1784,21 @@
       setStatus('正在播放联动。'+labels.join('、')+'变化时，从属点线会实时重算。');
     }
     $('#motionLineChoice').addEventListener('change',event=>{preferredMotionLine=event.target.value;if(motionFrame!==null)describeMotion(motionSources());});
-    function stopMotion(commit=true){if(motionFrame!==null)cancelAnimationFrame(motionFrame);motionFrame=null;motionPrevious=0;syncMotionButton();if(commit&&state.model)updateSceneJson();}
+    function stopMotion(commit=true){
+      if(motionFrame!==null)cancelAnimationFrame(motionFrame);
+      const before=motionBefore;
+      motionFrame=null;motionPrevious=0;motionBefore=null;
+      if(before&&state.model)dragController?.record({...before,grid:state.grid,guides:state.guides});
+      syncMotionButton();
+      if(commit&&state.model)updateSceneJson();
+    }
+    function pauseForEdit(){if(motionFrame!==null)stopMotion(true);}
     function motionStep(timestamp){
       if(!state.model){stopMotion(false);return;}
       const sources=motionSources();if(!sources.line&&!sources.points.length){stopMotion(true);return;}
-      const dt=motionPrevious?Math.min(.06,(timestamp-motionPrevious)/1000):0;motionPrevious=timestamp;motionElapsed+=dt;
+      const speed=Number($('#motionSpeed').value);
+      const dt=motionPrevious?Math.min(.06,(timestamp-motionPrevious)/1000)*speed:0;
+      motionPrevious=timestamp;
       sources.points.forEach(item=>{
         if(!dt)return;
         const engine=nativeController.engine,spec=engine.driver(item),shape=engine.resolve(item.refs[0]),periodic=shape?.type==='circle'||['ellipse','circle'].includes(shape?.conicType),bounds=spec.motionDomain?.parameter||{min:-2.4,max:2.4};
@@ -1795,9 +1814,10 @@
           input.value=input.type==='range'?state.p[key]:num(state.p[key],2);
         }
       }
-      state.exploring=!window.DongMotion.protectedScene(state.model)||window.DongMotion.unrestricted(state.model);render();motionFrame=requestAnimationFrame(motionStep);
+      if(dt)state.exploring=!window.DongMotion.protectedScene(state.model)||window.DongMotion.unrestricted(state.model);
+      render();motionFrame=requestAnimationFrame(motionStep);
     }
-    function toggleMotion(){if(motionFrame!==null){stopMotion(true);setStatus('已暂停联动演示；当前位置已保留。');return;}const sources=motionSources();if(!sources.line&&!sources.points.length){setStatus('当前题目没有可播放的动点或动直线。',true);return;}motionElapsed=0;motionPrevious=0;motionDirections.clear();motionFrame=requestAnimationFrame(motionStep);syncMotionButton();describeMotion(sources);}
+    function toggleMotion(){if(motionFrame!==null){stopMotion(true);setStatus('已暂停联动演示；当前位置已保留。');return;}const sources=motionSources();if(!sources.line&&!sources.points.length){setStatus('当前题目没有可播放的动点或动直线。',true);return;}motionBefore=dragController?.checkpoint();motionPrevious=0;motionDirections.clear();motionFrame=requestAnimationFrame(motionStep);syncMotionButton();describeMotion(sources);}
     function partChanged(){stopMotion(false);nativeController?.partChanged();if(state.model&&window.DongMotion.unrestricted(state.model)){state.model.unrestrictedMotion=false;delete state.model.motionOverrides;window.DongMotion.restorePremises(state.model,state.p);state.exploring=false;$('#exploreNotice').hidden=true;buildParams();}motionController?.sync();if(state.model)updateSceneJson();}
     function metric(label,value,good=false){return `<div class="metric"><div class="metric-label">${label}</div><div class="metric-value${good?' good':''}">${value}</div></div>`;}
     function focusChordMetrics(ins){
@@ -2102,7 +2122,7 @@
       else annotation(`${label} · ${extremeNames[kind]}≈${num(value,5)}`,lineOrigin(),'#a94c00');
       $('#extremeHitStatus').textContent=`当前达到${label}：${extremeNames[kind]}≈${num(value,6)}，θ≈${num(P('theta'),2)}°。数值扫描结果，仍需证明。`;
     }
-    function jumpExtreme(edge){if(!dynamicLineVisible()||state.model.showConic===false){setStatus('请先显示第一条动直线与主曲线。',true);return;}if(!extremeScan||extremeScan.signature!==extremeSignature()){setStatus('图形已变化，请重新扫描。',true);return;}state.p.theta=extremeScan[edge].theta;document.querySelectorAll('#params input[data-key="theta"]').forEach(input=>input.value=input.type==='range'?state.p.theta:num(state.p.theta,2));state.exploring=true;updateSceneJson();render();}
+    function jumpExtreme(edge){pauseForEdit();if(!dynamicLineVisible()||state.model.showConic===false){setStatus('请先显示第一条动直线与主曲线。',true);return;}if(!extremeScan||extremeScan.signature!==extremeSignature()){setStatus('图形已变化，请重新扫描。',true);return;}state.p.theta=extremeScan[edge].theta;document.querySelectorAll('#params input[data-key="theta"]').forEach(input=>input.value=input.type==='range'?state.p.theta:num(state.p.theta,2));state.exploring=true;updateSceneJson();render();}
     function quickConic(type){const presets={ellipse:{type:'ellipse',a:4,b:2.5,title:'快捷椭圆'},hyperbola:{type:'hyperbola',a:3,b:2,title:'快捷双曲线'},parabola:{type:'parabola',p:1.5,title:'快捷抛物线'},circle:{type:'circle',r:3,title:'快捷圆'}},preset=presets[type];if(!preset)return;state.solution=null;state.activePart=null;question.value='';renderSolution();installScene(modelFromJson(JSON.stringify({...preset,h:0,k:0,orientation:'horizontal',direction:1,lineThrough:'center',showConic:true,showDynamic:false,showFeatures:true,points:{},lines:[],objects:[]})),'快捷新建');setStatus(`已直接新建${typeName()}，无需题目或 AI。可拖动中心、顶点和蓝色参数手柄，也可继续添加直线与点。`);}
     function quickFunction(family){const names={sine:'正弦',cosine:'余弦',tangent:'正切',quadratic:'二次',absolute:'绝对值',reciprocal:'反比例',exponential:'指数',logarithm:'对数',squareRoot:'根式'};if(!names[family])return;$('#advancedEquation').open=false;$('#objectName').value='';equationBuilder.setType('function');$('#equationTemplate').value=family;$('#equationTemplate').dispatchEvent(new Event('change',{bubbles:true}));addFreeObject();setStatus(`已快捷绘制${names[family]}函数。可展开“方程模板与添加对象”修改参数后继续添加。`);}
     let editingConicId=null;
@@ -2202,7 +2222,7 @@
       (state.model.polygons||[]).forEach(poly=>row(scoped(`${poly.label} · 高亮`,poly),poly.visible!==false,change(()=>poly.visible=poly.visible===false),()=>nativeTransaction(()=>state.model.polygons=state.model.polygons.filter(item=>item.id!==poly.id))));
     }
     function nextPointLabel(){const used=new Set([...(state.model?.objects||[]).filter(item=>item.kind==='point').map(item=>item.label),...Object.keys(state.model?.points||{})]);return ['P','Q','R','S','T','M','N','A₁','B₁'].find(name=>!used.has(name))||`P${used.size+1}`;}
-    function addFreeObject(){if(!state.model){installScene(modelFromJson('{"type":"circle","r":3,"isFreeBoard":true,"showConic":false,"showDynamic":false,"showFeatures":false}'),'自由画板');}try{const before=dragController?.checkpoint(),name=$('#objectName').value.trim(),advanced=$('#advancedEquation').open&&$('#objectInput').value.trim(),result=advanced?{object:parseFreeObject($('#objectType').value,$('#objectInput').value,name)}:equationBuilder.read(),obj=result.object;obj.source='user';obj.userEquation=!name;if(name)obj.label=name;else if(obj.kind==='point')obj.label=nextPointLabel();else if(obj.kind==='line')obj.label=lineEquation(obj);else if(obj.kind==='function')obj.label=obj.equation;else if(!obj.label)obj.label=window.DongEquationBuilder.typeNames[$('#objectType').value]||'自定义对象';state.model.objects.push(obj);nativeController?.engine.ensureIds();if(before)dragController?.record(before);$('#objectInput').value='';$('#objectName').value='';updateSceneJson();refreshLayers();render();setStatus(`已按模板添加${window.DongEquationBuilder.typeNames[$('#objectType').value]||'对象'}：${obj.equation||obj.label}。可在图层中隐藏或删除。`);}catch(e){setStatus(e.message,true);}}
+    function addFreeObject(){pauseForEdit();if(!state.model){installScene(modelFromJson('{"type":"circle","r":3,"isFreeBoard":true,"showConic":false,"showDynamic":false,"showFeatures":false}'),'自由画板');}try{const before=dragController?.checkpoint(),name=$('#objectName').value.trim(),advanced=$('#advancedEquation').open&&$('#objectInput').value.trim(),result=advanced?{object:parseFreeObject($('#objectType').value,$('#objectInput').value,name)}:equationBuilder.read(),obj=result.object;obj.source='user';obj.userEquation=!name;if(name)obj.label=name;else if(obj.kind==='point')obj.label=nextPointLabel();else if(obj.kind==='line')obj.label=lineEquation(obj);else if(obj.kind==='function')obj.label=obj.equation;else if(!obj.label)obj.label=window.DongEquationBuilder.typeNames[$('#objectType').value]||'自定义对象';state.model.objects.push(obj);nativeController?.engine.ensureIds();if(before)dragController?.record(before);$('#objectInput').value='';$('#objectName').value='';updateSceneJson();refreshLayers();render();setStatus(`已按模板添加${window.DongEquationBuilder.typeNames[$('#objectType').value]||'对象'}：${obj.equation||obj.label}。可在图层中隐藏或删除。`);}catch(e){setStatus(e.message,true);}}
     function lineEquation(line){return line.m==null?`x=${num(line.x,4)}`:`y=${num(line.m,4)}x${line.b<0?'−':'+'}${num(Math.abs(line.b||0),4)}`;}
     function updateObjectHint(){const type=$('#objectType').value,hints={line:'例如 y=2x+1 或 x=2',ellipse:'例如 x²/9+y²/4=1',hyperbola:'例如 x²/9−y²/4=1',parabola:'例如 y²=8x 或 x²=8y',circle:'例如 x²+y²=9',point:'例如 1,2 或 P(1,2)',function:'函数曲线请优先使用上方模板'};$('#objectInput').placeholder=hints[type]||'请输入完整方程';}
     function previewEquation(scene){const m=scene.model,p=scene.values,h=equationNumber(p.h||0),k=equationNumber(p.k||0),x=h==='0'?'x':`(x ${p.h>=0?'−':'+'} ${equationNumber(Math.abs(p.h))})`,y=k==='0'?'y':`(y ${p.k>=0?'−':'+'} ${equationNumber(Math.abs(p.k))})`;if(m.type==='circle')return `${x}² + ${y}² = ${equationNumber(p.r**2)}`;if(m.type==='ellipse'){const A=m.orientation==='vertical'?p.b**2:p.a**2,B=m.orientation==='vertical'?p.a**2:p.b**2;return `${x}²/${equationNumber(A)} + ${y}²/${equationNumber(B)} = 1`;}if(m.type==='hyperbola')return m.orientation==='vertical'?`${y}²/${equationNumber(p.a**2)} − ${x}²/${equationNumber(p.b**2)} = 1`:`${x}²/${equationNumber(p.a**2)} − ${y}²/${equationNumber(p.b**2)} = 1`;return m.orientation==='vertical'?`${x}² = ${equationNumber(4*p.p*(p.direction||1))}${y}`:`${y}² = ${equationNumber(4*p.p*(p.direction||1))}${x}`;}
@@ -2414,14 +2434,14 @@
       event.preventDefault();
       window.dispatchEvent(new Event('dong:board-view-changed'));
     });
-    function nativeTransaction(change){const before=dragController?.checkpoint();change();nativeController?.engine.ensureIds();if(before)dragController.record(before);updateSceneJson();refreshLayers();syncMotionButton();render();}
+    function nativeTransaction(change){pauseForEdit();const before=dragController?.checkpoint();change();nativeController?.engine.ensureIds();if(before)dragController.record(before);updateSceneJson();refreshLayers();syncMotionButton();render();}
     function clipNativeLine(shape){const ends=clippedLine(shape.o,shape.d);if(!ends)return null;const len=shape.d.x**2+shape.d.y**2;const t=p=>((p.x-shape.o.x)*shape.d.x+(p.y-shape.o.y)*shape.d.y)/len;let lo=t(ends.a),hi=t(ends.b);if(shape.segment||shape.ray)lo=Math.max(0,lo);if(shape.segment)hi=Math.min(1,hi);return lo<=hi?{a:{x:shape.o.x+lo*shape.d.x,y:shape.o.y+lo*shape.d.y},b:{x:shape.o.x+hi*shape.d.x,y:shape.o.y+hi*shape.d.y}}:null;}
     function conicPoint(t,branch=1){const h=P('h'),k=P('k'),vertical=state.model.orientation==='vertical',kind=state.model.type;if(kind==='circle')return{x:h+P('r')*Math.cos(t),y:k+P('r')*Math.sin(t)};if(kind==='ellipse')return{x:h+(vertical?P('b'):P('a'))*Math.cos(t),y:k+(vertical?P('a'):P('b'))*Math.sin(t)};if(kind==='hyperbola')return vertical?{x:h+P('b')*Math.sinh(t),y:k+branch*P('a')*Math.cosh(t)}:{x:h+branch*P('a')*Math.cosh(t),y:k+P('b')*Math.sinh(t)};const major=(P('direction')||1)*t*t/(4*P('p'));return vertical?{x:h+t,y:k+major}:{x:h+major,y:k+t};}
     function conicProject(point){const x=point.x-P('h'),y=point.y-P('k'),vertical=state.model.orientation==='vertical',kind=state.model.type;if(kind==='circle')return{t:Math.atan2(y,x)};if(kind==='ellipse')return{t:Math.atan2(y/(vertical?P('a'):P('b')),x/(vertical?P('b'):P('a')))};if(kind==='hyperbola')return{t:Math.asinh((vertical?x:y)/P('b')),branch:(vertical?y:x)<0?-1:1};return{t:vertical?x:y};}
     function nativeFeatures(){if(!state.model)return [];const fs=features();if(!state.model.isFreeBoard)intersections().forEach((p,i)=>{const name=(state.model.dynamicIntersectionLabels||['A','B'])[i];if(name&&!fs.some(f=>f.name===name))fs.push({...p,name,nativeDynamic:true});});if(state.model.pairedChord)secondIntersections().forEach((p,i)=>{const name=state.model.pairedChord.labels[i];if(name&&!fs.some(f=>f.name===name))fs.push({...p,name,nativeDynamic:true,nativeSecondary:true});});if(Number.isFinite(state.model.fixedPoint?.x))fs.push({...state.model.fixedPoint,name:state.model.fixedPoint.name||'T',nativeFixed:true});return fs;}
     nativeController=window.DongConstruct.attach({state,canvas,ctx,xy,features:nativeFeatures,featureVisible,featureInPart,featureLayerShown,inCurrentPart,dynamicLineInPart,dynamicLineLayerShown,dynamicLineVisible,setDynamicLineShown,coeffs,origin:lineOrigin,angle2:()=>P('theta2'),conicPoint,conicProject,visible:visibleForPart,render,
       centerPoint,showPoint:()=>showDrawingArea(canvas,canvas),
-      stopMotion:()=>stopMotion(false),
+      stopMotion:pauseForEdit,
       showTool(){
         if(!mobileLayout.matches)return;
         setToolboxCollapsed(true,{returnToToolbar:false});showDrawingArea($('#drawingControls'),canvas);
@@ -2430,7 +2450,7 @@
       point,path:strokePath,annotation,clip:clipNativeLine,transaction:nativeTransaction,editConic,editableConic,primaryEquation:equationText,openBoardParameters,
       ensureScene(){if(!state.model)installScene(modelFromJson('{"type":"circle","r":3,"isFreeBoard":true,"showConic":false,"showDynamic":false,"showFeatures":false,"title":"本地自由画板"}'),'自由画板');}
     });
-    dragController=window.DongDrag.attach({canvas,ctx,state,xy,worldX,worldY,features,lineOrigin,dynamicLineVisible,intersections,secondIntersections,endpoints:endpointsForLine,visible:visibleForPart,render,
+    dragController=window.DongDrag.attach({canvas,ctx,state,xy,worldX,worldY,features,lineOrigin,dynamicLineVisible,pauseForEdit,intersections,secondIntersections,endpoints:endpointsForLine,visible:visibleForPart,render,
       zoomView,cancelConstructionTouch:()=>nativeController.cancelTouch(),
       nativeHit:(p,touch)=>nativeController.hit(p,touch),nativeBegin:t=>nativeController.begin(t),nativeMove:(t,p,dx,dy)=>nativeController.move(t,p,dx,dy),constructing:()=>nativeController.active(),
       picked(target){if(target?.type==='native')return;const object=target?.obj||target?.line;nativeController.select(object?.id||(target?.name?'feature:'+target.name:null));},
@@ -2492,7 +2512,7 @@
     document.getElementById('closeReleases').addEventListener('click',()=>dialog.close());
   })();
   </script>
-  <script src="pwa.js?v=0.70.36"></script>
-  <script src="release-support.js?v=0.70.36"></script>
+  <script src="pwa.js?v=0.70.37"></script>
+  <script src="release-support.js?v=0.70.37"></script>
 </body>
 </html>

@@ -28,8 +28,8 @@
       undo.push(before); if(undo.length>60)undo.shift(); redo.length=0; syncButtons();
     }
     function restore(saved) { state.model=clone(saved.model);state.p=clone(saved.p);if(typeof saved.grid==='boolean')state.grid=saved.grid;if(typeof saved.guides==='boolean')state.guides=saved.guides;if(typeof saved.exploring==='boolean')state.exploring=saved.exploring;selection=null;api.changed();api.render(); }
-    function undoAction(){if(!undo.length)return;redo.push(snapshot());restore(undo.pop());syncButtons();hint('已撤销一次操作。');}
-    function redoAction(){if(!redo.length)return;undo.push(snapshot());restore(redo.pop());syncButtons();hint('已重做一次操作。');}
+    function undoAction(){api.pauseForEdit();if(!undo.length)return;redo.push(snapshot());restore(undo.pop());syncButtons();hint('已撤销一次操作。');}
+    function redoAction(){api.pauseForEdit();if(!redo.length)return;undo.push(snapshot());restore(redo.pop());syncButtons();hint('已重做一次操作。');}
     function resolvePoint(name) {
       if(Object.prototype.hasOwnProperty.call(state.model.points||{},name)&&!state.model.pointBindings?.[name]) {
         return {get:()=>window.DongMotion.overridden(state.model,'feature:'+name,{x:state.model.points[name][0],y:state.model.points[name][1]}),set:p=>{if(window.DongMotion.unrestricted(state.model))window.DongMotion.setOverride(state.model,'feature:'+name,{type:'point',...p});else state.model.points[name]=[p.x,p.y];}};
@@ -130,6 +130,7 @@
     }
     function begin(event) {
       if(!state.model||event.button>0||drag)return;
+      api.pauseForEdit();
       const pos=screen(event),target=mode==='pan'?null:hitTest(pos,event.pointerType==='touch');
       if(target&&!window.DongMotion.dragAllowed(state.model,target)){api.picked?.(target);hint('这是题设固定对象；点击“无限制移动”才能改动。');api.render();event.preventDefault();return;}
       if(target?.type==='native'&&!api.nativeBegin(target))return;
