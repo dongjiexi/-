@@ -142,6 +142,66 @@ module.exports = async ({page, context, assert, screenshot, errors}) => {
   await install(moved);await page.reload();await page.waitForFunction(()=>JSON.parse(document.querySelector('#sceneJson').value).objects?.some(o=>o.op==='point_on'));
   assert.equal((await scene()).objects.find(o=>o.id===bound.id).refs[0],'extra','本地恢复应保留引用');
   await screenshot('additive-conics-and-snap.png',null);
+
+  const angleScene={...model,isFreeBoard:true,showConic:false,showFeatures:false,points:{},objects:[
+    {id:'a',kind:'point',x:1,y:0,label:'A'},
+    {id:'b',kind:'point',x:-1,y:0,label:'B'},
+    {id:'c',kind:'point',x:-1,y:2,label:'C'}
+  ]};
+  await install(angleScene);
+  if(await page.locator('#toolboxToggle').getAttribute('aria-expanded')==='false')await page.locator('#toolboxToggle').click();
+  await page.locator('[data-construct="angle_measure"]').click();
+  await page.locator('#canvas').scrollIntoViewIfNeeded();
+  box=await page.locator('#canvas').boundingBox();scale=Math.max(10.5/box.width,7.6/box.height);
+  await click(1,0);
+  assert.match(await page.locator('#dragHint').innerText(),/顶点/);
+  await click(1,0);
+  assert.match(await page.locator('#dragHint').innerText(),/须分开/);
+  await click(-1,0);
+  await click(-1,2);
+  const angle=(await scene()).objects.at(-1);
+  assert.equal(angle.label,'∠ABC');
+  assert.equal(angle.op,'angle_measure');
+  assert.deepEqual(angle.refs,['a','b','c'],'The second selected point is the vertex');
+  const readAngle=async()=>page.evaluate(({scene,id})=>window.DongConstruct.createEngine({model:()=>scene}).resolve(id),{scene:await scene(),id:angle.id});
+  assert.equal((await readAngle()).isRight,true);
+  assert.equal((await readAngle()).value,90);
+  const markerLabels=()=>page.evaluate(()=>window.DongBoardLabels.snapshot().placements.map(item=>item.text));
+  assert((await markerLabels()).some(text=>text?.includes('90°（直角）')),'The drawing includes a right-angle annotation');
+  assert(!(await markerLabels()).some(text=>text==='准线'||text==='渐近线'),'Free board does not show guides for an internal placeholder curve');
+  await screenshot('live-right-angle.png','.board-shell');
+  await page.locator('#moveMode').click();
+  await page.locator('#snapDrag').check();
+  await page.locator('#canvas').scrollIntoViewIfNeeded();
+  box=await page.locator('#canvas').boundingBox();scale=Math.max(10.5/box.width,7.6/box.height);
+  await move(-1,2);await page.mouse.down();await move(1,2);await page.mouse.up();
+  const acute=await readAngle();
+  assert(Math.abs(acute.value-45)<1e-7&&Math.abs(acute.cosine-Math.SQRT1_2)<1e-8);
+  assert((await markerLabels()).some(text=>text?.includes('45°')));
+  assert(!(await markerLabels()).some(text=>text?.includes('（直角）')));
+  await page.locator('#openObjectManager').click();
+  await page.locator('#boardObjects [data-object-action="select"]').filter({hasText:'∠ABC'}).click();
+  const property=await page.locator('#nativeInspector [data-live-equation]').textContent();
+  assert.match(property,/45°/);
+  assert.match(property,/sin = .*cos = /);
+  for(const id of angle.refs)assert(await page.locator('#nativeInspector [data-related-object="'+id+'"]').isVisible());
+  await page.locator('#closeObjectManager').click();
+  await page.locator('#undoDrag').click();
+  assert.equal((await readAngle()).isRight,true,'Undo restores both geometry and its angle marker');
+
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>JSON.parse(document.querySelector('#sceneJson').value).objects?.some(o=>o.op==='angle_measure'));
+  assert.equal((await readAngle()).isRight,true,'Imported and auto-restored scenes recompute the angle');
+  const edgeCases=await page.evaluate(({scene,id})=>{
+    return [[1,0],[-3,0],[-1,0],[1,-2]].map(([x,y])=>{
+      const copy=structuredClone(scene),point=copy.objects.find(item=>item.id==='c');
+      Object.assign(point,{x,y});
+      const engine=window.DongConstruct.createEngine({model:()=>copy});
+      return {angle:engine.resolve(id)?.value??null,reason:engine.invalidReason(id)};
+    });
+  },{scene:await scene(),id:angle.id});
+  assert.deepEqual(edgeCases.map(item=>item.angle),[0,180,null,45]);
+  assert.match(edgeCases[2].reason,/顶点.*重合/);
   assert.deepEqual(errors,[]);
-  console.log('PASS: additive conic templates, unique IDs, math keyboard, undo/redo, exact snap, fixed-pivot rotation, linked curve points, intersections, secondary-line snapping and rotation, hidden/off snapping, persistence.');
+  console.log('PASS: additive conic templates, unique IDs, math keyboard, undo/redo, exact snap, fixed-pivot rotation, linked curve points, intersections, secondary-line snapping and rotation, hidden/off snapping, live angle measurement with right-angle marker, and persistence.');
 };

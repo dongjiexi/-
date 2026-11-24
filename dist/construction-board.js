@@ -9,6 +9,22 @@
   const validCircle=s=>s?.type==='circle'&&finitePoint(s)&&Number.isFinite(s.r)&&s.r>EPS;
   const within=(line,t)=>!line.segment&&!line.ray||t>=-EPS&&(!line.segment||t<=1+EPS);
   const linkedCurveLine=object=>['tangent','normal'].includes(object?.role)&&Array.isArray(object.refs)&&object.refs.length===2;
+  function angleMeasure(a,vertex,c){
+    if(![a,vertex,c].every(finitePoint))return null;
+    const u=sub(a,vertex),v=sub(c,vertex),left=norm(u),right=norm(v);
+    if(left<=EPS||right<=EPS)return null;
+    const from=mul(u,1/left),to=mul(v,1/right);
+    const sine=cross(from,to),cosine=dot(from,to);
+    const sweep=Math.atan2(sine,cosine);
+    return {type:'measure',measurement:'angle',x:vertex.x,y:vertex.y,
+      value:Math.abs(sweep)*180/Math.PI,from,to,sweep,left,right,
+      sine:Math.abs(sine),cosine,isRight:Math.abs(cosine)<1e-8};
+  }
+  function angleValue(shape){
+    if(shape.isRight)return '90°（直角）';
+    const rounded=Number(shape.value.toFixed(2));
+    return (Math.abs(rounded-shape.value)>1e-8?'约 ':'')+rounded+'°';
+  }
   function curveCoefficients(shape){return validCircle(shape)?{A:1,B:0,C:1,D:-2*shape.x,E:-2*shape.y,F:shape.x*shape.x+shape.y*shape.y-shape.r*shape.r}:shape?.type==='conic'?shape.q:null;}
   function curveLine(point,shape,normal=false){
     const q=curveCoefficients(shape);if(!finitePoint(point)||!q)return null;
@@ -158,6 +174,7 @@
               const hits=intersect(b,refs[2]),tolerance=1e-7*(1+Math.hypot(a.x,a.y));
               if(hits.some(p=>distance(p,a)<=tolerance))result=pointValue(hits.find(p=>distance(p,a)>tolerance));
             }
+            if(obj.op==='angle_measure'&&refs.length===3&&refs.every(ref=>ref?.type==='point'))result=angleMeasure(a,b,refs[2]);
             if(obj.op==='distance'&&a?.type==='point'&&b?.type==='point')result={type:'measure',...mul(add(a,b),.5),value:distance(a,b)};
             if(obj.op==='point_on'&&a){
               const spec=driver(obj);
@@ -220,6 +237,7 @@
       if(object.op==='ellipse_tangent_point')return '点在曲线内部时无实切线；点在曲线上时两条切线合并为一条';
       if(object.op==='intersection')return '当前无此分支的实交点（可能相离、相切合并或重合）';
       if(object.op==='perp_bisector')return '两端点重合，不能确定垂直平分线';
+      if(object.op==='angle_measure')return '角的顶点与某个端点重合，或选取的对象无法确定角度';
       if(object.op==='circumcircle')return '三点重合、共线或接近共线，不能可靠确定圆';
       return '构造退化或参数无效';
     }
@@ -251,7 +269,7 @@
     const {state,canvas,ctx,xy}=api,$=id=>document.getElementById(id);
     const engine=createEngine({model:()=>state.model,part:()=>state.activePart,features:api.features,visible:api.visible,coeffs:api.coeffs,origin:api.origin,angle:()=>state.p.theta,angle2:api.angle2,conicPoint:api.conicPoint,conicProject:api.conicProject});
     let tool=null,pending=[],staged=[],selected=null,hover=null,pointer=null,snapPreview=null;
-    const titles={perp_bisector:'垂直平分线',circumcircle:'三点定圆',point:'点',line:'直线',line_angle:'过点直线',segment:'线段',ray:'射线',circle:'圆',midpoint:'中点',reflect_x:'x 轴对称点',reflect_y:'y 轴对称点',parallel:'平行线',perpendicular:'垂线',intersection:'交点',foot:'垂足',distance:'测距',tangent:'切线',normal:'法线'};
+    const titles={perp_bisector:'垂直平分线',circumcircle:'三点定圆',point:'点',line:'直线',line_angle:'过点直线',segment:'线段',ray:'射线',circle:'圆',midpoint:'中点',reflect_x:'x 轴对称点',reflect_y:'y 轴对称点',parallel:'平行线',perpendicular:'垂线',intersection:'交点',foot:'垂足',distance:'测距',angle_measure:'角度',tangent:'切线',normal:'法线'};
     const hint=text=>{const target=$('dragHint');if(target.textContent!==text)target.textContent=text;};
     const toolButtons=document.querySelectorAll('[data-construct]');
     const toolState=$('nativeToolState'),toolName=$('nativeToolName'),exitTool=$('finishNativeTool');
@@ -379,7 +397,7 @@
     function objectList(){
       const box=$('boardObjects');if(!box)return;
       const query=normalizeObjectQuery(objectSearch.value.trim()),all=engine.objects();
-      const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
+      const names={point:'点',line:'直线',circle:'圆',conic:'圆锥曲线',function:'函数',point_on:'曲线上动点',midpoint:'中点',intersection:'交点',tangent:'切线',normal:'法线',segment:'线段',ray:'射线',distance:'距离',angle_measure:'角度',reflect_axis:'轴对称点',perpendicular:'垂线',parallel:'平行线'};
       const entries=all.map(object=>{
         const active=api.inCurrentPart(object);
         const reason=engine.invalidReason(object.id)||
@@ -522,7 +540,10 @@
       const equation=window.DongEquationBuilder?.curveEquation(object);if(equation)return equation;
       if(shape.type==='point')return `(${fmt(shape.x)}, ${fmt(shape.y)})`;
       if(shape.type==='circle')return `(x − ${fmt(shape.x)})² + (y − ${fmt(shape.y)})² = ${fmt(shape.r*shape.r)}`;
-      if(shape.type==='measure')return `距离 = ${fmt(shape.value)}`;
+      if(shape.type==='measure'){
+        if(shape.measurement==='angle')return `角度 = ${angleValue(shape)}，sin = ${fmt(shape.sine)}，cos = ${fmt(shape.cosine)}`;
+        return `距离 = ${fmt(shape.value)}`;
+      }
       if(shape.vector)return `向量 = (${fmt(shape.d.x)}, ${fmt(shape.d.y)})，模长 = ${fmt(Math.hypot(shape.d.x,shape.d.y))}`;
       if(shape.type==='line'){if(Math.abs(shape.d.x)<EPS)return `x = ${fmt(shape.o.x)}`;const m=shape.d.y/shape.d.x,b=shape.o.y-m*shape.o.x;return `y = ${fmt(m)}x ${b<0?'−':'+'} ${fmt(Math.abs(b))}`;}
       return '圆锥曲线：拖动中心和蓝色手柄调整参数';
@@ -630,6 +651,11 @@
       api.render();
     }
     function instruction(){
+      if(tool==='angle_measure')return [
+        '先选择第一条边上的点。',
+        '再选择角的顶点。',
+        '最后选择另一条边上的点。'
+      ][pending.length]+' 点空白处可创建新点。';
       if(tool==='circumcircle')return `依次选择三个不共线的点（${pending.length}/3）。也可点击空白处新建点。`;
       if(tool==='perp_bisector')return pending.length?'再选另一端点，生成始终平分并垂直于两点连线的直线。':'选择两个不同的点，建立垂直平分线。';
       if(['tangent','normal'].includes(tool))return pending.length?`已选 ${title(pending[0])}。再点曲线上的位置或已有点，创建${titles[tool]}；拖动该点可联动。`:`先点击要作${titles[tool]}的圆或圆锥曲线，再选曲线上的点。`;
@@ -672,6 +698,21 @@
         if(!obj){select(id);hint(`已选中点 ${title(id)}，没有重复建立重合点。`);api.render();return;}
         staged=staged.filter(item=>item.id!==id);commit([obj]);return;
       }
+      if(tool==='angle_measure'){
+        const stagedBefore=staged.length,ref=pickPoint(screen),point=pendingPoint(ref);
+        const adjacent=pending.length&&pendingPoint(pending.at(-1));
+        if(!finitePoint(point)||adjacent&&distance(point,adjacent)<=EPS){
+          staged.length=stagedBefore;
+          hint('角的顶点和边上的点须分开，请另选一点。');
+          return;
+        }
+        pending.push(ref);
+        if(pending.length<3){hint(instruction());api.render();return;}
+        const names=pending.map(title);
+        commit([{id:uid(),kind:'construction',op:'angle_measure',refs:[...pending],
+          label:'∠'+names.join(names.every(name=>/^[A-Z][₀-₉′]*$/.test(name))?'':'·'),visible:true}]);
+        return;
+      }
       if(tool==='circumcircle'){
         const stagedBefore=staged.length,ref=pickPoint(screen),p=pendingPoint(ref),prior=pending.map(pendingPoint);
         if(!p||prior.some(q=>!q||distance(q,p)<EPS)){staged.length=stagedBefore;hint('三个点不能重合，请选择另一点。');return;}
@@ -710,6 +751,32 @@
       const prefix={line:'ℓ',segment:'s',ray:'r',circle:'c',midpoint:'M',parallel:'ℓ',perpendicular:'ℓ',perp_bisector:'ℓ',foot:'H',distance:'d'}[tool];
       commit([{id:uid(),kind:'construction',op:tool,refs:[...pending],label:label(prefix),visible:true}]);
     }
+    function drawAngle(shape,name){
+      const vertex=xy(shape.x,shape.y);
+      const from={x:shape.from.x,y:-shape.from.y},to={x:shape.to.x,y:-shape.to.y};
+      const pxPerUnit=state.cssW/(state.view.xmax-state.view.xmin);
+      const radius=Math.min(23,shape.left*pxPerUnit*.75,shape.right*pxPerUnit*.75);
+      const color=shape.isRight?'#08786b':'#885724';
+      if(radius>=4){
+        const start=add(vertex,mul(from,radius)),end=add(vertex,mul(to,radius));
+        ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();
+        ctx.moveTo(start.x,start.y);ctx.lineTo(vertex.x,vertex.y);ctx.lineTo(end.x,end.y);
+        if(shape.isRight){
+          const corner=add(start,mul(to,radius));
+          ctx.moveTo(start.x,start.y);ctx.lineTo(corner.x,corner.y);ctx.lineTo(end.x,end.y);
+        }else if(Math.abs(shape.sweep)>EPS){
+          const angle=Math.atan2(from.y,from.x);
+          ctx.moveTo(start.x,start.y);
+          ctx.arc(vertex.x,vertex.y,radius,angle,angle-shape.sweep,shape.sweep>0);
+        }
+        ctx.stroke();ctx.restore();
+      }
+      const half=Math.atan2(shape.from.y,shape.from.x)+shape.sweep/2;
+      const offset=(radius+11)/pxPerUnit;
+      api.annotation(name+' = '+angleValue(shape),{
+        x:shape.x+offset*Math.cos(half),y:shape.y+offset*Math.sin(half)
+      },color);
+    }
     function draw(){
       if(!state.model){objectList();return;}engine.ensureIds();objectList();
       const invalid=engine.objects().filter(obj=>(obj.kind==='construction'||linkedCurveLine(obj))&&api.visible(obj)&&!engine.resolve(obj.id)).map(obj=>(obj.label||'未命名')+'：'+engine.invalidReason(obj.id));
@@ -723,6 +790,7 @@
           }
         }}
         else if(shape.type==='circle'){api.path(Array.from({length:181},(_,i)=>({x:shape.x+shape.r*Math.cos(i*Math.PI/90),y:shape.y+shape.r*Math.sin(i*Math.PI/90)})),color,2.2);api.annotation(obj.label,{x:shape.x+shape.r,y:shape.y},color);}
+        else if(shape.measurement==='angle')drawAngle(shape,obj.label);
         else if(shape.type==='measure'){const atMaximum=!state.model.unrestrictedMotion&&Number.isFinite(obj.maximum)&&Math.abs(shape.value-obj.maximum)<1e-7;api.annotation(obj.label+' = '+fmt(shape.value)+(atMaximum?'（达到最大值）':''),shape,atMaximum?'#bc355c':'#886012');}
       }
       for(const obj of staged){
