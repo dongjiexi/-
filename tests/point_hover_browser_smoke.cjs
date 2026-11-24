@@ -209,7 +209,8 @@ module.exports=async({page,context,assert,screenshot})=>{
   const expectDynamicRows=async(ids,message)=>assert.deepEqual(await manager.locator('#boardObjects [data-object-action="select"]').evaluateAll(buttons=>buttons.map(button=>button.dataset.objectId).filter(id=>id==='$dynamic'||id==='$dynamic2').sort()),ids.slice().sort(),message);
   const loadPaired=async(model,part)=>{
     if(await manager.isVisible())await page.locator('#closeObjectManager').click();
-    await page.locator('[data-mobile-panel="board"]').click();
+    const boardTab=page.locator('[data-mobile-panel="board"]');
+    if(await boardTab.isVisible())await boardTab.click();
     await page.locator('#sceneJson').evaluate((element,value)=>{element.value=value;document.querySelector('#applyJson').click();},JSON.stringify(model));
     await setPart(part);
     await page.locator('#openObjectManager').click();
@@ -222,7 +223,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert.equal(await pickObject('$dynamic').textContent(),'l₁');
   assert.equal(await pickObject('$dynamic2').textContent(),'l₂');
   for(const id of ['$dynamic','$dynamic2']){
-    assert(await visibility(id).isDisabled(),'Built-in line visibility is read-only in the object list');
+    assert(await visibility(id).isEnabled(),'Built-in lines can be shown or hidden directly from the object list');
     assert(await visibility(id).isChecked(),'Part membership does not change the line layer checkbox');
   }
   await filter.selectOption('current');
@@ -295,5 +296,128 @@ module.exports=async({page,context,assert,screenshot})=>{
     assert(await page.locator('#undoDrag').isDisabled());
   }
   await screenshot('built-in-line-relations-mobile.png',null);
-  console.log('PASS hover and mobile point locator, native/feature/built-in line scope and visibility filters, bidirectional intersection/source navigation and angle shortcut, scene nonmutation, safe focus, offscreen recentering, hidden and undefined points, and live movement.');
+
+  await loadPaired(globalPaired,null);
+  await page.locator('#closeObjectManager').click();
+  await page.setViewportSize({width:1600,height:1050});
+  const geometryTab=page.locator('[data-inspector-view="geometry"]');
+  if(await geometryTab.isVisible())await geometryTab.click();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.locator('#openObjectManager').click();
+  const layerVisibility=id=>page.locator(`#layers [data-layer-id="${id}"] input[type="checkbox"]`);
+  const computedGeometry=()=>page.evaluate(()=>{
+    const scene=window.__pointHoverTest.sceneData(),engine=window.DongSceneAudit.frame(scene,window.DongConstruct).engine;
+    const conic=engine.resolve('$conic');
+    return JSON.stringify({conic:conic.q,lines:['$dynamic','$dynamic2'].map(id=>{
+      const shape=engine.resolve(id);
+      return {id,shape,intersections:window.DongConstruct.intersect(shape,conic)};
+    })});
+  });
+  const useHistory=async id=>{
+    if(await manager.isVisible())await page.locator('#closeObjectManager').click();
+    assert(await page.locator(id).isEnabled(),'A visibility change is available in drawing history');
+    await page.locator(id).click();
+    await page.locator('#openObjectManager').click();
+  };
+  const assertLayerState=async(primary,secondary)=>{
+    assert.equal(await layerVisibility('$dynamic').isChecked(),primary,'The primary Layers checkbox matches the object-manager state');
+    assert.equal(await layerVisibility('$dynamic2').isChecked(),secondary,'The secondary Layers checkbox matches the object-manager state');
+  };
+  const togglesOriginal=await page.locator('#sceneJson').inputValue(),togglesSnapshot=await sceneSnapshot();
+  const togglesGeometry=await computedGeometry(),togglesView=await viewport();
+  await filter.selectOption('visible');
+  assert(await visibility('$dynamic').isChecked());
+  await visibility('$dynamic').click();
+  await expectDynamicRows(['$dynamic2'],'Hiding the primary line preserves the independently shown secondary line');
+  await expectFeatures(['C','D'],'Secondary intersections remain visible when only the primary line is hidden');
+  await assertLayerState(false,true);
+  await filter.selectOption('hidden');
+  await expectDynamicRows(['$dynamic']);
+  await expectFeatures(['O','A','B']);
+  assert.equal(await visibility('$dynamic').isChecked(),false);
+  assert.deepEqual(await viewport(),togglesView,'Direct visibility changes do not move or zoom the board');
+  assert.equal(await computedGeometry(),togglesGeometry,'Line visibility changes do not change line or intersection coordinates');
+  const primaryHidden=await sceneSnapshot(),primaryHiddenJson=await page.locator('#sceneJson').inputValue();
+  await useHistory('#undoDrag');
+  assert.equal(await sceneSnapshot(),togglesSnapshot,'Undo restores the complete scene before the visibility toggle');
+  assert.equal(await page.locator('#sceneJson').inputValue(),togglesOriginal);
+  assert.equal(await computedGeometry(),togglesGeometry);
+  assert.deepEqual(await viewport(),togglesView,'Undoing a layer change preserves the viewport');
+  await assertLayerState(true,true);
+  await filter.selectOption('visible');
+  await expectDynamicRows(['$dynamic','$dynamic2']);
+  await expectFeatures(['A','B','C','D']);
+  await useHistory('#redoDrag');
+  assert.equal(await sceneSnapshot(),primaryHidden,'Redo restores the independently hidden primary line');
+  assert.equal(await page.locator('#sceneJson').inputValue(),primaryHiddenJson);
+  assert.equal(await computedGeometry(),togglesGeometry);
+  assert.deepEqual(await viewport(),togglesView,'Redoing a layer change preserves the viewport');
+  await assertLayerState(false,true);
+
+  await page.locator('#closeObjectManager').click();
+  await layerVisibility('$dynamic').check();
+  await page.locator('#openObjectManager').click();
+  await filter.selectOption('visible');
+  await expectDynamicRows(['$dynamic','$dynamic2'],'Showing the primary line from Layers updates the object manager');
+  assert(await visibility('$dynamic').isChecked());
+  assert(await visibility('$dynamic2').isChecked());
+  await visibility('$dynamic2').click();
+  await expectDynamicRows(['$dynamic'],'Hiding the secondary line leaves the primary line visible');
+  await expectFeatures(['A','B']);
+  await assertLayerState(true,false);
+  await filter.selectOption('hidden');
+  await expectDynamicRows(['$dynamic2']);
+  await expectFeatures(['O','C','D']);
+  await page.locator('#closeObjectManager').click();
+  await layerVisibility('$dynamic2').check();
+  await page.locator('#openObjectManager').click();
+  await filter.selectOption('visible');
+  await expectDynamicRows(['$dynamic','$dynamic2'],'Showing the secondary line from Layers updates the object manager');
+  assert(await visibility('$dynamic2').isChecked());
+  await expectFeatures(['A','B','C','D']);
+  await assertLayerState(true,true);
+  assert.equal(await computedGeometry(),togglesGeometry,'Both visibility controls preserve all computed geometry');
+  assert.deepEqual(await viewport(),togglesView,'Object-manager and Layers toggles preserve the same viewport');
+
+  for(const [requested,sibling,points] of [['$dynamic','$dynamic2',['A','B']],['$dynamic2','$dynamic',['C','D']]]){
+    await loadPaired({...globalPaired,showDynamic:false,dynamicLine:false},null);
+    const legacySnapshot=await sceneSnapshot(),legacyJson=await page.locator('#sceneJson').inputValue();
+    const legacyView=await viewport(),legacyGeometry=await computedGeometry();
+    await filter.selectOption('hidden');
+    await expectDynamicRows(['$dynamic','$dynamic2'],'A legacy hidden master initially hides both dynamic lines');
+    assert.equal(await visibility(requested).isChecked(),false);
+    await visibility(requested).click();
+    const revealedSnapshot=await sceneSnapshot(),revealedJson=await page.locator('#sceneJson').inputValue();
+    await filter.selectOption('visible');
+    await expectDynamicRows([requested],'Showing one line under a hidden master reveals only the requested line');
+    await expectFeatures(points);
+    await filter.selectOption('hidden');
+    await expectDynamicRows([sibling],'The unrequested sibling remains hidden when the master is reopened');
+    assert.equal(await visibility(sibling).isChecked(),false);
+    await assertLayerState(requested==='$dynamic',requested==='$dynamic2');
+    assert.equal(await computedGeometry(),legacyGeometry);
+    assert.deepEqual(await viewport(),legacyView);
+    await useHistory('#undoDrag');
+    assert.equal(await sceneSnapshot(),legacySnapshot,'Undo restores the original legacy master-hidden scene');
+    assert.equal(await page.locator('#sceneJson').inputValue(),legacyJson);
+    await assertLayerState(false,false);
+    await useHistory('#redoDrag');
+    assert.equal(await sceneSnapshot(),revealedSnapshot,'Redo restores only the requested legacy line');
+    assert.equal(await page.locator('#sceneJson').inputValue(),revealedJson);
+    assert.equal(await computedGeometry(),legacyGeometry);
+    assert.deepEqual(await viewport(),legacyView,'Legacy-master visibility undo/redo does not change the viewport');
+  }
+  const persistedGeometry=await computedGeometry(),persistedJson=await page.locator('#sceneJson').inputValue();
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.__pointHoverTest?.state.model);
+  if(await geometryTab.isVisible())await geometryTab.click();
+  await page.locator('#openObjectManager').click();
+  await search.fill('');await filter.selectOption('visible');
+  await expectDynamicRows(['$dynamic2'],'A real reload preserves the independently shown secondary line');
+  await expectFeatures(['C','D']);
+  await assertLayerState(false,true);
+  assert.equal(await computedGeometry(),persistedGeometry,'Reload preserves the line angles and intersection coordinates');
+  assert.equal(await page.locator('#sceneJson').inputValue(),persistedJson,'Reload preserves the visibility flags saved by undo and redo');
+  await screenshot('built-in-line-visibility-desktop.png',null);
+  console.log('PASS hover and point locator, native/feature/built-in line filters and navigation, independent built-in visibility with Layers synchronization and legacy-master isolation, exact scene/geometry undo and redo, unchanged viewport, safe focus, recentering, and live movement.');
 };

@@ -398,7 +398,7 @@
         for(const id of ids){
           const secondary=id==='$dynamic2';
           entries.push({id,label:title(id),type:'动直线',shown:api.dynamicLineLayerShown(secondary),
-            active:api.dynamicLineInPart(secondary),refs:[],readonly:true});
+            active:api.dynamicLineInPart(secondary),refs:[],moving:true});
         }
       }
       for(const feature of listedFeatures()){
@@ -416,7 +416,11 @@
       for(const row of rows){
         const item=document.createElement('div');item.style.cssText='padding:.45rem 0;border-bottom:1px solid #dce5e8;overflow-wrap:anywhere';
         const show=document.createElement('input');show.type='checkbox';show.checked=row.shown;show.disabled=!!row.readonly;show.style.cssText='width:20px;min-height:20px;margin:0 .5rem 0 0;vertical-align:middle';show.setAttribute('aria-label','显示 '+row.label);show.dataset.objectId=row.id;show.dataset.objectAction='visibility';
-        show.onchange=()=>{const obj=engine.getObject(row.id);if(obj)api.transaction(()=>obj.visible=show.checked);};
+        show.onchange=()=>{
+          if(row.moving){api.setDynamicLineShown(row.id==='$dynamic2',show.checked);return;}
+          const object=engine.getObject(row.id);
+          if(object)api.transaction(()=>object.visible=show.checked);
+        };
         const pick=document.createElement('button');pick.type='button';pick.className='button secondary';pick.textContent=row.label;pick.setAttribute('aria-pressed',String(selected===row.id));pick.dataset.objectId=row.id;pick.dataset.objectAction='select';pick.onclick=()=>{select(row.id);api.render();};
         item.append(show,pick);
         if(row.point){

@@ -57,10 +57,10 @@
     }
     function chords(){
       const m=state.model;
-      if(!api.dynamicLineVisible())return [];
-      const first={key:'theta',points:api.intersections,color:'#b7790e',name:m.dynamicLineLabel||'动直线'};
-      if(!api.dynamicLineVisible(true))return [first];
-      return [first,{key:'theta2',points:api.secondIntersections,color:'#356cb0',name:m.pairedChord.lineLabel||'第二条动直线'}];
+      const lines=[];
+      if(api.dynamicLineVisible())lines.push({key:'theta',points:api.intersections,color:'#b7790e',name:m.dynamicLineLabel||'动直线'});
+      if(api.dynamicLineVisible(true))lines.push({key:'theta2',points:api.secondIntersections,color:'#356cb0',name:m.pairedChord.lineLabel||'第二条动直线'});
+      return lines;
     }
     function handles() {
       if(!state.model)return [];

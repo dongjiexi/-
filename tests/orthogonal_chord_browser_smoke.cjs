@@ -112,4 +112,37 @@ module.exports=async({page,assert,screenshot})=>{
   assert(Math.abs((target.x-dragged.line.o.x)*dragged.line.d.y-(target.y-dragged.line.o.y)*dragged.line.d.x)<.002);
   const [c,d]=dragged.points;
   assert(Math.abs(c.x*d.x+c.y*d.y)<1e-8,'Dragging preserves the perpendicular-radii premise');
+
+  await page.locator('#openObjectManager').click();
+  const checkbox=id=>page.locator(`#boardObjects [data-object-action="visibility"][data-object-id="${id}"]`);
+  await checkbox('$dynamic').uncheck();
+  assert(await checkbox('$dynamic2').isChecked(),'Secondary chord stays visible independently');
+  await page.locator('#closeObjectManager').click();
+  const metricLabels=()=>page.locator('#metrics .metric-label').allTextContents();
+  const labels=await metricLabels();
+  assert(labels.includes('交点 C')&&labels.includes('交点 D')&&labels.includes('|CD|'),'Secondary chord has its own live coordinate and length readings');
+  assert(!labels.includes('交点 A')&&!labels.includes('交点 B'),'Hidden primary intersections are omitted from the geometry readings');
+
+  const play=page.locator('#motionPlay');
+  assert(await play.isEnabled(),'A visible secondary chord can drive animation');
+  await play.click();
+  await page.waitForFunction(start=>window.__pairedGeometry.learning.api.state.p.theta2>start+1,dragged.theta2);
+  await play.click();
+  const animated=await page.evaluate(()=>{
+    const {learning,native,steps}=window.__pairedGeometry;
+    const {theta,theta2}=learning.api.state.p;
+    return {theta,theta2,entries:steps.api.entries().map(item=>item.id),
+      points:native.api.features().filter(p=>p.name==='C'||p.name==='D')};
+  });
+  assert.equal(animated.theta,0,'Playback leaves the hidden primary angle alone');
+  assert(animated.theta2>dragged.theta2+1);
+  assert(animated.entries.includes('$dynamic2')&&!animated.entries.includes('$dynamic'),'Teaching highlights are scoped to the visible chord');
+  const [afterC,afterD]=animated.points;
+  assert(Math.abs(afterC.x*afterD.x+afterC.y*afterD.y)<1e-8,'Playback preserves the perpendicular-radii premise');
+  await page.locator('#openObjectManager').click();
+  await checkbox('$dynamic2').uncheck();
+  await page.locator('#closeObjectManager').click();
+  assert(await play.isDisabled(),'Hiding both chords disables line playback');
+  assert(!(await metricLabels()).includes('|CD|'),'Hidden secondary intersections are omitted from the readings');
+
 };
