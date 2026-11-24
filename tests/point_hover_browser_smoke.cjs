@@ -417,7 +417,7 @@ module.exports=async({page,context,assert,screenshot})=>{
   await expectFeatures(['C','D']);
   await assertLayerState(false,true);
   assert.equal(await computedGeometry(),persistedGeometry,'Reload preserves the line angles and intersection coordinates');
-  assert.equal(await page.locator('#sceneJson').inputValue(),persistedJson,'Reload preserves the visibility flags saved by undo and redo');
+  assert.deepEqual(JSON.parse(await page.locator('#sceneJson').inputValue()),JSON.parse(persistedJson),'Reload preserves the visibility flags saved by undo and redo');
   await screenshot('built-in-line-visibility-desktop.png',null);
   console.log('PASS hover and point locator, native/feature/built-in line filters and navigation, independent built-in visibility with Layers synchronization and legacy-master isolation, exact scene/geometry undo and redo, unchanged viewport, safe focus, recentering, and live movement.');
 };
