@@ -32,13 +32,80 @@ module.exports=async({page,context,assert,screenshot})=>{
   answer.parts[0].steps.push('作 $\\angle ACB$ 的内角平分线，与对边 AB 交于点 T。');
   await page.locator('#solveButton').click();
   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution?.scene?.objects?.some(n=>n.op==='angle_bisector'));
-  const enriched=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution.scene);
-  const divider=enriched.objects.find(n=>n.op==='angle_bisector');
-  const onSide=enriched.objects.find(n=>n.label==='T');
-  assert.deepEqual(divider.refs,['feature:A','feature:C','feature:B']);
-  assert.equal(onSide.op,'intersection');
-  assert(onSide.refs.includes(divider.id));
-  assert.equal(onSide.parts[0],0);
+  const savedSolution=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution);
+  function bisectorConstruction(scene){
+    const dividers=scene.objects.filter(n=>n.op==='angle_bisector');
+    const [divider]=dividers;
+    assert.equal(dividers.length,1,'The answer should produce one angle bisector');
+    const onSide=scene.objects.find(n=>n.label==='T');
+    assert.deepEqual(divider.refs,['feature:A','feature:C','feature:B']);
+    assert.equal(onSide?.op,'intersection','The named point must follow its construction');
+    assert(onSide.refs.includes(divider.id));
+    const side=scene.objects.find(n=>n.id===onSide.refs.find(id=>id!==divider.id));
+    assert.equal(side?.op,'segment','The equality is conditioned on the opposite side, not its extension');
+    assert.deepEqual([...side.refs].sort(),['feature:A','feature:B']);
+    assert.deepEqual(onSide.parts,[0]);
+    return onSide;
+  }
+  bisectorConstruction((await savedSolution()).scene);
+  const steps=answer.parts[0].steps;
+  const equality='取点T在线段AB上，使得 $\\angle ACT=\\angle TCB$。';
+  steps[steps.length-1]=equality;
+  await page.locator('#solveButton').click();
+  await page.waitForFunction(()=>{
+    const solution=JSON.parse(localStorage.getItem('zhigeometry:last'))?.solution;
+    const part=solution?.parts[0];
+    return !document.querySelector('#solveButton').disabled&&[...(part?.steps||[]),...(part?.model_steps||[])].some(step=>step.includes('取点T在线段AB上'));
+  });
+  const equalAngles=await savedSolution();
+  const point=bisectorConstruction(equalAngles.scene);
+  assert.equal(equalAngles.sceneAudit.answerMissing.length,0,JSON.stringify(equalAngles.sceneAudit));
+  assert.equal(equalAngles.sceneAudit.invalid.length,0,JSON.stringify(equalAngles.sceneAudit));
+  assert(!await page.locator('.geometry-notice').isVisible());
+  // This sourced question independently verifies the displayed solution and
+  // keeps the fixture text in model_steps. Select against its applied diagram.
+  const highlighted=await page.evaluate(equality=>{
+    const scene=JSON.parse(document.querySelector('#sceneJson').value),entries=scene.objects.map(n=>({id:n.id,label:n.label,angleSideParents:n.angleSide?n.refs:undefined}));
+    return window.DongStepHighlight.select(equality,entries).ids;
+  },equality);
+  assert([point.id,...point.refs].every(id=>highlighted.includes(id)));
+
+  const resolved=()=>page.locator('#sceneJson').evaluate((element,id)=>{
+    const scene=JSON.parse(element.value);
+    const {engine}=window.DongSceneAudit.frame(scene,window.DongConstruct);
+    return {a:engine.resolve('feature:A'),b:engine.resolve('feature:B'),c:engine.resolve('feature:C'),t:engine.resolve(id)};
+  },point.id);
+  function checkPoint({a,b,c,t}){
+    assert.equal(t?.type,'point');
+    const ca=Math.hypot(a.x-c.x,a.y-c.y),cb=Math.hypot(b.x-c.x,b.y-c.y);
+    assert(Math.abs(t.x-(cb*a.x+ca*b.x)/(ca+cb))<1e-8);
+    assert(Math.abs(t.y-(cb*a.y+ca*b.y)/(ca+cb))<1e-8);
+  }
+  const initial=await resolved();
+  checkPoint(initial);
+  // This exam fixes A and B. Deliberately enable exploration to check the
+  // relation across a real drag, then restore the original problem.
+  await page.locator('#unrestrictedMove').click();
+  const canvas=page.locator('#canvas');
+  await canvas.scrollIntoViewIfNeeded();
+  const {a,b,c}=await page.evaluate(()=>{
+    const {placements}=window.DongBoardLabels.snapshot();
+    const find=name=>placements.find(item=>item.names?.includes(name));
+    return {a:find('A'),b:find('B'),c:find('C')};
+  });
+  const box=await canvas.boundingBox();
+  const scale=(a.x-c.x)/(initial.a.x-initial.c.x);
+  await page.mouse.move(box.x+b.x,box.y+b.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x+b.x+scale*2,box.y+b.y,{steps:8});
+  await page.mouse.up();
+  const moved=await resolved();
+  assert(Math.abs(moved.b.x-initial.b.x)>1,'Dragging must move an input vertex');
+  assert(Math.abs(moved.t.x-initial.t.x)>0.1,'T should update when the vertex moves');
+  checkPoint(moved);
+  await page.locator('#unrestrictedMove').click();
+  assert.deepEqual(await resolved(),initial,'Closing exploration restores the original construction');
+  await screenshot('answer-angle-bisector-equality.png',null);
   answer.parts[0].steps.push('作点A处的切线。设点Z为未知线段UV的中点。观察△PAZ。');
   await page.locator('#solveButton').click();
   await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled&&document.querySelector('.geometry-notice')?.textContent.includes('A 点切线'));

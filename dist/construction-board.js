@@ -177,7 +177,7 @@
             if(['tangent','normal'].includes(obj.op)&&a?.type==='point')result=curveLine(a,b,obj.op==='normal');
             if(obj.op==='ellipse_tangent_point'&&a?.type==='point')result=pointValue(window.DongTangentSolver?.contactsFromQuadratic(curveCoefficients(b),a)?.points[obj.branch||0]);
             if(obj.op==='orthogonal_chord_circle')result=window.DongOrthogonalChord?.circle(curveCoefficients(a))||null;
-            if(obj.op==='intersection')result=pointValue(intersect(a,b)[obj.branch||0]);
+            if(obj.op==='intersection'&&(!obj.angleSide||a?.halfAngle>1e-8&&a.halfAngle<90-1e-8))result=pointValue(intersect(a,b)[obj.branch||0]);
             if(obj.op==='second_intersection'&&a?.type==='point'&&validLine(b)){
               const hits=intersect(b,refs[2]),tolerance=1e-7*(1+Math.hypot(a.x,a.y));
               if(hits.some(p=>distance(p,a)<=tolerance))result=pointValue(hits.find(p=>distance(p,a)>tolerance));
@@ -244,7 +244,7 @@
       if(object.op==='point_on')return '当前位置不满足动点范围，或范围配置无效';
       if(['tangent','normal'].includes(object.op)||linkedCurveLine(object))return '所选点不在曲线上，或曲线在此处退化';
       if(object.op==='ellipse_tangent_point')return '点在曲线内部时无实切线；点在曲线上时两条切线合并为一条';
-      if(object.op==='intersection')return '当前无此分支的实交点（可能相离、相切合并或重合）';
+      if(object.op==='intersection')return object.angleSide?'三角形当前退化，角平分线与对边的交点未定义':'当前无此分支的实交点（可能相离、相切合并或重合）';
       if(object.op==='perp_bisector')return '两端点重合，不能确定垂直平分线';
       if(object.op==='angle_measure')return '角的顶点与某个端点重合，或选取的对象无法确定角度';
       if(object.op==='angle_bisector')return '角的顶点与边上的点须分开，且三个引用都应为点';

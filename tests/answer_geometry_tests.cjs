@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const sandbox={window:{}};
-for(const file of ['construction-board.js','scene-audit.js','answer-geometry.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/'+file),'utf8'),sandbox);
+for(const file of ['math-input.js','construction-board.js','scene-audit.js','answer-relations.js','answer-geometry.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/'+file),'utf8'),sandbox);
 const {DongConstruct:construct,DongSceneAudit:audit,DongAnswerGeometry:geometry}=sandbox.window;
 const copy=x=>JSON.parse(JSON.stringify(x));let checks=0;const test=fn=>{fn();checks++;};
 // These are elementary property fixtures, not generated example questions,
@@ -49,4 +49,42 @@ test(()=>assert.equal(complete.answerMissingLines.length,0));
 test(()=>assert(complete.checks.some(n=>n.kind==='foot'&&n.passed)));
 const noIntersections={type:'circle',r:1,points:{P:[3,0]},lineThrough:'point:P',theta:90,showDynamic:true,objects:[]};
 test(()=>assert.deepEqual(Array.from(audit.inspect(noIntersections,'交于A、B两点',[],construct).unavailable),['A','B'],'Declared dynamic labels do not imply two real intersections'));
+const parse=text=>copy(sandbox.window.DongAnswerRelations.parse(text));
+const bisector=(point='D',points=['A','B','C'])=>({op:'angle_bisector',points,point});
+const foot=(point,from,line)=>({op:'foot',point,from,line});
+const tangent=(point,line,conic,curveType)=>({op:'tangent',point,line,conic,curveType});
+for(const left of ['ABD','DBA'])for(const right of ['DBC','CBD'])for(const angles of [[left,right],[right,left]]){
+  test(()=>assert.deepEqual(parse('取D在边AC上，使得∠'+angles[0]+'＝∠'+angles[1]+'。'),[bisector()]));
+}
+for(const [input,expected] of [
+  ['取D为线段CA上一点，使 $\\angle CBD=\\angle DBA$。',bisector('D',['C','B','A'])],
+  ['在弦A₁C′上取点D_2，它满足 $\\angle D_2B A_1=\\angle C^{\\prime}B D_2$。',bisector('D2',['A1','B','C′'])],
+  ['D\\in\\overline{AC}，且∠ABD与∠DBC相等。',bisector()],
+  ['H在直线AB上且PH⊥AB。',foot('H','P','AB')],
+  ['点H为直线l上一点，且直线l垂直于PH。',foot('H','P','l')],
+  ['在直线A₁B′上取H，且线段HP垂直B′A1。',foot('H','P','A1B′')],
+  ['点H在直线l上，$PH\\perp l$。',foot('H','P','l')],
+  ['作直线l，在点A处与圆C相切。',tangent('A','l','C','circle')],
+  ['直线l在A点与抛物线C相切。',tangent('A','l','C','parabola')],
+  ['直线l与椭圆C相切于点A。',tangent('A','l','C','ellipse')],
+  ['直线l与圆C在点A处相切。',tangent('A','l','C','circle')],
+  ['双曲线C在A点处的切线记为l。',tangent('A','l','C','hyperbola')],
+  ['在A点处作直线l，与主曲线相切。',tangent('A','l',null,null)],
+  ['直线l与曲线C切于A。',tangent('A','l','C',null)]
+])test(()=>assert.deepEqual(parse(input),[expected],input));
+for(const input of [
+  '取XD在边AC上，使得∠ABD＝∠DBC。',
+  '取D在边AC上，使得∠ABD＝2∠DBC。',
+  '取D在边AC上，使得∠ABD＝∠DBC+10°。',
+  '取D在边AC上，使得∠ADB＝∠DBC。',
+  '取D在直线AC上，使得∠ABD＝∠DBC。',
+  '若D在边AC上，使得∠ABD＝∠DBC。',
+  'H在线段AB上且PH⊥AB。',
+  'H在直线AB上且PH⊥AC。',
+  'H在直线AB上且PH不垂直于AB。',
+  'H在直线AB上且PH⊥AB，H在直线AB上且QH⊥AB。',
+  '直线l经过A，且与圆C相切。',
+  '直线l在A点与圆相切。',
+  '直线l与曲线C相切于A，直线l与曲线D相切于B。'
+])test(()=>assert.deepEqual(parse(input),[],input));
 console.log('PASS answer geometry: '+checks+' dependency, exact-frame, idempotency, shared-part, rejected-fabrication and coverage checks');

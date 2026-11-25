@@ -437,7 +437,7 @@
         if(!api.state.model||!solution.scene)return;
         const parts=solution.circleDotAligned?solution.parts.map(part=>({...part,steps:[...(part.steps||[]),...(part.model_steps||[])]})):solution.parts;
         solution.sceneAudit=window.DongSceneAudit.inspect(api.sceneData(),solution.restatement,parts,window.DongConstruct);
-        const relationCheck=window.DongAnswerGeometry?.install(JSON.parse(JSON.stringify(api.sceneData())),parts,window.DongConstruct);
+        const relationCheck=window.DongAnswerGeometry?.install(JSON.parse(JSON.stringify(api.sceneData())),parts,window.DongConstruct,solution.restatement);
         if(relationCheck?.conflicts?.length)solution.sceneAudit.answerConflicts=relationCheck.conflicts;
         if(relationCheck?.unresolved?.length)solution.sceneAudit.answerUnresolved=relationCheck.unresolved;
         solution.sceneAudit.note=api.state.exploring?'当前已调整参数；这是当前图形的数值核对，不验证原题答案及一般性证明。':'已核对当前图形的数值构造，不是一般性证明。';

@@ -93,7 +93,7 @@ class UpdateSafetyTests(unittest.TestCase):
 
     def test_motion_domain_release_missing_module_refuses_before_changes(self):
         files=dict(self.files)
-        for name in ('dist/goal-coverage.js dist/answer-geometry.js dist/circle-fold.js '
+        for name in ('dist/goal-coverage.js dist/answer-relations.js dist/answer-geometry.js dist/circle-fold.js '
                      'dist/circle-fold-view.js dist/circle-fold.css dist/recognition-contract.mjs '
                      'deploy/public-cloud-policy.json deploy/cloudflare/health-probe.mjs '
                      'dist/circle-dot.js dist/question-bank.js dist/question-bank.json '

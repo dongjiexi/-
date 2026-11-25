@@ -595,6 +595,7 @@
         if(scene.type==='hyperbola')paths.set(conic,{requiresRange:true,x:cx+'+'+(vertical?axisB+'*sinh(tt)':'BR*'+axisA+'*cosh(tt)'),y:cy+'+'+(vertical?'BR*'+axisA+'*cosh(tt)':axisB+'*sinh(tt)')});
       }
       const ref=id=>String(id).startsWith('feature:')?labels.get(String(id).slice(8)):ids.get(id);
+      const constructions=new Map(deferred.map(item=>[item.id,item]));
       let pending=deferred.slice();
       for(let pass=0;pending.length&&pass<=deferred.length;pass++){
         const next=[];let made=0;
@@ -606,7 +607,14 @@
           if(item.kind==='through_points')expression=(item.infinite?'Line':'Segment')+'('+refs.join(',')+')';
           else if(item.op==='angle_bisector'&&refs.length===3)expression='AngleBisector('+refs.join(',')+')';
           else if(names[item.op])expression=names[item.op]+'('+refs.join(',')+')';
-          else if(item.op==='intersection')expression='Intersect('+refs.join(',')+','+((item.branch||0)+1)+')';
+          else if(item.op==='intersection'){
+            expression='Intersect('+refs.join(',')+','+((item.branch||0)+1)+')';
+            if(item.angleSide){
+              const sources=constructions.get(item.refs[0])?.refs?.map(ref);
+              if(sources?.length!==3||sources.some(v=>!v)){next.push(item);continue;}
+              expression='If(AreCollinear('+sources.join(',')+') == false,'+expression+')';
+            }
+          }
           else if(item.op==='normal')expression='PerpendicularLine('+refs[0]+',Tangent('+refs.join(',')+'))';
           else if(item.op==='reflect_axis')expression='Reflect('+refs[0]+','+(item.axis==='y'?'x':'y')+'='+number(item.axisValue||0)+')';
           else if(item.op==='reflect_center'&&refs.length===2)expression='Reflect('+refs[0]+','+refs[1]+')';

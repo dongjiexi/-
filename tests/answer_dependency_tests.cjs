@@ -1,7 +1,7 @@
 /* Construction properties only: not exam items or claims of AI accuracy. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const sandbox={window:{}};
-for(const file of ['math-input.js','construction-board.js','scene-audit.js','answer-geometry.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist',file),'utf8'),sandbox);
+for(const file of ['math-input.js','construction-board.js','scene-audit.js','answer-relations.js','answer-geometry.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist',file),'utf8'),sandbox);
 const {DongConstruct:construct,DongSceneAudit:audit,DongAnswerGeometry:geometry}=sandbox.window;
 const copy=value=>JSON.parse(JSON.stringify(value));let checks=0;
 const test=fn=>{fn();checks++;};
@@ -74,6 +74,75 @@ test(()=>{
 test(()=>{
   const scene=copy(base),report=install(scene,'作∠AXC的平分线，交AC于E。若作∠ABC的平分线，交AC于H。作∠ABC的外角平分线。');
   assert.equal(scene.objects.length,0);
-  assert(report.unresolved.some(n=>n.label.includes('AXC')));
+  assert(report.unresolved.some(n=>n.label==='E'&&n.reason.includes('三个点')));
+});
+test(()=>{
+  const scene=copy(base);
+  Object.assign(scene.points,{U:[4,0],V:[0,0],W:[0,3]});
+  const report=install(scene,'取点K在线段WU上，且 $\\angle WV K=\\angle UV K$。');
+  const result=node(scene,'K');
+  assert(result?.angleSide);
+  assert.equal(report.unresolved.length,0);
+  assert(coords(scene,'K').every(v=>Math.abs(v-12/7)<1e-9));
+  scene.points.V=[2,1.5];
+  assert.equal(resolve(scene,'K'),null);
+  scene.points.V=[0,0];
+  assert(coords(scene,'K').every(v=>Math.abs(v-12/7)<1e-9));
+});
+test(()=>{
+  const scene=copy(base);
+  scene.objects.push({id:'oldD',kind:'point',label:'D',source:'user',x:0,y:0});
+  const report=install(scene,'取点D在边AC上，使得∠ABD=∠DBC。连接PD。');
+  assert.equal(scene.objects.filter(n=>n.label==='D').length,1);
+  assert(report.conflicts.some(n=>n.label==='D'));
+  assert(!node(scene,'PD'));
+});
+test(()=>{
+  const scene=copy(base);
+  scene.objects.push({id:'otherPart',kind:'point',label:'X',part:2,x:0,y:1,source:'user'});
+  const report=install(scene,'取点D在边AC上，使得∠AXD=∠DXC。');
+  assert(!node(scene,'D'));
+  assert(report.unresolved.some(n=>n.label==='D'));
+});
+test(()=>{
+  const scene=copy(base);
+  install(scene,'取点H在直线AC上，并且 $PH\\perp CA$。');
+  assert.equal(node(scene,'H').op,'foot');
+  const h=resolve(scene,'H');
+  assert.deepEqual([h.x,h.y],[8,1]);
+});
+test(()=>{
+  const scene=copy(base),part={index:1,answer:'直线l1与圆C相切于A，直线l2在B点与圆C相切，l1与l2交于点T。'};
+  const report=geometry.install(scene,[part],construct,'已知圆C：(x-2)^2+(y-1)^2=9。');
+  assert.deepEqual(coords(scene,'T'),[5,4]);
+  assert.equal(report.unresolved.length,0);
+  const alternate=copy(base);
+  assert.equal(geometry.install(alternate,[part],construct,'已知圆S：(x-2)^2+(y-1)^2=9。').added.length,0);
+});
+test(()=>{
+  const scene=copy(base);
+  Object.assign(scene.points,{A1:[4,0],B1:[0,0],C1:[0,3]});
+  const report=install(scene,'取 $D_1\\in \\overline{A_1 C_1}$，满足 $\\angle A_1B_1D_1=\\angle D_1B_1C_1$。');
+  assert.equal(report.unresolved.length,0);
+  assert(coords(scene,'D1').every(v=>Math.abs(v-12/7)<1e-9));
+});
+test(()=>{
+  const scene=copy(base);
+  const report=geometry.install(scene,[{index:1,steps:['取D在边AC上，使得∠ABD=∠DBC。','取D在直线AC上，并且PD⊥AC。']},{index:2,answer:'取D在边AC上，使得∠ABD=∠DBC。'}],construct);
+  assert(report.unresolved.some(n=>n.label==='D'&&n.part===1&&n.dependencyUnconfirmed));
+  assert.deepEqual(Array.from(node(scene,'D').parts),[2]);
+});
+test(()=>{
+  for(const text of [
+    '若D在边AC上且∠ABD=∠DBC，接下来讨论另一种情况。',
+    'D在边AC的延长线上，使得∠ABD=∠DBC。',
+    'D在边AC上，使得∠ABD=∠DPC。',
+    'D在线段AC上，并且PD⊥AC。',
+    '过点P作圆C的切线l。',
+  ]){
+    const scene=copy(base);
+    install(scene,text);
+    assert.equal(scene.objects.length,0,text);
+  }
 });
 console.log('PASS answer dependency: '+checks+' symmetry, angle-bisector, tangent, intersection and live-chain property checks');

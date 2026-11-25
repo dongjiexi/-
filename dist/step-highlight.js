@@ -24,6 +24,14 @@
     const contact='([A-Z][0-9]*′*)';
     const nameList=contact+'(?:点)?[、,，和与及](?:点)?'+contact;
     const references=new Set();
+    for(const spec of window.DongAnswerRelations?.parse(text)||[]){
+      if(spec.op!=='angle_bisector')continue;
+      const targets=entries.filter(entry=>entry.angleSideParents&&name(entry.label)===name(spec.point));
+      if(targets.length!==1)continue;
+      selected.add(targets[0].id);
+      const visibleIds=new Set(entries.map(entry=>entry.id));
+      for(const id of targets[0].angleSideParents)if(visibleIds.has(id))selected.add(id);
+    }
     for(const match of source.matchAll(new RegExp('(?<![A-Za-z0-9′])(?:点)?'+nameList+'(?:两点|点)?(?:处)?(?:的)?(?:分别作|分别求|作|求)?切线','g'))){
       references.add(match[1]);references.add(match[2]);
     }
