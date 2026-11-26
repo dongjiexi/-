@@ -12,6 +12,8 @@ TOKEN = f"(?:{NUMBER}|{LETTER})"
 SCORE = r"[（(][ \t　]*(?:(?:本(?:小)?题)?满分[ \t　]*)?[0-9０-９]{1,3}(?:[.．][0-9０-９]{1,2})?[ \t　]*分[ \t　]*[）)]"
 LEAD = "已知|若|当|设|在|由|从|利用|记|取|过(?!后|去|了)|令|如图|如表|求|证明|求证|写出|确定|计算|讨论|判断|说明|试|找出|给出|建立|作|研究|分析|选择|是否|椭圆|双曲线|抛物线|圆|直线|点|函数|数列|矩形|三角形|向量"
 HEAD_START = rf"(?:{LEAD}|\$|\\[\[(]|[（(][ \t　]*{TOKEN}[ \t　]*[）)])"
+FIRST_CHILD = re.compile(r"^[（(]\s*(?:i|Ⅰ|ⅰ)\s*[）)]\s*", re.I)
+CITATION_PREFIX = re.compile(r"(?:根据|依据|参见|结合|利用|见|在|由|式|第|编号|条件)\s*$")
 EXAM_NUMBER = re.compile(rf"^\s*(?:第[ \t　]*{NUMBER}[ \t　]*题[：:、．.]?|{NUMBER}[.．、](?![0-9０-９]))(?=[ \t　]*(?:[\r\n]|{SCORE}|{HEAD_START}))", re.I)
 LEADING_SCORE = re.compile(rf"^(\s*){SCORE}(?=\s*(?:{HEAD_START}|$))", re.I)
 TRAILING_SCORE = re.compile(rf"([。；;！!？?]|\r?\n)[ \t　]*{SCORE}(?=\s*$)")
@@ -50,12 +52,18 @@ def _strip_wrap(value: str) -> str:
     return re.sub(r"(?:\$|\\\(|\\\)|\\\[|\\\])+", "", value)
 
 
-def _heading(text: str, start: int, end: int) -> bool:
+def _heading(text: str, start: int, end: int, roman: bool) -> bool:
     before, after = _strip_wrap(text[max(0, start-160):start]), _strip_wrap(text[end:end+180])
     left, right = before.rstrip(), after.lstrip()
     if re.match(r"[+\-*/^=<>≤≥),%0-9０-９]", right):
         return False
-    if re.match(r"[（(]\s*"+TOKEN+r"\s*[）)]", right, re.I) or re.search(r"[（(]\s*"+TOKEN+r"\s*[）)]\s*$", left, re.I):
+    if re.match(r"[（(]\s*"+TOKEN+r"\s*[）)]", right, re.I):
+        child = FIRST_CHILD.match(right)
+        boundary = not left or left[-1] in "。；;:：!?！？" or re.search(r"[\r\n]\s*$", before)
+        if roman or not child or not boundary or CITATION_PREFIX.search(left):
+            return False
+        return bool(re.match(rf"(?:{LEAD})", LEADING_SCORE.sub(r"\1", right[child.end():]).lstrip()))
+    if re.search(r"[（(]\s*"+TOKEN+r"\s*[）)]\s*$", left, re.I):
         return False
     if re.match(r"(?:的?(?:条件|结论|结果|基础|假设|范围|小问)|问(?:[。；;,，）)]|$)|中(?:的|所得|所求|给出|提到|求)|所得|所求|给出|提到|可知|可得|成立|所示|与|和|、|及|或|至|到)", right):
         return False
@@ -75,7 +83,7 @@ def _scan(text: str, roman: bool = False) -> list[dict]:
     pattern = rf"[（(]\s*({LETTER if roman else NUMBER})\s*[）)]"
     result = []
     for match in re.finditer(pattern, text, re.I if roman else 0):
-        if not _heading(text, match.start(), match.end()):
+        if not _heading(text, match.start(), match.end(), roman):
             continue
         token = unicodedata.normalize("NFKC", match.group(1)).lower()
         number = token if roman else int(token)

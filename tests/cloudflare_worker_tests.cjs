@@ -14,6 +14,10 @@ class D1 {
   assert(referencedPayload.messages[1].content.includes('原题：\n'+referenced),'Gateway preserves references and source question');
   const sentParts=JSON.parse(referencedPayload.messages[1].content.split('\n小问编号：')[1].split('\n请先完整作答')[0]);
   assert.deepEqual(sentParts.map(p=>p.index),[1,2,3]);assert(sentParts[2].body.includes('（1）（2）'));
+  const compact='已知椭圆。（1）求方程；（2）（i）求弦长；（ii）求面积。';
+  const compactPrompt=modelPayload({kind:'solve',text:compact,model:'deepseek-flash'},{}).messages[1].content;
+  const compactParts=JSON.parse(compactPrompt.split('\n小问编号：')[1].split('\n请先完整作答')[0]);
+  assert.deepEqual(compactParts.map(p=>[p.index,p.body]),[[1,'求方程；'],[201,'求弦长；'],[202,'求面积。']]);
   assert.throws(()=>modelPayload({kind:'solve',text:'（1）求x；（1）求y。',model:'deepseek-flash'},{}),/重复小问/);
   const env={DB:new D1(),SESSION_SECRET:'test-signing-secret-not-used-in-production-000',DONGJIEXI_ACCESS_KEY:'课堂测试',DONGJIEXI_MODEL_API_KEY:'fixture-api-key',DONGJIEXI_DAILY_JOBS:'3'};
   let calls=0,pending=[];

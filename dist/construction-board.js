@@ -283,6 +283,7 @@
     const hint=text=>{const target=$('dragHint');if(target.textContent!==text)target.textContent=text;};
     const toolButtons=document.querySelectorAll('[data-construct]');
     const toolState=$('nativeToolState'),toolName=$('nativeToolName'),exitTool=$('finishNativeTool');
+    const selectionSummary=$('nativeSelection'),stepBack=$('stepBackNativeTool');
     const marker=$('nativePointLocator'),located=$('locatedPoint'),locatedValue=$('locatedPointValue');
     const recenter=$('recenterLocatedPoint');
     const locationMargin=24;
@@ -661,7 +662,20 @@
         bind.value=object.part??'';bind.onchange=()=>api.transaction(()=>{delete object.parts;if(bind.value==='')delete object.part;else object.part=Number(bind.value);});box.append(bind);
       }
     }
-    function resetPending(){pending=[];staged=[];hover=null;pointer=null;snapPreview=null;}
+    function showSelection(){
+      const summary=pending.length?'已选 '+pending.map(title).join(' → '):'';
+      if(selectionSummary.textContent!==summary)selectionSummary.textContent=summary;
+      stepBack.hidden=!pending.length;
+    }
+    function resetPending(){pending=[];staged=[];hover=null;pointer=null;snapPreview=null;showSelection();}
+    function stepBackSelection(){
+      const last=pending.pop();
+      if(!last)return;
+      if(!pending.includes(last))staged=staged.filter(obj=>obj.id!==last);
+      hover=null;snapPreview=null;
+      showSelection();hint(instruction());api.render();
+      canvas.focus({preventScroll:true});
+    }
     function updateToolState(){
       toolButtons.forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.construct===tool)));
       toolState.hidden=!tool;
@@ -875,10 +889,11 @@
     canvas.addEventListener('pointerdown',e=>{if(!tool||e.button>0)return;e.stopImmediatePropagation();e.preventDefault();pointer={id:e.pointerId,start:fromEvent(e)};canvas.setPointerCapture(e.pointerId);},{capture:true});
     canvas.addEventListener('pointermove',e=>{if(!tool)return;e.stopImmediatePropagation();const screen=fromEvent(e);if(['tangent','normal'].includes(tool)&&pending.length){const target=curveTarget(screen,pending[0]);hover=target.point||null;snapPreview=hover?{point:hover,label:titles[tool]+'预览 · '+title(pending[0])}:null;}else{snapPreview=pointSnap(screen);hover=snapPreview?.point||api.snap(api.world(screen));if(!snapPreview&&pending.length===1&&['line','line_angle','segment','ray'].includes(tool)){const origin=pendingPoint(pending[0]);if(finitePoint(origin))hover=directionPoint(origin,hover);}}api.render();},{capture:true});
     canvas.addEventListener('pointerleave',()=>{hover=null;snapPreview=null;if($('snapStatus'))$('snapStatus').textContent='';api.render();});
-    canvas.addEventListener('pointerup',e=>{if(!tool)return;e.stopImmediatePropagation();e.preventDefault();if(pointer?.id===e.pointerId&&distance(pointer.start,fromEvent(e))<18)click(fromEvent(e));if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);pointer=null;},{capture:true});
+    canvas.addEventListener('pointerup',e=>{if(!tool)return;e.stopImmediatePropagation();e.preventDefault();if(pointer?.id===e.pointerId&&distance(pointer.start,fromEvent(e))<18){click(fromEvent(e));showSelection();}if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);pointer=null;},{capture:true});
     canvas.addEventListener('pointercancel',e=>{if(!tool)return;e.stopImmediatePropagation();if(pointer?.id===e.pointerId)cancelTouch();},{capture:true});
     canvas.addEventListener('lostpointercapture',e=>{if(pointer?.id===e.pointerId)cancelTouch();});
     toolButtons.forEach(button=>button.addEventListener('click',()=>{setTool(button.dataset.construct);api.showTool();}));
+    stepBack.addEventListener('click',stepBackSelection);
     exitTool.addEventListener('click',()=>{$('moveMode').click();canvas.focus({preventScroll:true});});
     $('moveMode').addEventListener('click',()=>setTool(null));$('panMode').addEventListener('click',()=>setTool(null));
     $('undoDrag').addEventListener('click',()=>{resetPending();select(null);});$('redoDrag').addEventListener('click',()=>{resetPending();select(null);});

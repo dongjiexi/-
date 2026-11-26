@@ -11,7 +11,7 @@
   const angle = '(?:∠|角)' + p + p + p;
   const relationStart = '(?:^|[,、:：]|使得?|满足|且|并|有|可得|作)';
   const relationEnd = '(?=$|[,、:：]|且|并|使|满足|则|由|故|所以|因此)';
-  const negative = /假设|假如|如果|倘若|若|或|反例|错误|误以为|尝试|不满足|不在|不等|不与|不成立|不相切|不垂直|不一定|未必|否定|无法|不能|是否|[?？]/;
+  const negative = /假设|假如|如果|倘若|若|或|反例|错误|误以为|尝试|不满足|不在|不等|不与|不成立|不相切|不垂直|不一定|未必|否定|无法|不能|是否|不应|不要|不必|无需|并非|[?？]/;
   const equalAngles = [
     new RegExp(relationStart + angle + '=' + angle + relationEnd, 'g'),
     new RegExp(relationStart + angle + '(?:与|和)' + angle + '相等' + relationEnd, 'g')
@@ -27,6 +27,25 @@
     new RegExp(nameStart + p + '∈直线' + l + relationEnd, 'g'),
     new RegExp(nameStart + p + '(?:为|是)直线' + l + '上(?:的)?一点' + relationEnd, 'g'),
     new RegExp('在直线' + l + '上(?:取|选|标记)(?:点)?' + p + relationEnd, 'g')
+  ];
+  const triangle = '(?:△|三角形)' + p + p + p;
+  const onEdge = '(?:边)?' + p + p + '(?:边)?上的?';
+  const medians = [
+    new RegExp(nameStart + p + p + '(?:是|为)' + triangle + '的(?:一条)?中线' + relationEnd, 'g'),
+    new RegExp(triangle + '中,?(?:作|画|取)(?:出)?中线' + p + p + relationEnd, 'g'),
+    new RegExp(triangle + '中,?' + p + p + '(?:是|为)(?:一条)?中线' + relationEnd, 'g'),
+    new RegExp('(?:作|画)(?:出)?' + triangle + '的中线' + p + p + relationEnd, 'g'),
+    new RegExp(triangle + '中,?' + p + p + '(?:是|为)' + onEdge + '中线' + relationEnd, 'g')
+  ];
+  // Paired bars denote length. Leave expressions with extra factors or terms alone.
+  const equalSegments = [
+    new RegExp(relationStart + p + p + '=' + p + p + relationEnd, 'g'),
+    new RegExp(relationStart + '\\|' + p + p + '\\|=\\|' + p + p + '\\|' + relationEnd, 'g')
+  ];
+  const midpointDefinitions = [
+    new RegExp(nameStart + p + '(?:为|是)(?:' + side + ')?' + p + p + '的?中点' + relationEnd, 'g'),
+    new RegExp('(?:' + side + ')?' + nameStart + p + p + '的?中点(?:为|是|记为)(?:点)?' + p + relationEnd, 'g'),
+    new RegExp('(?:取|作)(?:' + side + ')?' + p + p + '的?中点(?:为|记为)?(?:点)?' + p + relationEnd, 'g')
   ];
   const normal = '(?:⊥|垂直于?)';
   const perpendicular = [
@@ -50,9 +69,49 @@
       .replace(/\\angle\b/g, '∠').replace(/\\in\b/g, '∈').replace(/\\perp\b/g, '⊥')
       .replace(/\^\s*\{\s*\\prime\s*\}|\^\s*\\prime\b|\^′|\\prime\b|['’]/g, '′')
       .replace(/⟂/g, '⊥')
+      .replace(/\\(?:lvert|rvert|vert)\b/g, '|')
       .replace(/_(?:\{(\d+)\}|(\d+))/g, (_, braced, bare) => braced || bare)
       .replace(new RegExp('\\\\overline\\{\\s*('+point+')\\s*('+point+')\\s*\\}','g'), '线段$1$2');
     return (root.DongMathInput?.toPlain(symbols) ?? symbols).replace(/[$]/g, '');
+  }
+
+  function midpointRelations(clause) {
+    if (/求证|请证|证明|判断|能否|是否|不(?:作|是|存在)|勿/.test(clause)) return [];
+    const specs = [];
+    const midpoint = (name, ends, vertex) => {
+      if (new Set([name, ...ends]).size === 3)
+        specs.push({op:'midpoint', point:name, ends, vertices:vertex ? [vertex] : []});
+    };
+    for (const [i, pattern] of midpointDefinitions.entries()) {
+      for (const [, a, b, c] of clause.matchAll(pattern)) {
+        if (i === 0) midpoint(a, [b, c]); else midpoint(c, [a, b]);
+      }
+    }
+    for (const [i, pattern] of medians.entries()) {
+      for (const match of clause.matchAll(pattern)) {
+        const vertices = i === 0 ? match.slice(3) : match.slice(1, 4);
+        const ends = i === 0 ? match.slice(1, 3) : match.slice(4, 6);
+        const attached = ends.filter(name => vertices.includes(name));
+        if (new Set(vertices).size !== 3 || attached.length !== 1) continue;
+        const vertex = attached[0];
+        const opposite = vertices.filter(name => name !== vertex);
+        if (i === 4 && canonicalLine(opposite.join('')) !== canonicalLine(match[6] + match[7])) continue;
+        midpoint(ends.find(name => name !== vertex), opposite, vertex);
+      }
+    }
+    for (const [i, pattern] of sideMembership.entries()) {
+      for (const match of clause.matchAll(pattern)) {
+        const [name, first, last] = i === 3 ? [match[3], match[1], match[2]] : match.slice(1);
+        const expected = [canonicalLine(first + name), canonicalLine(name + last)].sort();
+        for (const equality of equalSegments) {
+          for (const [, a, b, c, d] of clause.matchAll(equality)) {
+            const actual = [canonicalLine(a + b), canonicalLine(c + d)].sort();
+            if (actual[0] === expected[0] && actual[1] === expected[1]) midpoint(name, [first, last]);
+          }
+        }
+      }
+    }
+    return specs;
   }
 
   function angleBisectors(clause) {
@@ -120,14 +179,17 @@
       for (const line of normalize(text).split(/[。；;!\n]/).slice(0,120)) {
         const clause = line.replace(/[ \t\r]/g, '');
         if (clause.length > 1200 || negative.test(clause)) continue;
-        for (const spec of [...angleBisectors(clause), ...perpendicularFeet(clause), ...tangentContacts(clause)]) {
+        for (const spec of [...midpointRelations(clause), ...angleBisectors(clause), ...perpendicularFeet(clause), ...tangentContacts(clause)]) {
           const key = spec.op === 'tangent' ? 'line:' + spec.line : 'point:' + spec.point;
           const signature = spec.op === 'angle_bisector'
             ? JSON.stringify([spec.op, spec.points[1], [spec.points[0], spec.points[2]].sort()])
-            : spec.op === 'foot' ? JSON.stringify([spec.op, spec.from, canonicalLine(spec.line)]) : JSON.stringify(spec);
+            : spec.op === 'foot' ? JSON.stringify([spec.op, spec.from, canonicalLine(spec.line)])
+            : spec.op === 'midpoint' ? JSON.stringify([spec.op, [...spec.ends].sort()]) : JSON.stringify(spec);
           const previous = results.get(key);
           if (previous && previous.signature !== signature) conflicts.add(key);
           if (!previous) results.set(key, {spec, signature});
+          else if (previous.signature === signature && spec.op === 'midpoint')
+            previous.spec.vertices = [...new Set([...previous.spec.vertices, ...spec.vertices])];
         }
       }
     }

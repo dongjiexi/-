@@ -1,10 +1,11 @@
 module.exports=async({page,context,assert})=>{
   await context.route('**/runtime-config.js',r=>r.fulfill({contentType:'application/javascript',body:'window.DONGJIEXI_CONFIG={deployment:"web",apiEnabled:true,requiresAuth:false};'}));
   await context.route('**/api/health',r=>r.fulfill({json:{app:'董解析',capabilities:{transport:'sse'},engine:{available:true,installed:true,remote:true,vision:false,models:['test-cloud']},default_model:'test-cloud'}}));
-  let jobs=0,streams=0,fail=false,padding=0,oversized=false;
+  let jobs=0,streams=0,fail=false,padding=0,oversized=false,submitted,nestedReply;
   await context.route('**/api/jobs',r=>{jobs++;return r.fulfill({status:500,json:{error:'Stream mode must not submit polling jobs'}});});
   await context.route('**/api/stream',r=>{
-    streams++;const raw={title:'边缘流式解题测试',parts:[{index:0,answer:'$e=\\frac{\\sqrt{3}}2$',steps:['由 $c^2=4-1=3$ 求离心率。'],status:'answered'}],scene:{type:'ellipse',a:2,b:1,h:0,k:0,dynamicLine:false,points:{},lines:[]}};
+    submitted=r.request().postDataJSON().text;
+    streams++;const raw=nestedReply||{title:'边缘流式解题测试',parts:[{index:0,answer:'$e=\\frac{\\sqrt{3}}2$',steps:['由 $c^2=4-1=3$ 求离心率。'],status:'answered'}],scene:{type:'ellipse',a:2,b:1,h:0,k:0,dynamicLine:false,points:{},lines:[]}};
     const overhead=('data: '+JSON.stringify({choices:[],provider_metadata:'x'.repeat(1900)})+'\n\n').repeat(padding);
     const body=overhead+'data: '+JSON.stringify({choices:[{delta:{content:oversized?'x'.repeat(100001):JSON.stringify(raw)}}]})+'\r\n\r\n'+(fail?'':'data: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');
     return r.fulfill({contentType:'text/event-stream',body});
@@ -39,4 +40,16 @@ module.exports=async({page,context,assert})=>{
   padding=0;oversized=true;await page.locator('#solveButton').click();
   await page.waitForFunction(()=>document.querySelector('#solveProgress').dataset.state==='error');
   assert.match(await page.locator('#solution').textContent(),/sin/,'Rejected oversized responses preserve the previous complete answer');
+  await page.waitForFunction(()=>!document.querySelector('#solveButton').disabled);
+  oversized=false;
+  const [stem,first,second,...children]=bank.items.find(item=>item.id==='2025-i-18').question.split('\n');
+  // Keep the shared conditions in the stem while exercising the compact print layout.
+  const childPair=[stem,second.replace(/^（2）/,''),first,'（2）'+children.join('\n')].join('\n');
+  nestedReply={title:'分问编号核对',parts:[1,201,202].map(index=>({index,answer:'分问回传',steps:['协议测试步骤'],status:'partial'})),scene:null};
+  await page.locator('#question').fill(childPair);await page.locator('#solveButton').click();
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('zhigeometry:last'))?.solution?.title==='分问编号核对');
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('zhigeometry:last')).solution);
+  assert.deepEqual(saved.parts.map(p=>p.index),[1,201,202]);
+  assert.equal(saved.restatement,childPair);
+  assert.match(submitted,/[（(]2[）)]：[（(]i[）)]/i);
 };

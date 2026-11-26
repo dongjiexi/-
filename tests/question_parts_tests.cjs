@@ -66,6 +66,17 @@ test('heading offsets point to the original tokens without changing text',()=>{
   const q='前提\n（1）求x；（2）根据（1）的结果求y。';for(const h of api.headings(q))assert.equal(q.slice(h.index,h.end),h.raw);
 });
 
+test('the wire copy separates only parent headings from their first child',()=>{
+  const q='已知椭圆。\n（1）求方程；（2）（i）求弦长；（ii）根据（2）（i）求面积。';
+  const wire=api.examContent(q,{forGateway:true});
+  assert.equal(wire,q.replace('（2）（i）求弦长','（2）：（i）求弦长'));
+  assert.equal(api.examContent(wire,{forGateway:true}),wire);
+  assert.equal(api.examContent(q),q);
+  assert.deepEqual(indexes(q),indexes(wire));
+  const large='文'.repeat(api.MAX_TEXT-q.length)+q;
+  assert.throws(()=>api.examContent(large,{forGateway:true}),error=>error.code==='QUESTION_PARTS_LENGTH');
+});
+
 test('exam paste layouts isolate printed marks while preserving maths and offsets',()=>{
   const cases=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/exam-copy-layouts.json'),'utf8'));
   for(const {input,content,parts,needsReview} of cases){

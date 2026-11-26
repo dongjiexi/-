@@ -24,7 +24,19 @@
     const contact='([A-Z][0-9]*′*)';
     const nameList=contact+'(?:点)?[、,，和与及](?:点)?'+contact;
     const references=new Set();
+    const sameEnds=(entry,[a,b])=>entry.ends?.length===2&&
+      ((name(entry.ends[0])===a&&name(entry.ends[1])===b)||(name(entry.ends[0])===b&&name(entry.ends[1])===a));
     for(const spec of window.DongAnswerRelations?.parse(text)||[]){
+      if(spec.op==='midpoint'){
+        const middle=entries.filter(entry=>entry.relation==='midpoint'&&name(entry.label)===spec.point&&sameEnds(entry,spec.ends));
+        if(middle.length!==1)continue;
+        selected.add(middle[0].id);
+        for(const ends of [spec.ends,...spec.vertices.map(vertex=>[vertex,spec.point])]){
+          const segments=entries.filter(entry=>entry.relation==='segment'&&sameEnds(entry,ends));
+          if(segments.length===1)selected.add(segments[0].id);
+        }
+        continue;
+      }
       if(spec.op!=='angle_bisector')continue;
       const targets=entries.filter(entry=>entry.angleSideParents&&name(entry.label)===name(spec.point));
       if(targets.length!==1)continue;

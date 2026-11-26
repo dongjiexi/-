@@ -33,8 +33,17 @@ module.exports=async({page,assert,screenshot})=>{
   assert.equal(await page.evaluate(()=>window.__unified.mode),13);
   const toolState=page.locator('.dong-ggb-head .board-tool-state');
   assert.equal(await toolState.locator('strong').textContent(),'切线');
+  assert.match(await toolState.textContent(),/选圆锥曲线及切点或外点/);
+  await page.evaluate(()=>{
+    const api=window.DongGeoGebra.getAPI(),setMode=api.setMode;
+    window.__unified.modeChanges=[];
+    api.setMode=value=>{window.__unified.modeChanges.push(value);setMode(value);};
+  });
   await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具',exact:true}).click();
   assert.equal(await page.locator('.unified-tools').getAttribute('open'),null);
+  await toolState.getByRole('button',{name:'重新选取',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>window.__unified.modeChanges),[0,13]);
+  assert.equal(await toolState.locator('strong').textContent(),'切线');
   await toolState.getByRole('button',{name:'退出工具',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.__unified.mode),0);
   assert(await toolState.isHidden());
@@ -70,6 +79,9 @@ module.exports=async({page,assert,screenshot})=>{
     await page.locator('.unified-tool-content').getByRole('button',{name:'切线',exact:true}).click();
     assert.equal(await page.locator('.unified-tools').getAttribute('open'),null);
     assert(await toolState.isVisible());
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    await toolState.getByRole('button',{name:'重新选取',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.__unified.mode),13);
     await toolState.getByRole('button',{name:'退出工具',exact:true}).click();
   }
   await screenshot('unified-mobile.png',null);

@@ -139,6 +139,22 @@
       const parents=[bisector.id,side.id];
       if(!checkExisting(part,target,'intersection',parents,{angleSide:true}))add(part,{op:'intersection',refs:parents,branch:0,label:target,angleSide:true});
     }
+    function addMidpoint(part,spec){
+      const refs=spec.ends.map(name=>relationPoint(part,name));
+      if(!refs.every(Boolean)){
+        pending(part,spec.point,'中点的两个端点尚未定位');
+        return;
+      }
+      if(!checkExisting(part,spec.point,'midpoint',refs))add(part,{op:'midpoint',refs,label:spec.point});
+      const middle=relationPoint(part,spec.point);
+      if(!middle)return;
+      for(const vertex of spec.vertices){
+        const origin=relationPoint(part,vertex),label=vertex+spec.point;
+        if(!origin){pending(part,label,'中线的顶点尚未定位');continue;}
+        add(part,{op:'segment',refs,label:spec.ends.join('')});
+        add(part,{op:'segment',refs:[origin,middle],label});
+      }
+    }
     for(const part of (parts||[]).slice(0,12)){
       activePart=part;
       const originalScopes=new Map(all().map(node=>[node.id,{parts:node.parts?.slice()}]));
@@ -156,7 +172,9 @@
       for(let pass=0;pass<4;pass++){
         const before=report.added.length;
         for(const spec of inferred?.specs||[]){
-          if(spec.op==='angle_bisector'){
+          if(spec.op==='midpoint'){
+            if(!blockedPoints.has(aliasKey(part,spec.point)))addMidpoint(part,spec);
+          }else if(spec.op==='angle_bisector'){
             if(!blockedPoints.has(aliasKey(part,spec.point)))addBisector(part,spec.points,spec.point);
           }else if(spec.op==='foot'){
             if(blockedPoints.has(aliasKey(part,spec.point)))continue;
@@ -186,11 +204,6 @@
               if((!start||start===b&&end===name)&&(!first||first===a&&last===c||first===c&&last===a))target=name;
             }
             addBisector(part,[a,b,c],target);
-          }
-          for(const re of [new RegExp('(?:设|取|记)?(?:点)?'+token+'(?:为|是)(?:线段|弦)?'+token+token+'的?中点','g'),new RegExp('(?:线段|弦)'+token+token+'的?中点(?:为|是|记为)(?:点)?'+token,'g')])for(const m of s.matchAll(re)){
-            const order=m[0].startsWith('线段')||m[0].startsWith('弦')?[m[3],m[1],m[2]]:[m[1],m[2],m[3]],refs=[point(order[1]),point(order[2])];
-            if(checkExisting(part,order[0],'midpoint',refs))continue;
-            if(refs.every(Boolean))add(part,{op:'midpoint',refs,label:order[0]});else pending(part,order[0],'中点的两个端点尚未定位');
           }
           for(const re of [new RegExp('(?:设|取|记)?(?:点)?'+token+'(?:为|是)(?:点)?'+token+'关于([xy])轴的?对称点','g'),new RegExp('(?:点)?'+token+'关于([xy])轴的?对称点(?:为|是|记为)(?:点)?'+token,'g')])for(const m of s.matchAll(re)){
             const reverse=/关于[xy]轴/.test(m[0])&&!/(?:为|是).+关于/.test(m[0]),name=reverse?m[3]:m[1],original=reverse?m[1]:m[2],axis=reverse?m[2]:m[3],refs=[point(original)],parameters={axis,axisValue:0};

@@ -14,6 +14,8 @@
   const LEAD='已知|若|当|设|在|由|从|利用|记|取|过(?!后|去|了)|令|如图|如表|求|证明|求证|写出|确定|计算|讨论|判断|说明|试|找出|给出|建立|作|研究|分析|选择|是否|椭圆|双曲线|抛物线|圆|直线|点|函数|数列|矩形|三角形|向量';
   const headStart='(?:'+LEAD+'|\\$|\\\\[\\[(]|[（(][ \\t　]*'+TOKEN+'[ \\t　]*[）)])';
   const startsWithPrompt=new RegExp('^(?:'+LEAD+')');
+  const firstChild=/^[（(]\s*(?:i|Ⅰ|ⅰ)\s*[）)]\s*/i;
+  const citationPrefix=/(?:根据|依据|参见|结合|利用|见|在|由|式|第|编号|条件)\s*$/;
   const examNumber=new RegExp('^\\s*(?:第[ \\t　]*'+NUMBER+'[ \\t　]*题[：:、．.]?|'+NUMBER+'[.．、](?![0-9０-９]))(?=[ \\t　]*(?:[\\r\\n]|'+SCORE+'|'+headStart+'))','i');
   const leadingScore=new RegExp('^(\\s*)'+SCORE+'(?=\\s*(?:'+headStart+'|$))','i');
   const trailingScore=new RegExp('([。；;！!？?]|\\r?\\n)[ \\t　]*'+SCORE+'(?=\\s*$)');
@@ -69,13 +71,21 @@
     if(value.length>MAX_TEXT)fail('QUESTION_PARTS_LENGTH',`题目超过 ${MAX_TEXT} 字符，请缩短或分题输入。`);
     return value;
   }
-  function isHeading(text,start,end){
+  function isHeading(text,start,end,roman){
     const before=stripWrap(text.slice(Math.max(0,start-160),start)),after=stripWrap(text.slice(end,end+180)),left=before.trimEnd(),right=after.trimStart();
     // Function arguments, radicals, arithmetic coefficients and adjacent citations.
     if(/^[+\-*/^=<>≤≥),%0-9０-９]/.test(right))return false;
     const adjacentRight=new RegExp('^[（(]\\s*'+TOKEN+'\\s*[）)]','i');
     const adjacentLeft=new RegExp('[（(]\\s*'+TOKEN+'\\s*[）)]\\s*$','i');
-    if(adjacentRight.test(right)||adjacentLeft.test(left))return false;
+    if(adjacentRight.test(right)){
+      // A parent can be printed immediately before its first Roman subquestion.
+      // Demand both a structural break and an actual prompt to keep citations intact.
+      const child=firstChild.exec(right);
+      const boundary=!left||/[。；;:：!?！？]$/.test(left)||/[\r\n]\s*$/.test(before);
+      if(roman||!child||!boundary||citationPrefix.test(left))return false;
+      return startsWithPrompt.test(stripLeadingScore(right.slice(child[0].length)).trimStart());
+    }
+    if(adjacentLeft.test(left))return false;
     // Common references: 在（1）的条件下、由（2）可知、原题第（1）问。
     if(/^(?:的?(?:条件|结论|结果|基础|假设|范围|小问)|问(?:[。；;,，）)]|$)|中(?:的|所得|所求|给出|提到|求)|所得|所求|给出|提到|可知|可得|成立|所示|与|和|、|及|或|至|到)/.test(right))return false;
     const lineLeft=text.slice(Math.max(text.lastIndexOf('\n',start-1),text.lastIndexOf('\r',start-1))+1,start);
@@ -89,7 +99,7 @@
   function scan(text,roman=false){
     const pattern=new RegExp('[（(]\\s*('+(roman?LETTER:NUMBER)+')\\s*[）)]',roman?'gi':'g'),result=[];
     for(const match of text.matchAll(pattern)){
-      if(!isHeading(text,match.index,match.index+match[0].length))continue;
+      if(!isHeading(text,match.index,match.index+match[0].length,roman))continue;
       const token=canonicalToken(match[1]),value=roman?token:Number(token);
       if(!roman&&value<1)continue;
       result.push({index:match.index,end:match.index+match[0].length,number:value,raw:match[0]});
@@ -99,7 +109,7 @@
   function headings(value){return scan(checkedText(value));}
   // Keep offsets in headings() relative to the submitted text. Only the copy
   // sent for solving loses grade labels and gains canonical heading tokens.
-  function examContent(value){
+  function examContent(value,{forGateway=false}={}){
     const original=foldFormulaLines(removePageFurniture(checkedText(value))),withoutNumber=original.replace(examNumber,'');
     const text=withoutNumber===original?stripLeadingScore(original):stripLeadingScore(withoutNumber).trimStart();
     const numeric=scan(text),all=[];
@@ -112,9 +122,15 @@
     const content=[stripTrailingScore(text.slice(0,all[0].index))];
     all.forEach((part,i)=>{
       content.push(part.raw.replace(/[０-９Ⅰ-Ⅷⅰ-ⅷ]/g,canonicalToken));
-      content.push(stripTrailingScore(stripLeadingScore(text.slice(part.end,all[i+1]?.index??text.length))));
+      const next=all[i+1],gap=text.slice(part.end,next?.index??text.length);
+      // Older gateways accept the same nested indices when the headings have
+      // punctuation between them. Apply this only to the transmitted copy.
+      if(forGateway&&typeof part.number==='number'&&next?.number==='i'&&!stripWrap(gap).trim())content.push('：');
+      content.push(stripTrailingScore(stripLeadingScore(gap)));
     });
-    return content.join('');
+    const result=content.join('');
+    if(forGateway&&result.length>MAX_TEXT)fail('QUESTION_PARTS_LENGTH','整理小问编号后超过云端单题长度，请缩短或分题输入。');
+    return result;
   }
   function splitParts(value){
     const text=examContent(value),matches=scan(text);

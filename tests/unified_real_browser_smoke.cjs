@@ -5,6 +5,37 @@ module.exports=async({page,assert,screenshot})=>{
   await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongGeoGebra.getAPI()?.exists('t'),null,{timeout:100000});
   assert.equal(await page.locator('#openGeoGebraInline').isVisible(),false);
   assert.equal(await page.locator('.dong-ggb-close').isVisible(),false);
+  const picks=['PickU','PickV','PickW'];
+  await page.evaluate(()=>{
+    const api=window.DongGeoGebra.getAPI();
+    for(const command of ['PickU=(-1,-1)','PickV=(1,-1)','PickW=(1,1)'])api.evalCommand(command);
+  });
+  const beforePicking=await page.evaluate(()=>window.DongGeoGebra.getAPI().getAllObjectNames());
+  await page.locator('.unified-tools > summary').click();
+  await page.locator('.unified-tool-content [data-mode="19"]').click();
+  await page.locator('.unified-tool-content').getByRole('button',{name:'收起工具'}).click();
+  async function pick(name){
+    const [x,y]=await page.evaluate(pointName=>{
+      const api=window.DongGeoGebra.getAPI(),raw=api.getViewProperties(1),v=typeof raw==='string'?JSON.parse(raw):raw;
+      const rect=[...document.querySelectorAll('#dong-geogebra-applet canvas')].map(c=>c.getBoundingClientRect()).sort((a,b)=>b.width*b.height-a.width*a.height)[0];
+      return [rect.left+(api.getXcoord(pointName)-v.xMin)/v.invXscale*rect.width/v.width,
+        rect.bottom-(api.getYcoord(pointName)-v.yMin)/v.invYscale*rect.height/v.height];
+    },name);
+    await page.mouse.click(x,y);
+  }
+  await pick(picks[0]);
+  const activeTool=page.locator('.dong-ggb-head .board-tool-state');
+  await activeTool.getByRole('button',{name:'重新选取'}).click();
+  await pick(picks[1]);
+  assert.deepEqual(await page.evaluate(()=>window.DongGeoGebra.getAPI().getAllObjectNames()),beforePicking,'Restart discards the earlier midpoint endpoint');
+  await pick(picks[2]);
+  const created=await page.waitForFunction(original=>{
+    const a=window.DongGeoGebra.getAPI();
+    return a.getAllObjectNames().find(n=>!original.includes(n)&&a.getObjectType(n)==='point'&&Math.abs(a.getXcoord(n)-1)<1e-7&&Math.abs(a.getYcoord(n))<1e-7);
+  },beforePicking);
+  const newMidpoint=await created.jsonValue();
+  await activeTool.getByRole('button',{name:'退出工具'}).click();
+  await page.evaluate(names=>{const a=window.DongGeoGebra.getAPI();names.forEach(n=>a.deleteObject(n));},[newMidpoint,...picks]);
   for(const selector of ['.unified-tools','.dong-ggb-tools']){
     await page.locator(selector+' > summary').click();
     const button=page.locator(selector+' > div button:visible').first();

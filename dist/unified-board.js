@@ -4,7 +4,17 @@
 (() => {
   'use strict';
   let options,source=null,started=false,failed=false,active=false,slot,board,status,tools,observer,pendingDraft=null,restoringDraft=null,closePointFinder=()=>{};
-  let toolState,toolName,selectedMode=0,deferredActivation=false;
+  let toolState,toolName,toolInstruction,restartTool,selectedMode=0,deferredActivation=false;
+  const selectionGuides=new Map([
+    [2,'依次选直线上的两点。'],[15,'依次选两个端点。'],[18,'先选起点，再选方向点。'],
+    [7,'先选向量的起点，再选终点。'],[5,'选择两个相交的图形。'],[19,'选择两个端点，或直接选线段。'],
+    [3,'选一点和一条参照直线。'],[4,'选一点和一条参照直线。'],[8,'选择两个端点，或直接选线段。'],
+    [9,'依次选边上的点、顶点、另一边上的点。'],[13,'选圆锥曲线及切点或外点。'],
+    [10,'先选圆心，再选圆周上的点。'],[11,'依次选三个不共线的点。'],
+    [55,'先选两个焦点，再选椭圆上的一点。'],[56,'先选两个焦点，再选双曲线上的一点。'],
+    [57,'选择焦点和准线。'],[12,'依次选五个确定圆锥曲线的点。'],
+    [16,'依次选各顶点，最后点回起点。'],[36,'依次选边上的点、顶点、另一边上的点。']
+  ]);
   const current=()=>options?.scene()||{isFreeBoard:true,objects:[],showDynamic:false};
   const sceneKey=value=>JSON.stringify(value);
   const sameScene=(left,right)=>window.DongGeoGebra.matchesScene?.(left,right)??left===right;
@@ -64,6 +74,8 @@
     selectedMode=mode;
     toolState.hidden=mode===0;
     toolName.textContent=label;
+    toolInstruction.textContent=selectionGuides.get(mode)||'';
+    restartTool.hidden=!selectionGuides.has(mode);
     for(const button of tools.querySelectorAll('[data-mode]'))button.setAttribute('aria-pressed',String(Number(button.dataset.mode)===mode));
   }
   function makeTools(){
@@ -101,6 +113,14 @@
     content.append(templates);host.prepend(tools);
     toolState=document.createElement('div');toolState.className='board-tool-state';toolState.hidden=true;
     toolName=document.createElement('strong');toolName.setAttribute('role','status');toolState.append(toolName);
+    toolInstruction=document.createElement('span');toolInstruction.className='tool-selection';toolState.append(toolInstruction);
+    restartTool=tool('重新选取',()=>{
+      const api=window.DongGeoGebra.getAPI();
+      api.setMode(0);api.setMode(selectedMode);
+      message('请从头选取。'+selectionGuides.get(selectedMode));
+      graphics.focus({preventScroll:true});
+    },toolState);
+    restartTool.className='button secondary';
     const exit=tool('退出工具',()=>{selectMode(0);message('已切回选择 / 拖动。');graphics.focus({preventScroll:true});},toolState);
     exit.className='button secondary';host.append(toolState);
     window.addEventListener('dong:board-rebuilt',()=>{if(selectedMode)selectMode(0);});
@@ -134,7 +154,7 @@
       if(!view||!Number.isFinite(x)||!Number.isFinite(y)){tick();return;}
       const halfWidth=view.width*view.invXscale/2,halfHeight=view.height*view.invYscale/2;
       a.setCoordSystem(x-halfWidth,x+halfWidth,y-halfHeight,y+halfHeight);
-      tick();
+      tick(true);
     },panel);
     center.disabled=true;
     const feedback=document.createElement('p');feedback.setAttribute('role','status');feedback.style.cssText='margin:6px 0 0;font-size:12px';
@@ -151,7 +171,7 @@
       const raw=a.getViewProperties(1),view=typeof raw==='string'?JSON.parse(raw):raw;
       return view&&[view.width,view.height,view.invXscale,view.invYscale].every(n=>Number.isFinite(n)&&n>0)?view:null;
     }
-    const tick=()=>{
+    const tick=(reveal=false)=>{
       marker.hidden=true;
       const unavailable=text=>{center.disabled=true;say(text);};
       if(panel.hidden||!active){center.disabled=true;clearInfo();return;}
@@ -181,7 +201,13 @@
         const x=(px-v.xMin)/v.invXscale,y=v.height-(py-v.yMin)/v.invYscale;
         if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>v.width||y>v.height){say('这个点在当前视野外，可点击“居中此点”。');return;}
         const left=rect.left+x*rect.width/v.width,top=rect.top+y*rect.height/v.height;
-        if(left<0||left>innerWidth||top<0||top>innerHeight){say('请滚动到画板查看定位。');return;}
+        if(left<0||left>innerWidth||top<0||top>innerHeight){
+          if(reveal===true&&options.mobileLayout?.matches){
+            host.parentElement.querySelector('.dong-ggb-host')?.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+            tick();
+          }else say('请滚动到画板查看定位。');
+          return;
+        }
         marker.style.left=left+'px';marker.style.top=top+'px';marker.hidden=false;
         say('正在定位 '+(a.getCaption(name)||name)+'（对象 '+name+'）；定位圈随点移动，不是新增点。');
       }catch{clearInfo();unavailable('画板正在更新，请稍候或刷新点名。');}
@@ -199,7 +225,7 @@
     closePointFinder=()=>{clearInterval(timer);timer=0;panel.hidden=true;marker.hidden=true;select.value='';clearInfo();};
     window.addEventListener('dong:board-rebuilt',closePointFinder);
     tool('结束定位',closePointFinder,panel);panel.append(feedback,pointInfo);host.append(panel);
-    select.addEventListener('change',tick);
+    select.addEventListener('change',()=>tick(true));
     const open=()=>{if(!active)return;files.open=false;tools.open=false;panel.hidden=false;refresh();clearInterval(timer);timer=setInterval(tick,250);select.focus();};
     tool('查找点',open,files.querySelector('div'));
     tool('定位点',open,host);

@@ -119,4 +119,41 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.equal(await page.locator('#solution .katex-error').count(),0);
   await screenshot('answer-geometry-gap-mobile.png',null);
+  // Keep the published source and number on the input. This exercises the
+  // displayed cloud steps, including an auxiliary median named in reverse.
+  await page.setViewportSize({width:1600,height:1000});
+  const medianStep='MC 是三角形 ABC 的中线。';
+  answer.parts[0].steps=[medianStep,'以 C 为原点，数量积为 1−3x−4y，由柯西不等式得范围为 [−4,6]。'];
+  await page.locator('#question').fill('2022 年北京卷第 10 题\n'+input.question);
+  await page.locator('#solveButton').click();
+  const medianButton=page.locator('#solution li').filter({hasText:medianStep}).locator('[data-step-graph-index]');
+  await medianButton.click();
+  assert.equal(await medianButton.getAttribute('aria-pressed'),'true');
+  const diagram=(await savedSolution()).scene;
+  const middle=diagram.objects.find(item=>item.label==='M'&&item.op==='midpoint');
+  const median=diagram.objects.find(item=>item.op==='segment'&&item.refs.includes(middle?.id)&&item.refs.includes('feature:C'));
+  assert(middle&&median,'Page solve installs a midpoint and the segment to the opposite vertex');
+  const selection=await page.evaluate(()=>window.DongBoardStep.snapshot());
+  for(const id of [middle.id,median.id])assert(selection.ids.includes(id),'Actual step button should highlight '+id);
+  const medianState=()=>page.locator('#sceneJson').evaluate((element,{middle,median})=>{
+    const scene=JSON.parse(element.value),{engine}=window.DongSceneAudit.frame(scene,window.DongConstruct);
+    return {a:engine.resolve('feature:A'),b:engine.resolve('feature:B'),m:engine.resolve(middle),cm:engine.resolve(median)};
+  },{middle:middle.id,median:median.id});
+  const checkMedian=({a,b,m,cm})=>{
+    assert(Math.abs(m.x-(a.x+b.x)/2)<1e-8&&Math.abs(m.y-(a.y+b.y)/2)<1e-8);
+    assert(Math.abs(cm.o.x+cm.d.x-m.x)<1e-8&&Math.abs(cm.o.y+cm.d.y-m.y)<1e-8);
+  };
+  const beforeDrag=await medianState();checkMedian(beforeDrag);
+  await page.locator('#unrestrictedMove').click();
+  await canvas.scrollIntoViewIfNeeded();
+  const where=await page.evaluate(()=>window.DongBoardLabels.snapshot().placements.find(p=>p.names?.includes('B')));
+  const bounds=await canvas.boundingBox();
+  await page.mouse.move(bounds.x+where.x,bounds.y+where.y);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x+where.x+55,bounds.y+where.y,{steps:8});
+  await page.mouse.up();
+  const afterDrag=await medianState();checkMedian(afterDrag);
+  assert(Math.abs(afterDrag.m.x-beforeDrag.m.x)>.1,'The midpoint must actually move');
+  await page.locator('#unrestrictedMove').click();
+  assert.deepEqual(await medianState(),beforeDrag);
 };

@@ -87,4 +87,49 @@ for(const input of [
   '直线l在A点与圆相切。',
   '直线l与曲线C相切于A，直线l与曲线D相切于B。'
 ])test(()=>assert.deepEqual(parse(input),[],input));
+const midpoint=(point,ends,vertices=[])=>({op:'midpoint',point,ends,vertices});
+for(const [text,spec] of [
+  ['AM是三角形ABC的一条中线。',midpoint('M',['B','C'],['A'])],
+  ['在△ABC中，MA为CB边上的中线。',midpoint('M',['B','C'],['A'])],
+  ['在△ABC中，作中线AM。',midpoint('M',['B','C'],['A'])],
+  ['作 $\\triangle A_1 B C$ 的中线 $A_1 M^{\\prime}$。',midpoint('M′',['B','C'],['A1'])],
+  ['在边BC上取点M，且BM=MC。',midpoint('M',['B','C'])],
+  ['M在弦CB上，且 $\\lvert MC\\rvert=\\lvert MB\\rvert$。',midpoint('M',['C','B'])],
+  ['取边BC的中点M。',midpoint('M',['B','C'])],
+  ['线段BC的中点记为M。',midpoint('M',['B','C'])]
+])test(()=>assert.deepEqual(parse(text),[spec],text));
+for(const text of [
+  '若AM为△ABC的中线。','求证AM是△ABC的中线。','不要作△ABC的中线AM。',
+  'AB是△ABC的中线。','PQ是△ABC的中线。','AD是△AAB的中线。',
+  '在△ABC中，AM为AB边上的中线。','M在边BC上，且BM=MC+1。','M在边BC上，且BM=2MC。',
+  'M在边BC上，且AM=MC。','M在圆弧BC上，且BM=MC。','M是弦BC的中点轨迹上的一点。'
+])test(()=>assert.deepEqual(parse(text),[],text));
+test(()=>{
+  const model=copy(base),steps=['M在边CB上，且BM=MC。','AM是△ABC的中线。','PM是△PCB的中线。'];
+  const response=[{index:2,steps}];
+  const install=()=>geometry.install(model,response,construct);
+  assert.equal(install().unresolved.length,0);
+  const get=label=>model.objects.find(node=>node.label===label);
+  const m=get('M');
+  assert.equal(m.op,'midpoint');assert.deepEqual(Array.from(m.parts),[2]);
+  for(const [label,vertex] of [['AM','A'],['PM','P']]){
+    assert.equal(get(label).op,'segment');assert.deepEqual(Array.from(get(label).refs),['feature:'+vertex,m.id]);
+  }
+  const count=model.objects.length;
+  assert.equal(install().added.length,0);assert.equal(model.objects.length,count);
+  model.points.C=[4,8];
+  const engine=audit.frame(model,construct).engine,position=engine.resolve(m.id);
+  assert.deepEqual([position.x,position.y],[3,6]);
+  const segment=engine.resolve(get('AM').id);
+  assert.deepEqual([segment.o.x+segment.d.x,segment.o.y+segment.d.y],[3,6]);
+});
+test(()=>{
+  const model=copy(base),report=geometry.install(model,[{index:1,steps:['AM是△ABC的中线。','M是AB的中点。','连接PM。']}],construct);
+  assert.equal(model.objects.length,0);
+  assert(report.unresolved.some(item=>item.label==='M'&&item.dependencyUnconfirmed));
+});
+test(()=>{
+  const model=copy(base),report=geometry.install(model,[{index:1,answer:'AM为△ABZ的中线。'}],construct);
+  assert.equal(model.objects.length,0);assert(report.unresolved.some(item=>item.label==='M'));
+});
 console.log('PASS answer geometry: '+checks+' dependency, exact-frame, idempotency, shared-part, rejected-fabrication and coverage checks');

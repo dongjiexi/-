@@ -27,9 +27,28 @@ module.exports = async ({page, assert}) => {
   }
   await page.locator('[data-construct="angle_bisector"]').click();
   let xy = await canvasCoordinates();
+  const back = page.locator('#stepBackNativeTool');
+  const picks = page.locator('#nativeSelection');
+  assert(await back.isHidden());
+  await page.mouse.click(...xy(-2, -2));
+  assert.match(await picks.textContent(), /P1/);
+  await back.click();
+  assert(await back.isHidden());
   await page.mouse.click(...xy(2, 0));
+  await page.mouse.click(...xy(-2, -2));
+  assert.equal(await picks.textContent(), '已选 A → P1');
+  await back.click();
+  assert.equal(await picks.textContent(), '已选 A');
+  await page.mouse.click(...xy(-1, 0));
+  await page.mouse.click(...xy(-1, 0));
+  assert.equal(await picks.textContent(), '已选 A → B');
+  assert.match(await page.locator('#dragHint').textContent(), /另选一点/);
+  await back.click();
+  assert.equal(await picks.textContent(), '已选 A');
   await page.mouse.click(...xy(-1, 0));
   await page.mouse.click(...xy(-1, 2));
+  assert(await back.isHidden());
+  assert.equal((await scene()).objects.length, fixture.objects.length + 1, 'Discarded tentative points never enter the drawing');
   const bisector = (await scene()).objects.at(-1);
   assert.equal(bisector.op, 'angle_bisector');
   assert.deepEqual(bisector.refs, ['a', 'b', 'c']);

@@ -161,7 +161,9 @@
     const timer=setTimeout(()=>controller.abort(),300000);
     let reader;
     try{
-      const response=await fetch(apiUrl(body.kind==='recognize'?'/api/recognize':'/api/stream'),{method:'POST',headers:{'Content-Type':'application/json',...(session?{Authorization:`Bearer ${session.token}`}:{})},body:JSON.stringify(body),signal:controller.signal});
+      const wireBody=body.kind==='solve'&&window.DongQuestionParts
+        ?{...body,text:window.DongQuestionParts.examContent(body.text,{forGateway:true})}:body;
+      const response=await fetch(apiUrl(body.kind==='recognize'?'/api/recognize':'/api/stream'),{method:'POST',headers:{'Content-Type':'application/json',...(session?{Authorization:`Bearer ${session.token}`}:{})},body:JSON.stringify(wireBody),signal:controller.signal});
       if(!response.ok){
         const data=(response.headers.get('content-type')||'').includes('application/json')?await response.json():null;
         if(response.status===401)clearRejectedSession(session);
