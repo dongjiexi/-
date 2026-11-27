@@ -4,7 +4,7 @@
   const pointOps=new Set(['point_on','midpoint','inverse','reflect_center','reflect_axis','foot','ellipse_tangent_point','intersection','second_intersection']);
   function category(node){
     if(node.kind==='point'||pointOps.has(node.op))return 'point';
-    if(node.kind==='circle'||node.op==='circle')return 'circle';
+    if(node.kind==='circle'||node.op==='circle'||node.op==='circumcircle')return 'circle';
     if(node.kind==='conic')return 'conic';
     if(['distance','angle_measure'].includes(node.op))return 'measure';
     return ['line','slope','vertical','through_points'].includes(node.kind)||['line','segment','ray','parallel','perpendicular','tangent','normal','line_angle','perp_bisector','angle_bisector'].includes(node.op)?'line':node.kind||node.op;

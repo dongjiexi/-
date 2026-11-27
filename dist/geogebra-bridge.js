@@ -602,9 +602,12 @@
         for(const item of pending){
           const refs=item.kind==='through_points'?[labels.get(item.a),labels.get(item.b)]:(item.refs||[]).map(ref);
           if(!refs.length||refs.some(v=>!v)){next.push(item);continue;}
-          const names={line:'Line',segment:'Segment',ray:'Ray',vector:'Vector',midpoint:'Midpoint',circle:'Circle',circumcircle:'Circle',perp_bisector:'PerpendicularBisector',parallel:'Line',perpendicular:'PerpendicularLine',tangent:'Tangent',distance:'Distance'};
+          const names={line:'Line',segment:'Segment',ray:'Ray',vector:'Vector',midpoint:'Midpoint',circle:'Circle',perp_bisector:'PerpendicularBisector',parallel:'Line',perpendicular:'PerpendicularLine',tangent:'Tangent',distance:'Distance'};
           let expression=null,seed=null;
           if(item.kind==='through_points')expression=(item.infinite?'Line':'Segment')+'('+refs.join(',')+')';
+          // GeoGebra's Circle(A,B,C) can remain defined as a line for collinear
+          // points. Keep the circumcircle undefined until the triangle recovers.
+          else if(item.op==='circumcircle'&&refs.length===3)expression='If(AreCollinear('+refs.join(',')+') == false,Circle('+refs.join(',')+'))';
           else if(item.op==='angle_bisector'&&refs.length===3)expression='AngleBisector('+refs.join(',')+')';
           else if(names[item.op])expression=names[item.op]+'('+refs.join(',')+')';
           else if(item.op==='intersection'){

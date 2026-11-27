@@ -145,4 +145,60 @@ test(()=>{
     assert.equal(scene.objects.length,0,text);
   }
 });
-console.log('PASS answer dependency: '+checks+' symmetry, angle-bisector, tangent, intersection and live-chain property checks');
+test(()=>{
+  const scene=copy(base);
+  scene.points={A:[3,0],B:[0,4],C:[0,0]};
+  const text='直线m与直线AC交于点K。线段AB的垂直平分线为m。直线m是BA的中垂线。';
+  const result=install(scene,text);
+  assert.equal(result.unresolved.length,0);assert.equal(node(scene,'m').op,'perp_bisector');
+  assert(node(scene,'K').refs.includes(node(scene,'m').id));
+  assert(Math.abs(coords(scene,'K')[0]+7/6)<1e-9);
+  const size=scene.objects.length;install(scene,text);assert.equal(scene.objects.length,size);
+  scene.points.B=[1,5];
+  const [x,y]=coords(scene,'K');
+  assert(Math.abs(Math.hypot(x-3,y)-Math.hypot(x-1,y-5))<1e-9);
+  assert.equal(y,0);
+  install(scene,'在直线m上取点H，且BH⊥m。',2);
+  assert.equal(node(scene,'H').refs[1],node(scene,'m').id);
+  assert.deepEqual(Array.from(node(scene,'m').parts),[1,2]);
+});
+test(()=>{
+  const scene=copy(base);
+  scene.points.B=scene.points.A.slice();
+  install(scene,'作AB的中垂线m。直线m与AC交于点T。');
+  assert(node(scene,'m').deferredConstruction&&node(scene,'T').deferredConstruction);
+  assert.equal(resolve(scene,'m'),null);assert.equal(resolve(scene,'T'),null);
+  scene.points.B=[2,4];assert.deepEqual(coords(scene,'T'),[2,1]);
+});
+test(()=>{
+  const scene=copy(base);
+  scene.objects.push({id:'existing',kind:'construction',op:'perp_bisector',source:'user',label:'m',refs:['feature:B','feature:A']});
+  const before=copy(scene.objects[0]);install(scene,'直线m是AB的中垂线，m与AC交于点T。');
+  assert.deepEqual(scene.objects[0],before);assert.equal(node(scene,'T').refs[0],'existing');
+});
+for(const condition of ['conflicting line','different endpoints','dynamic chord','second chord','unknown endpoint','other part']){
+  test(()=>{
+    const scene=copy(base);
+    const from='线段'+(condition==='unknown endpoint'?'AZ':'AB')+'的垂直平分线为m。';
+    let extra='';
+    if(condition==='different endpoints')extra='弦AC的中垂线为m。';
+    if(condition==='dynamic chord')Object.assign(scene,{showDynamic:true,dynamicLine:true,dynamicLineLabel:'m'});
+    if(condition==='second chord')scene.pairedChord={lineLabel:'m',labels:['J','V']};
+    if(['conflicting line','unknown endpoint','other part'].includes(condition))
+      scene.lines.push({id:'original',kind:'vertical',x:3,label:'m',source:'user',...(condition==='other part'?{part:2}:{})});
+    const given=copy(scene.lines);
+    const report=install(scene,'m与AC交于点T。'+from+extra);
+    assert.deepEqual(scene.lines,given);assert(!node(scene,'T'),condition);assert(!node(scene,'m'),condition);
+    assert(report.unresolved.some(n=>n.label==='m'&&n.dependencyUnconfirmed),condition);
+  });
+}
+test(()=>{
+  const scene=copy(base);
+  scene.objects.push({id:'part-one-axis',op:'perp_bisector',kind:'construction',source:'user',part:1,label:'m',refs:['feature:A','feature:B']});
+  const report=install(scene,'直线m与直线AC交于点K。',2);
+  assert(!node(scene,'K'));assert(report.unresolved.some(n=>n.label==='K'));
+  scene.objects.push({id:'part-two-axis',op:'perp_bisector',kind:'construction',source:'user',part:2,label:'m',refs:['feature:P','feature:C']});
+  install(scene,'直线m与直线AC交于点K。',2);
+  assert.equal(node(scene,'K').refs[0],'part-two-axis');
+});
+console.log('PASS answer dependency: '+checks+' symmetry, bisector, tangent, intersection and live-chain property checks');

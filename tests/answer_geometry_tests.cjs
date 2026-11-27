@@ -132,4 +132,14 @@ test(()=>{
   const model=copy(base),report=geometry.install(model,[{index:1,answer:'AM为△ABZ的中线。'}],construct);
   assert.equal(model.objects.length,0);assert(report.unresolved.some(item=>item.label==='M'));
 });
+for(const [text,ends,line] of [
+  ['线段AB的垂直平分线为l。',['A','B'],'l'],
+  ['直线l是弦AB的中垂线。',['A','B'],'l'],
+  ['作BA的垂直平分线l。',['B','A'],'l'],
+  ['作边AB的中垂线，记为直线m。',['A','B'],'m'],
+  ['设 $\\ell_1$ 为线段 $\\overline{A_1 B^{\\prime}}$ 的垂直平分线。',['A1','B′'],'l1']
+])test(()=>assert.deepEqual(parse(text),[{op:'perp_bisector',ends,line}],text));
+for(const text of ['若直线l是弦AB的中垂线。','求证直线l是AB的中垂线。','判断线段AB的中垂线是否为l。',
+  '作AA的中垂线l。','线段AB的中垂线为l的平行线。','直线l与AB的中垂线相交。','直线l是AB的垂线。','不要作AB的中垂线l。'])
+  test(()=>assert.deepEqual(parse(text),[],text));
 console.log('PASS answer geometry: '+checks+' dependency, exact-frame, idempotency, shared-part, rejected-fabrication and coverage checks');

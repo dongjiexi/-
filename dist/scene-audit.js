@@ -169,6 +169,26 @@
           const a=engine.resolve(node.refs[0]),b=engine.resolve(node.refs[1]);
           if(finite(a)&&finite(b))report.checks.push({label:node.label||node.id,kind:'midpoint',passed:Math.hypot(value.x-(a.x+b.x)/2,value.y-(a.y+b.y)/2)<1e-7*(1+Math.hypot(a.x,a.y,b.x,b.y)),part:node.part,parts:node.parts,detail:'与两端点坐标平均值一致（当前位置）'});
         }
+        if(node.op==='perp_bisector'&&value.type==='line'){
+          const [a,b]=node.refs.map(ref=>engine.resolve(ref));
+          if(finite(a)&&finite(b)&&finite(value.d)&&finite(value.o)){
+            const dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy),direction=Math.hypot(value.d.x,value.d.y);
+            const mx=a.x+dx/2,my=a.y+dy/2;
+            const offset=Math.abs((mx-value.o.x)*value.d.y-(my-value.o.y)*value.d.x)/direction;
+            const cosine=Math.abs(dx*value.d.x+dy*value.d.y)/(direction*length);
+            report.checks.push({label:node.label||node.id,kind:node.op,part:node.part,parts:node.parts,
+              passed:cosine<1e-7&&offset<1e-7*(1+length),detail:'直线经过线段中点，且与线段垂直（当前位置）'});
+          }
+        }
+        if(node.op==='circumcircle'&&value.type==='circle'){
+          const vertices=node.refs.map(ref=>engine.resolve(ref));
+          if(vertices.every(finite)){
+            const passed=Number.isFinite(value.r)&&value.r>0&&vertices.every(p=>
+              Math.abs(Math.hypot(p.x-value.x,p.y-value.y)-value.r)<1e-7*(1+value.r));
+            report.checks.push({label:node.label||node.id,kind:node.op,part:node.part,parts:node.parts,
+              passed,detail:'三个顶点到圆心的距离均等于半径（当前位置）'});
+          }
+        }
         if(node.op==='reflect_axis'||node.op==='reflect_center'){
           const source=engine.resolve(node.refs[0]),center=node.op==='reflect_center'?engine.resolve(node.refs[1]):null,axisValue=Number(node.axisValue)||0;
           if(finite(source)&&(node.op!=='reflect_center'||finite(center))){

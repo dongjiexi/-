@@ -123,7 +123,9 @@ module.exports=async({page,context,assert,screenshot})=>{
   // displayed cloud steps, including an auxiliary median named in reverse.
   await page.setViewportSize({width:1600,height:1000});
   const medianStep='MC 是三角形 ABC 的中线。';
-  answer.parts[0].steps=[medianStep,'以 C 为原点，数量积为 1−3x−4y，由柯西不等式得范围为 [−4,6]。'];
+  const bisectorStep='直线l是线段AB的垂直平分线。';
+  const crossingStep='直线l与直线AC交于点K。';
+  answer.parts[0].steps=[medianStep,bisectorStep,crossingStep,'以 C 为原点，数量积为 1−3x−4y，由柯西不等式得范围为 [−4,6]。'];
   await page.locator('#question').fill('2022 年北京卷第 10 题\n'+input.question);
   await page.locator('#solveButton').click();
   const medianButton=page.locator('#solution li').filter({hasText:medianStep}).locator('[data-step-graph-index]');
@@ -135,15 +137,33 @@ module.exports=async({page,context,assert,screenshot})=>{
   assert(middle&&median,'Page solve installs a midpoint and the segment to the opposite vertex');
   const selection=await page.evaluate(()=>window.DongBoardStep.snapshot());
   for(const id of [middle.id,median.id])assert(selection.ids.includes(id),'Actual step button should highlight '+id);
-  const medianState=()=>page.locator('#sceneJson').evaluate((element,{middle,median})=>{
+  const axes=diagram.objects.filter(item=>item.op==='perp_bisector');
+  assert.equal(axes.length,1,'The answer should construct one perpendicular bisector');
+  const [axis]=axes;
+  assert([axis.label,...(axis.aliases||[])].includes('l'),'Later steps must be able to use its given name');
+  assert.deepEqual([...axis.refs].sort(),['feature:A','feature:B']);
+  const crossing=diagram.objects.find(item=>item.op==='intersection'&&item.label==='K');
+  assert(crossing?.refs.includes(axis.id),'K must reference the actual perpendicular bisector');
+  for(const [step,id] of [[bisectorStep,axis.id],[crossingStep,crossing.id]]){
+    const button=page.locator('#solution li').filter({hasText:step}).locator('[data-step-graph-index]');
+    await button.click();
+    assert.equal(await button.getAttribute('aria-pressed'),'true');
+    assert((await page.evaluate(()=>window.DongBoardStep.snapshot())).ids.includes(id),'Step button should highlight '+id);
+  }
+  const constructionState=()=>page.locator('#sceneJson').evaluate((element,{middle,median,axis,crossing})=>{
     const scene=JSON.parse(element.value),{engine}=window.DongSceneAudit.frame(scene,window.DongConstruct);
-    return {a:engine.resolve('feature:A'),b:engine.resolve('feature:B'),m:engine.resolve(middle),cm:engine.resolve(median)};
-  },{middle:middle.id,median:median.id});
-  const checkMedian=({a,b,m,cm})=>{
+    return {a:engine.resolve('feature:A'),b:engine.resolve('feature:B'),m:engine.resolve(middle),cm:engine.resolve(median),axis:engine.resolve(axis),k:engine.resolve(crossing)};
+  },{middle:middle.id,median:median.id,axis:axis.id,crossing:crossing.id});
+  const checkConstructions=({a,b,m,cm,axis,k})=>{
     assert(Math.abs(m.x-(a.x+b.x)/2)<1e-8&&Math.abs(m.y-(a.y+b.y)/2)<1e-8);
     assert(Math.abs(cm.o.x+cm.d.x-m.x)<1e-8&&Math.abs(cm.o.y+cm.d.y-m.y)<1e-8);
+    assert(Math.abs((b.x-a.x)*axis.d.x+(b.y-a.y)*axis.d.y)<1e-8,'The bisector must stay perpendicular');
+    assert(Math.abs((m.x-axis.o.x)*axis.d.y-(m.y-axis.o.y)*axis.d.x)<1e-8,'The bisector must pass through the midpoint');
+    assert.equal(k.type,'point');
+    assert(Math.abs(k.y)<1e-8,'K lies on AC, the x-axis');
+    assert(Math.abs(Math.hypot(k.x-a.x,k.y-a.y)-Math.hypot(k.x-b.x,k.y-b.y))<1e-8,'K must stay equidistant from A and B');
   };
-  const beforeDrag=await medianState();checkMedian(beforeDrag);
+  const beforeDrag=await constructionState();checkConstructions(beforeDrag);
   await page.locator('#unrestrictedMove').click();
   await canvas.scrollIntoViewIfNeeded();
   const where=await page.evaluate(()=>window.DongBoardLabels.snapshot().placements.find(p=>p.names?.includes('B')));
@@ -152,8 +172,9 @@ module.exports=async({page,context,assert,screenshot})=>{
   await page.mouse.down();
   await page.mouse.move(bounds.x+where.x+55,bounds.y+where.y,{steps:8});
   await page.mouse.up();
-  const afterDrag=await medianState();checkMedian(afterDrag);
+  const afterDrag=await constructionState();checkConstructions(afterDrag);
   assert(Math.abs(afterDrag.m.x-beforeDrag.m.x)>.1,'The midpoint must actually move');
+  assert(Math.abs(afterDrag.k.x-beforeDrag.k.x)>.1,'The intersection must move with the bisector');
   await page.locator('#unrestrictedMove').click();
-  assert.deepEqual(await medianState(),beforeDrag);
+  assert.deepEqual(await constructionState(),beforeDrag);
 };

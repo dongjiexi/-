@@ -31,9 +31,15 @@
     // engines without exposing their controls or silently switching to them.
     const cloudOnly=document.body.dataset.cloudOnly==='true';
     const mobileNav=find('.mobile-panel-nav'),workspace=find('.workspace');
+    const lessonTab=mobileNav.querySelector('[data-mobile-panel="lesson"]');
+    const lessonTabName=lessonTab.textContent;
     const solveProgress=find('#solveProgress'),openCurrentSolution=find('#openCurrentSolution');
     const panelOffsets={input:0,lesson:0,board:0};
-    let panelFrame;
+    let panelFrame,returnStep=null;
+    function rememberStepForReturn(step){
+      returnStep=step;
+      lessonTab.textContent=step?'返回第 '+(step.index+1)+' 步':lessonTabName;
+    }
     const workAreaStart=()=>workspace.getBoundingClientRect().top+window.scrollY-mobileNav.offsetHeight;
     function updateSolutionShortcut(){
       const answer=api.state.solution;
@@ -49,6 +55,8 @@
     function setMobilePanel(panel,{position='restore',view='lesson'}={}){
       if(panel==='input'&&document.body.classList.contains('classroom-mode'))return;
       const previous=workspace.dataset.mobileView,mobile=api.mobileLayout.matches;
+      const destination=mobile&&previous==='board'&&panel==='lesson'&&view==='lesson'&&position==='restore'?returnStep:null;
+      if(panel!=='board')rememberStepForReturn(null);
       if(mobile&&previous!==panel){
         panelOffsets[previous]=Math.max(0,window.scrollY-workAreaStart());
         api.closeMathKeyboard();
@@ -63,6 +71,14 @@
       // Hidden canvas dimensions are zero; redraw only after the selected panel is laid out.
       panelFrame=requestAnimationFrame(()=>{
         if(!api.mobileLayout.matches||workspace.dataset.mobileView!==panel)return;
+        if(destination&&destination===selectedStep){
+          const step=find('#solution [data-step-graph-index][aria-pressed="true"]');
+          if(step?.getClientRects().length){
+            step.scrollIntoView({block:'center',behavior:'instant'});
+            step.focus({preventScroll:true});
+            return;
+          }
+        }
         if(panel==='board')api.render();
         const offset=position==='restore'&&!changedView?panelOffsets[panel]:0;
         window.scrollTo({top:Math.max(0,workAreaStart()+offset),behavior:'instant'});
@@ -267,6 +283,7 @@
     let inspectorView='geometry',lastSolution=null,classroom=null;
     let selectedStep=null,lastStepPart=api.state.activePart,lastStepQuestion=api.question.value;
     function updateStepControls(){
+      if(returnStep&&returnStep!==selectedStep)rememberStepForReturn(null);
       const panel=find('#solution');
       panel.querySelectorAll('[data-step-graph-index]').forEach(button=>{
         const active=!!selectedStep&&Number(button.dataset.stepGraphPart)===selectedStep.part&&Number(button.dataset.stepGraphIndex)===selectedStep.index;
@@ -275,6 +292,14 @@
       });
       const toolbar=panel.querySelector('.step-graph-toolbar');
       if(!toolbar)return;
+      const open=panel.querySelector('[data-step-graph-open]');
+      const selected=panel.querySelector('[data-step-graph-index][aria-pressed="true"]');
+      if(api.mobileLayout.matches&&selected&&selectedStep?.matched.length){
+        if(selected.nextElementSibling!==open)selected.after(open);
+      }else if(!toolbar.contains(open)){
+        toolbar.insertBefore(open,toolbar.querySelector('[data-step-graph-clear]'));
+      }
+      open.hidden=!selectedStep?.matched.length;
       toolbar.hidden=!selectedStep;
       if(!selectedStep)return;
       const {matched,missing}=selectedStep;
@@ -282,10 +307,10 @@
       if(missing.length)messages.push(`未找到或未显示：${missing.join('、')}。`);
       messages.push('仅用于图形定位，不代表本步证明通过。');
       toolbar.querySelector('[data-step-graph-status]').textContent=messages.join('');
-      toolbar.querySelector('[data-step-graph-open]').hidden=!matched.length;
     }
     function clearStepHighlight(){
       selectedStep=null;
+      rememberStepForReturn(null);
       api.clearStepHighlight?.();
       updateStepControls();
     }
@@ -317,10 +342,18 @@
     }
     function showStepBoard(){
       if(!selectedStep?.matched.length)return;
+      rememberStepForReturn(api.mobileLayout.matches?selectedStep:null);
       setMobilePanel('board',{position:'start'});
-      const title=find('#boardTitle');
-      title?.focus({preventScroll:true});
+      const drawing=window.DongUnifiedBoard?.isActive?.()?find('.dong-ggb-host'):api.canvas;
+      if(drawing){
+        if(api.mobileLayout.matches)api.showDrawingArea(drawing,drawing);
+        else drawing.focus({preventScroll:true});
+      }
     }
+    api.mobileLayout.addEventListener('change',()=>{
+      if(!api.mobileLayout.matches)rememberStepForReturn(null);
+      if(selectedStep)updateStepControls();
+    });
     function bindStepLinks(panel,solution){
       panel.querySelector('[data-step-graph-clear]')?.addEventListener('click',clearStepHighlight);
       panel.querySelector('[data-step-graph-open]')?.addEventListener('click',showStepBoard);
@@ -389,7 +422,7 @@
           '<p>仅在原图留档：</p><ul>'+archived.filter(item=>typeof item?.label==='string'&&typeof item.reason==='string').slice(0,110).map(item=>'<li>'+escapeText(item.label)+' · '+escapeText(item.reason)+'</li>').join('')+'</ul>':''}</details>`:'';
       const diagramReport=audit?`${graphNotice}<details class="diagram-audit"><summary>图形核对 · 缺失点 ${(audit.missing?.length||0)+(audit.answerMissing?.length||0)} · 缺失线 ${(audit.missingLines?.length||0)+(audit.answerMissingLines?.length||0)} · 无效构造 ${audit.invalid?.length||0}</summary><p>${escapeText(audit.note)}</p>${!all?'<button type="button" class="button secondary" data-diagram-recheck>重新核对当前图形</button>':''}${auditRows}${audit.answerUnresolved?.length?'<p>'+escapeText(audit.answerUnresolved.map(n=>n.label+'：'+n.reason).join('；'))+'</p>':''}<ul>${(audit.checks||[]).filter(c=>all||window.DongSceneAudit.visible(c,active)).map(c=>`<li>${c.passed?'✓':'未通过'} ${escapeText(c.label)}：${escapeText(c.detail)}</li>`).join('')}</ul>${modelGraph}</details>`:'';
       const stepLinks=!all&&typeof api.highlightStep==='function';
-      const linkToolbar=stepLinks?'<div class="step-graph-toolbar" hidden><span data-step-graph-status role="status" aria-live="polite"></span><button type="button" data-step-graph-open>查看画板</button><button type="button" data-step-graph-clear>清除高亮</button></div>':'';
+      const linkToolbar=stepLinks?'<div class="step-graph-toolbar" hidden><span data-step-graph-status role="status" aria-live="polite"></span><button type="button" data-step-graph-open hidden>查看画板</button><button type="button" data-step-graph-clear>清除高亮</button></div>':'';
       const partMarkup=visible.map(part=>{const partTrust=part.verification||(solution.mode==='symbolic-fallback'&&part.status==='answered'?{status:report.status||'generated',message:'内置确定性复算'}:{status:'generated',message:'仅生成'});const derivation=part.derivation||{};const obligations=derivation.proof_obligations||[];return `<section class="part-body" data-part-index="${escapeText(part.index)}"><h3>${escapeText(part.label||'本问')}</h3><span class="answer-status ${['answered','partial','needs_information'].includes(part.status)?part.status:'partial'}">${escapeText(statusNames[part.status]||'请核对解答')}</span><span class="verification-status ${escapeText(partTrust.status||'generated')}">${escapeText(verificationNames[partTrust.status]||partTrust.message||'待核验')}</span>${retryable&&!window.DongSolutionReview.complete(part)?`<button type="button" class="button secondary" data-solution-continue="${Number(part.index)}">继续解答本问</button>`:''}<div class="answer-summary">${textBlock(part.answer)}</div><ol>${(part.steps||[]).map((step,index)=>'<li>'+textBlock(step)+(stepLinks?`<button type="button" class="step-graph-link" data-step-graph-part="${Number(part.index)||0}" data-step-graph-index="${index}" aria-pressed="false" aria-label="高亮第 ${index+1} 步对应图形">对应图形</button>`:'')+'</li>').join('')}</ol>${obligations.length?`<details class="proof-obligations"><summary>尚需完成的证明义务（${obligations.length}）</summary><ul>${obligations.map(item=>'<li>'+textBlock(item)+'</li>').join('')}</ul></details>`:''}${part.quality_notice?`<p class="verification-conflict">${escapeText(part.quality_notice)}</p>`:''}${part.model_answer||part.model_steps?.length?`<details class="model-original"><summary>查看 AI 原始判断与步骤（未证实）</summary>${part.model_answer?textBlock(part.model_answer):''}<ol>${(part.model_steps||[]).map(step=>'<li>'+textBlock(step)+'</li>').join('')}</ol></details>`:''}${checkList(part)}</section>`;}).join('');
       return `<h3>${escapeText(solution.title||'解题结果')}</h3><p>${escapeText(summary)}${solution.model?' · '+escapeText(solution.model):''}</p>${reviewMarkup}${trust}${imported}${provenance}${stale}${pendingDraft}${solution.quality_notice?`<p class="verification-conflict">${escapeText(solution.quality_notice)}</p>`:''}<details data-lesson-detail="problem"><summary>查看原题</summary>${textBlock(solution.restatement)}</details>${modelDetails}${tabs}${solution.knowns?.length?`<details data-lesson-detail="knowns"><summary>已知条件</summary><ul>${solution.knowns.map(value=>'<li>'+textBlock(value)+'</li>').join('')}</ul></details>`:''}${solution.strategy?`<div class="method-overview"><p><strong>解题方法</strong></p>${textBlock(solution.strategy)}</div>`:''}${linkToolbar}${partMarkup}${diagramReport}${externalReply}${solution.assumptions?.length?`<p class="lesson-assumptions">使用的假设：${escapeText(solution.assumptions.join('；'))}</p>`:''}<div class="proof">${escapeText(report.message||'尚未核验')}${solution.scene_notice?'<p>'+escapeText(solution.scene_notice)+'</p>':''}</div>`;
     }

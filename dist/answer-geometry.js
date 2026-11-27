@@ -5,9 +5,9 @@
   const pointOps=new Set(['point_on','midpoint','inverse','reflect_axis','reflect_center','foot','ellipse_tangent_point','intersection','second_intersection']);
   const token='([A-Z](?:[0-9₀₁₂₃₄₅₆₇₈₉]+)?[′]?)';
   const pointName=token.slice(1,-1),alias='[a-z](?:[A-Z]|[0-9₀₁₂₃₄₅₆₇₈₉]{1,3})?[′]?',lineName='(?:'+pointName+pointName+'|'+alias+')';
-  const lineOps=new Set(['line','segment','ray','parallel','perpendicular','line_angle','angle_bisector','tangent','normal']),lineKinds=new Set(['line','slope','vertical','through_points']);
+  const lineOps=new Set(['line','segment','ray','parallel','perpendicular','line_angle','angle_bisector','perp_bisector','tangent','normal']),lineKinds=new Set(['line','slope','vertical','through_points']);
   const lineNode=n=>lineOps.has(n.op)||lineKinds.has(n.kind);
-  const clean=text=>(root.DongMathInput?.toPlain(text)??String(text||'')).replace(/\\angle\b/g,'∠').replace(/\\(?:left|right|prime)/g,m=>m.endsWith('prime')?'′':'').replace(/[_{}$\s]/g,'').replace(/'/g,'′');
+  const clean=text=>(root.DongMathInput?.toPlain(text)??String(text||'')).replace(/\\ell(?![A-Za-z])/g,'l').replace(/\\angle\b/g,'∠').replace(/\\(?:left|right|prime)/g,m=>m.endsWith('prime')?'′':'').replace(/[_{}$\s]/g,'').replace(/'/g,'′');
   const drawBisector=new RegExp('(?:作|画)(?:出)?(?:∠|角)'+token+token+token+'的?(?:内角|角)?平分线','g');
   const sideName='(?:对边|(?:对边|线段|边)?'+token+token+')';
   const meetsSide=new RegExp('^(?:'+token+token+')?[，,]?(?:交'+sideName+'于|与'+sideName+'交于)(?:点)?'+token+'(?![A-Za-z0-9₀₁₂₃₄₅₆₇₈₉′])');
@@ -17,6 +17,8 @@
     const canonical=root.DongSceneAudit.canonical,all=()=>[...scene.lines,...scene.objects];
     const used=new Set(all().map(n=>n.id).filter(Boolean));
     const blockedAliases=new Set(),aliasKey=(part,name)=>String(part.index??'all')+'\0'+canonical(name);
+    const awaitingDividers=new Set();
+    const usableLineName=(part,name)=>!blockedAliases.has(aliasKey(part,name))&&!awaitingDividers.has(aliasKey(part,name));
     const blockedPoints=new Set();let activePart=null;
     const unique=stem=>{let id=stem,i=1;while(used.has(id))id=stem+'-'+i++;used.add(id);return id;};
     const current=(part=activePart?.index)=>root.DongSceneAudit.frame({...scene,activePart:part},construct);
@@ -69,7 +71,7 @@
     const add=(part,node)=>{
       if(pointOps.has(node.op)&&existingPoint(part,node.label))return null;
       const forward=JSON.stringify(node.refs);
-      const reverse=['angle_bisector','segment'].includes(node.op)?JSON.stringify([...node.refs].reverse()):null;
+      const reverse=['angle_bisector','perp_bisector','segment'].includes(node.op)?JSON.stringify([...node.refs].reverse()):null;
       const existing=all().find(n=>{
         if(!inPart(n,part))return false;
         if(n.op!==node.op&&(!node.role||n.role!==node.role))return false;
@@ -88,20 +90,23 @@
         // Distinct known lines may temporarily be parallel/coincident. Keep
         // their intersection dependency, never a guessed intersection point.
         const deferredRef=(ref,seen=new Set())=>{if(seen.has(ref)||seen.size>=20)return false;seen.add(ref);const upstream=all().find(n=>n.id===ref);return upstream?.deferredConstruction===true||upstream?.refs?.some(r=>deferredRef(r,new Set(seen)));};
-        const latent=node.op==='intersection'&&refs.length===2&&refs[0]!==refs[1]&&inputs.every(v=>v?.type==='line');
-        const dependencyTypes={segment:['point','point'],line:['point','point'],midpoint:['point','point'],reflect_axis:['point'],reflect_center:['point','point'],foot:['point','line'],angle_bisector:['point','point','point'],...(node.angleSide?{intersection:['line','line']}:{})},types=dependencyTypes[node.op];
+        const latentIntersection=node.op==='intersection'&&refs.length===2&&refs[0]!==refs[1]&&inputs.every(v=>v?.type==='line');
+        const coincidentEnds=node.op==='perp_bisector'&&refs[0]!==refs[1]&&inputs.every(v=>v?.type==='point');
+        const dependencyTypes={segment:['point','point'],line:['point','point'],midpoint:['point','point'],perp_bisector:['point','point'],reflect_axis:['point'],reflect_center:['point','point'],foot:['point','line'],angle_bisector:['point','point','point'],intersection:['line','line']},types=dependencyTypes[node.op];
         const deferred=types&&refs.length===types.length&&inputs.some((v,i)=>!v&&deferredRef(refs[i]))&&inputs.every((v,i)=>v?v.type===types[i]:deferredRef(refs[i]));
-        if(!latent&&!deferred){scene.objects.pop();pending(part,node.label,'当前构型无法构造，未猜测坐标或方程');return null;}
-        item.deferredConstruction=true;pending(part,node.label,latent?'两条已知直线当前没有唯一有限交点；保留依赖，构型恢复后自动重算':'所依赖的交点当前不可用；保留构造关系，交点恢复后自动重算');
+        if(!latentIntersection&&!coincidentEnds&&!deferred){scene.objects.pop();pending(part,node.label,'当前构型无法构造，未猜测坐标或方程');return null;}
+        item.deferredConstruction=true;
+        const reason=coincidentEnds?'两端点当前重合，分开后自动重算中垂线':latentIntersection?'两条已知直线当前没有唯一有限交点；保留依赖，构型恢复后自动重算':'所依赖的构造当前不可用，构型恢复后自动重算';
+        pending(part,node.label,reason);
       }
       report.added.push({id:item.id,label:item.label,...scope(part)});return item;
     };
     const line=(part,name,scoped=false)=>{
       const key=canonical(name).replace(/^(直线|线段)/,'');
-      if(blockedAliases.has(aliasKey(part,key)))return null;
+      if(!usableLineName(part,key))return null;
       if(scene.showDynamic!==false&&(scene.showDynamic||scene.dynamicLine)&&key===canonical(scene.dynamicLineLabel||'l'))return '$dynamic';
       const named=all().filter(n=>lineNode(n)&&[n.label,...(Array.isArray(n.aliases)?n.aliases.slice(0,12):[])].some(label=>canonical(label).replace(/^(直线|线段)/,'')===key));
-      const candidates=scoped?named.filter(n=>inPart(n,part)):named,bounded=n=>['segment','ray'].includes(n.op)||n.kind==='through_points'&&!n.infinite,matches=candidates.filter(n=>!bounded(n));
+      const candidates=named.filter(n=>inPart(n,part)),bounded=n=>['segment','ray'].includes(n.op)||n.kind==='through_points'&&!n.infinite,matches=candidates.filter(n=>!bounded(n));
       if(matches.length>1)return null;
       if(matches.length){const node=matches[0];if(!node.id)node.id=unique('answer-ref-line');share(part,node);return node.id;}
       if(candidates.length===1&&bounded(candidates[0])){
@@ -117,10 +122,30 @@
     const bindAlias=(part,node,name)=>{
       if(!node)return;
       const key=canonical(name),collisions=all().filter(n=>n!==node&&!(n.kind==='point'||pointOps.has(n.op))&&[n.label,...(Array.isArray(n.aliases)?n.aliases.slice(0,12):[])].some(label=>canonical(label)===key));
-      if(collisions.length||scene.showDynamic!==false&&(scene.showDynamic||scene.dynamicLine)&&key===canonical(scene.dynamicLineLabel||'l')){blockedAliases.add(aliasKey(part,name));pending(part,name,'切线名称与已有直线冲突，未覆盖原对象或猜测交点',true);return;}
-      if(node.source!=='derived'||!String(node.id).startsWith('answer-')){if(canonical(node.label)!==key){blockedAliases.add(aliasKey(part,name));pending(part,name,'复用已有切线，但未改写其名称；请核对显式命名',true);}return;}
+      if(collisions.length||scene.showDynamic!==false&&(scene.showDynamic||scene.dynamicLine)&&key===canonical(scene.dynamicLineLabel||'l')){blockedAliases.add(aliasKey(part,name));pending(part,name,'该线名称与已有对象冲突，请核对所指直线',true);return;}
+      if(node.source!=='derived'||!String(node.id).startsWith('answer-')){if(canonical(node.label)!==key&&!node.aliases?.some(label=>canonical(label)===key)){blockedAliases.add(aliasKey(part,name));pending(part,name,'已有构造使用其他名称，请核对显式命名',true);}return;}
       node.aliases||=[];if(node.aliases.length<12&&!node.aliases.some(value=>canonical(value)===key))node.aliases.push(name);
     };
+    function addPerpendicularBisector(part,spec){
+      const key=aliasKey(part,spec.line);
+      if(blockedAliases.has(key))return;
+      const refs=spec.ends.map(end=>relationPoint(part,end));
+      if(!refs.every(Boolean))return; // A later pass may first construct one of the endpoints.
+      const label=canonical(spec.line);
+      const existing=all().filter(n=>[n.label,...(n.aliases||[])].some(value=>canonical(value).replace(/^直线/,'')===label));
+      const linked=n=>n.op==='perp_bisector'&&inPart(n,part)&&n.refs?.length===2&&refs.every(ref=>n.refs.includes(ref));
+      const takenByChord=((scene.dynamicLine||scene.showDynamic)&&label===canonical(scene.dynamicLineLabel||'l'))||
+        (scene.pairedChord&&label===canonical(scene.pairedChord.lineLabel||'l′'));
+      if(takenByChord||existing.length>1||existing.length&&!linked(existing[0])){
+        blockedAliases.add(key);pending(part,spec.line,'已有同名对象，无法确认它是这两个端点的中垂线',true);
+        return;
+      }
+      const divider=existing.length?share(part,existing[0]):add(part,{op:'perp_bisector',refs,label:spec.line});
+      if(divider){
+        if(!existing.length&&canonical(divider.label)!==label)bindAlias(part,divider,spec.line);
+        awaitingDividers.delete(key);
+      }
+    }
     function addBisector(part, names, target){
       if(target&&scene.showDynamic!==false&&scene.dynamicLine&&(scene.dynamicIntersectionLabels||['A','B']).some(name=>canonical(name)===canonical(target))&&!point(target)){
         pending(part,target,'已有动直线交点当前无法定位，请调整构型');
@@ -161,6 +186,7 @@
       const texts=[part.answer,...(part.steps||[]).slice(0,40)].filter(s=>typeof s==='string');
       const clauses=texts.map(clean).flatMap(s=>s.split(/[。；;\n]/)).filter(s=>s&&s.length<1200&&!/不(?:在|是|作|存在|相交|应|要|必|得)|无需|并非|误以为|错误|勿|无法|不能|假设|反例|如果|若/.test(s)).slice(0,120);
       const inferred=root.DongAnswerRelations?.collect(texts);
+      for(const spec of inferred?.specs||[])if(spec.op==='perp_bisector')awaitingDividers.add(aliasKey(part,spec.line));
       for(const {kind,label} of inferred?.conflicts||[]){
         (kind==='line'?blockedAliases:blockedPoints).add(aliasKey(part,label));
         pending(part,label,'本问对同一对象给出了不同的构造关系，请核对',true);
@@ -174,6 +200,8 @@
         for(const spec of inferred?.specs||[]){
           if(spec.op==='midpoint'){
             if(!blockedPoints.has(aliasKey(part,spec.point)))addMidpoint(part,spec);
+          }else if(spec.op==='perp_bisector'){
+            addPerpendicularBisector(part,spec);
           }else if(spec.op==='angle_bisector'){
             if(!blockedPoints.has(aliasKey(part,spec.point)))addBisector(part,spec.points,spec.point);
           }else if(spec.op==='foot'){
@@ -247,10 +275,14 @@
           for(const name of root.DongSceneAudit.declared(s)){const ref=point(name);if(ref)share(part,all().find(n=>n.id===ref));}
           for(const m of s.matchAll(new RegExp('(?:直线|切线)('+alias+')(?![A-Za-z0-9])','g'))){
             const matches=all().filter(n=>lineNode(n)&&[n.label,...(Array.isArray(n.aliases)?n.aliases.slice(0,12):[])].some(label=>canonical(label)===canonical(m[1])));
-            if(matches.length===1&&!blockedAliases.has(aliasKey(part,m[1])))share(part,matches[0]);
+            if(matches.length===1&&usableLineName(part,m[1]))share(part,matches[0]);
           }
         }
         if(report.added.length===before)break;
+      }
+      for(const spec of inferred?.specs||[]){
+        if(spec.op==='perp_bisector'&&awaitingDividers.has(aliasKey(part,spec.line))&&!blockedAliases.has(aliasKey(part,spec.line)))
+          pending(part,spec.line,'中垂线依赖尚未确定，请核对两端点',true);
       }
       // Definitions can follow their uses. Undo only this part's automatic
       // additions/shares that depend on a subsequently rejected point.

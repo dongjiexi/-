@@ -254,6 +254,30 @@ module.exports=async({page,assert,screenshot})=>{
   await page.setViewportSize({width:1600,height:1050});
   await page.locator('#openQuestionBank').click();await page.locator('[data-bank-id="2024-ii-3"]').click();await page.locator('[data-bank-action="full"]').click();
   await page.waitForFunction(()=>window.DongUnifiedBoard.isActive()&&window.DongUnifiedBoard.isSynchronized()&&window.DongGeoGebra.getAPI()?.isDefined('A'),null,{timeout:100000});
+  // The third step returns to the length of b, which has a named vector on the board.
+  await page.setViewportSize({width:390,height:844});
+  const lessonTab=page.locator('[data-mobile-panel="lesson"]');
+  await lessonTab.click();
+  await page.locator('#learningStyle').selectOption('full');
+  const vectorStep=page.locator('#solution [data-step-graph-index="2"]');
+  await vectorStep.click();
+  await vectorStep.locator('..').getByRole('button',{name:'查看画板'}).click();
+  await page.waitForFunction(()=>document.activeElement===document.querySelector('.dong-ggb-host'));
+  assert.equal(await lessonTab.textContent(),'返回第 3 步');
+  const drawing=await page.locator('.dong-ggb-host .GeoGebraFrame').boundingBox();
+  assert(drawing&&drawing.width>300&&drawing.y<844&&drawing.y+drawing.height>0,'Actual GeoGebra drawing is on screen');
+  const highlights=await page.evaluate(()=>{
+    const api=window.DongGeoGebra.getAPI();
+    return api.getAllObjectNames().filter(n=>api.getObjectType(n)==='vector'&&api.getVisible(n)&&api.getLineThickness(n)===9);
+  });
+  assert(highlights.length>0,'The selected algebra step highlights a visible vector inside the official applet');
+  await lessonTab.click();
+  await page.waitForFunction(()=>document.activeElement?.matches('#solution [data-step-graph-index="2"][aria-pressed="true"]'));
+  assert.equal(await lessonTab.textContent(),'解析与检验');
+  const source=await vectorStep.boundingBox();
+  assert(source&&source.y>=0&&source.y+source.height<=844,'The user returns directly to the selected step');
+  await vectorStep.click();
+  await page.setViewportSize({width:1600,height:1050});
   await page.locator('#learningStyle').selectOption('step');await page.locator('.step-navigation button').first().click();
   await page.locator('#startClassroom').click();assert.match(await page.locator('#classroomProgress').textContent(),/^1 \/ /);
   for(const width of [1366,1600]){

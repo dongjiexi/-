@@ -17,9 +17,9 @@
     if(/^[A-Z]/.test(target))return words.includes(target);
     return false;
   }
-  function relationMatches(text,entries){
+  function relationMatches(text,entries,owners){
     const source=plain(text).replace(/\s+/g,'');
-    const selected=new Set(),missing=[];
+    const selected=new Set(),reserved=new Set(),missing=[];
     const tangents=entries.filter(entry=>entry.relation==='tangent');
     const contact='([A-Z][0-9]*′*)';
     const nameList=contact+'(?:点)?[、,，和与及](?:点)?'+contact;
@@ -27,6 +27,14 @@
     const sameEnds=(entry,[a,b])=>entry.ends?.length===2&&
       ((name(entry.ends[0])===a&&name(entry.ends[1])===b)||(name(entry.ends[0])===b&&name(entry.ends[1])===a));
     for(const spec of window.DongAnswerRelations?.parse(text)||[]){
+      if(spec.op==='perp_bisector'){
+        const key=name(spec.line),ids=owners.get(key);
+        reserved.add(key);
+        const axis=ids?.size===1&&entries.find(entry=>ids.has(entry.id)&&entry.relation===spec.op&&sameEnds(entry,spec.ends));
+        if(axis)selected.add(axis.id);
+        else missing.push(spec.line+(ids?.size>1?'（名称不唯一）':'（中垂线关系未确认）'));
+        continue;
+      }
       if(spec.op==='midpoint'){
         const middle=entries.filter(entry=>entry.relation==='midpoint'&&name(entry.label)===spec.point&&sameEnds(entry,spec.ends));
         if(middle.length!==1)continue;
@@ -67,7 +75,7 @@
     if(/(?:恒过|经过|通过|交于|同一|同一个|求出|求|得到|得)(?:同一|同一个|这个|该)?(?:个)?(?:固定点|定点)/.test(source)||
       /(?:固定点|定点)(?:坐标|的坐标)/.test(source))unique('fixed-point','定点');
     if(/定直线/.test(source))unique('fixed-line','定直线');
-    return {selected,missing};
+    return {selected,missing,reserved};
   }
   function select(text, entries) {
     const aliases=entry=>(Array.isArray(entry.aliases)?entry.aliases.slice(0,12):[]).filter(value=>typeof value==='string'&&value.length<=40&&/^[A-Za-z][0-9′]*(?:[A-Z][0-9′]*)*$/.test(name(value)));
@@ -77,11 +85,12 @@
       if(!owners.has(key))owners.set(key,new Set());
       owners.get(key).add(entry.id);
     }
-    const relation=relationMatches(text,entries);
+    const relation=relationMatches(text,entries,owners);
     const matched=entries.filter(entry=>{
       let selected=relation.selected.has(entry.id);
       for(const label of [entry.label,...aliases(entry)])if(mentioned(text,label)){
         const key=name(label);
+        if(relation.reserved.has(key))continue;
         if(owners.get(key)?.size>1)ambiguous.add(key);else selected=true;
       }
       return selected;

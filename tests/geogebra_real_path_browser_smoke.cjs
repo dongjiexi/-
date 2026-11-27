@@ -1,6 +1,10 @@
 // Opt-in network integration: actual official app, never a simulated algebra API.
 module.exports=async({page,assert,screenshot})=>{
   const scene={type:'ellipse',a:3,b:2,h:0,k:0,showDynamic:false,objects:[
+    {id:'ta',kind:'point',label:'K',x:-2,y:0},{id:'tb',kind:'point',label:'L',x:2,y:0},{id:'tc',kind:'point',label:'J',x:0,y:3},
+    {id:'edgeAxis',kind:'construction',op:'perp_bisector',refs:['ta','tb'],label:'edgeAxis'},
+    {id:'outerCircle',kind:'construction',op:'circumcircle',refs:['ta','tb','tc'],label:'outerCircle'},
+    {id:'circlePathPoint',kind:'construction',op:'point_on',refs:['outerCircle'],t:0.3,label:'Q'},
     {id:'extra',kind:'conic',conicType:'ellipse',label:'E2',h:1,k:-2,a:4,b:2,orientation:'vertical'},
     {id:'extraPoint',kind:'construction',op:'point_on',refs:['extra'],label:'EP',t:.5},
     {id:'extraTangent',kind:'construction',op:'tangent',refs:['extraPoint','extra'],label:'ET'},
@@ -13,6 +17,17 @@ module.exports=async({page,assert,screenshot})=>{
   await page.locator('#parameterTarget').selectOption('$conic');
   await page.locator('#openGeoGebraInline').click();
   await page.waitForFunction(()=>window.DongGeoGebra.getAPI()?.exists('M'),null,{timeout:100000});
+  const degeneracy=await page.evaluate(()=>{
+    const api=window.DongGeoGebra.getAPI();
+    api.setFixed('J',false,true);api.setFixed('L',false,true);
+    const defined=()=>[api.isDefined('edgeAxis'),api.isDefined('outerCircle'),api.isDefined('Q')];
+    const normal=defined();api.setCoords('J',0,0);const collinear=defined(),collinearY=api.getYcoord('J');
+    api.setCoords('L',-2,0);const coincident=defined(),coincidentX=api.getXcoord('L');
+    api.setCoords('J',0,3);api.setCoords('L',2,0);
+    return {states:[normal,collinear,coincident,defined()],collinearY,coincidentX};
+  });
+  assert.equal(degeneracy.collinearY,0);assert.equal(degeneracy.coincidentX,-2);
+  assert.deepEqual(degeneracy.states,[[true,true,true],[true,false,false],[false,false,false],[true,true,true]],'Circle, attached point and perpendicular bisector must recover together');
   const result=await page.evaluate(()=>{
     const api=window.DongGeoGebra.getAPI(),p=n=>[api.getXcoord(n),api.getYcoord(n)];
     const start=p('S');api.setCoords('U',-10,8);api.setCoords('S',-10,-8);

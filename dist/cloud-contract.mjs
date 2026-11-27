@@ -14,6 +14,7 @@ scene 可增加 constructions:[{id:唯一英文标识,op:构造类型,refs:[引�
 points 只存固定点；曲线上自由动点只在 curvePoints 或 point_on 构造中声明一次；直线与曲线的交点、中点、反演点只在 constructions 声明。同一个点不得同时出现在 points、curvePoints、constructions；已有固定点也不得重复生成 point_on。constructions 中不允许 op:point，固定坐标只放 points。refs 中引用固定点或内置特征必须带 feature: 前缀；引用依赖点使用已声明的 id，禁止 dynamic: 前缀、裸点名、猜造 id、程序或表达式字符串。line 构造必须恰有两个点引用，不可用 line 构造直接承载方程；已求出方程的直线放 lines 的 slope 或 vertical 形式。
 允许 point_on:[曲线或线]（t 数值）；line/segment/ray/midpoint/circle/distance:[点,点]；tangent/normal/ellipse_tangent_point:[点,曲线]（外点切点 branch:0或1）；intersection:[线或曲线,线或曲线]（branch:0或1）；parallel/perpendicular/foot:[点,直线]；reflect_center:[点,中心]；reflect_axis:[点]（axis:x或y,axisValue:数值）；line_angle:[点]（angle:度数）。
 feature:O 是坐标原点；平移曲线的圆心或中心需另命名。椭圆/双曲线的 feature:F1、feature:F2、feature:A1、feature:A2 可引用现有焦点与顶点；抛物线可引用 feature:F、feature:V。依赖点引用优先使用构造 id，也允许 feature:已声明的构造点名称，不能把它们再次写成固定坐标。
+作线段的垂直平分线用 perp_bisector:[端点,端点]。作三角形外接圆用 circumcircle:[顶点,顶点,顶点]。用构造 id 引用该线或圆求交点。两端点重合时中垂线无定义；三点共线或重合时外接圆无定义。
 若点 R 在射线 AP 上且 |AR|·|AP|=q，可使用 inverse:[中心A,原像P]，power:q（有限正数），自动按 R=A+q(P-A)/|P-A|² 联动；P=A 时对象无定义，不编造坐标。
 过曲线上已有点 P 的直线与曲线交于另一点 B 时，用 second_intersection:[feature:P,直线id,$conic]，不用猜 branch 或把已有 P 再声明为 point_on。相切时没有不同的另一交点。dynamicLine 的交点已经由 dynamicIntersectionLabels 声明，禁止再次声明同名 intersection；lineThrough 必须为 point:点名，坐标先放 points，不能写 point:(x,y)。
 输出前逐问核对：每个所求目标都有结论、实际推导和必要的取等/排除条件；再逐一核对题面及答案出现的点、辅助线、切线、轨迹是否在 scene 中有合法的依赖构造。结构化图形暂时无法表达的对象应明确说明，不得因此取消已经求出的文字答案。

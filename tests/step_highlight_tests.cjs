@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const sandbox={window:{}};
-for(const file of ['scene-audit.js','step-highlight.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist',file),'utf8'),sandbox);
+for(const file of ['scene-audit.js','answer-relations.js','step-highlight.js'])vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist',file),'utf8'),sandbox);
 const link=sandbox.window.DongStepHighlight;
 const entries=['A','B','A′','F₂','l','C','N'].map(label=>({id:'id:'+label,label}));
 const check=(text,expected,missing=[])=>{const result=link.select(text,entries);assert.deepEqual(Array.from(result.matched),expected);assert.deepEqual(Array.from(result.missing),missing);};
@@ -43,6 +43,11 @@ const relations=[
   {id:'fixed-line',label:'P 的定直线',relation:'fixed-line'}
 ];
 const ids=(text,items=relations)=>Array.from(link.select(text,items).ids);
+const axisStep='作线段AB的垂直平分线l。';
+const axis={id:'axis',relation:'perp_bisector',ends:['B','A'],label:'ax',aliases:['l']};
+assert.deepEqual(ids(axisStep,[axis]),['axis']);
+assert.deepEqual(ids(axisStep,[{...axis,ends:['A','C']}]),[],'The same name on a different segment must not confirm the requested relation');
+assert.deepEqual(ids(axisStep,[axis,{id:'chord',label:'l'}]),[],'Ambiguous line names must not highlight a guessed object');
 assert.deepEqual(ids('在 $A$、$B^{\\prime}$ 两点处分别作切线。'),['t1','t2']);
 assert.deepEqual(ids('两条参数切线交于 Q。',relations.slice(0,2)),['t1','t2']);
 assert.deepEqual(ids('两条切线互相垂直。'),[],'Three tangents must not be guessed as a pair');

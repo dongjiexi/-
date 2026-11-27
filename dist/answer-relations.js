@@ -47,6 +47,15 @@
     new RegExp('(?:' + side + ')?' + nameStart + p + p + '的?中点(?:为|是|记为)(?:点)?' + p + relationEnd, 'g'),
     new RegExp('(?:取|作)(?:' + side + ')?' + p + p + '的?中点(?:为|记为)?(?:点)?' + p + relationEnd, 'g')
   ];
+  const divider = '(?:垂直平分线|中垂线)';
+  const baseSegment = '(?:'+side+')?'+p+p+'的?';
+  const namedLine = '(?:直线)?'+capture(named);
+  const declarationStart = '(?:^|[,、:：]|因此|所以|可得|可知|则|故|设|记)';
+  const chordBisectors = [
+    new RegExp(declarationStart+baseSegment+divider+'(?:为|是|记为)'+namedLine+relationEnd,'g'),
+    new RegExp(declarationStart+namedLine+'(?:是|为)'+baseSegment+divider+relationEnd,'g'),
+    new RegExp('(?:作|画)(?:出)?'+baseSegment+divider+'(?:,?记为)?'+namedLine+relationEnd,'g')
+  ];
   const normal = '(?:⊥|垂直于?)';
   const perpendicular = [
     new RegExp(relationStart + '(?:直线|线段)?' + p + p + normal + '(?:直线)?' + l + relationEnd, 'g'),
@@ -65,13 +74,14 @@
   const curveTypes = {椭圆:'ellipse',双曲线:'hyperbola',抛物线:'parabola',圆:'circle'};
 
   function normalize(text) {
-    const symbols = text.normalize('NFKC')
+    const symbols = text.normalize('NFKC').replace(/\\ell(?![A-Za-z])/g,'l')
       .replace(/\\angle\b/g, '∠').replace(/\\in\b/g, '∈').replace(/\\perp\b/g, '⊥')
       .replace(/\^\s*\{\s*\\prime\s*\}|\^\s*\\prime\b|\^′|\\prime\b|['’]/g, '′')
       .replace(/⟂/g, '⊥')
       .replace(/\\(?:lvert|rvert|vert)\b/g, '|')
       .replace(/_(?:\{(\d+)\}|(\d+))/g, (_, braced, bare) => braced || bare)
-      .replace(new RegExp('\\\\overline\\{\\s*('+point+')\\s*('+point+')\\s*\\}','g'), '线段$1$2');
+      .replace(new RegExp('(?:('+side+')\\s*\\$?\\s*)?\\\\overline\\{\\s*('+point+')\\s*('+point+')\\s*\\}','g'),
+        (_, label, a, b) => (label || '线段') + a + b);
     return (root.DongMathInput?.toPlain(symbols) ?? symbols).replace(/[$]/g, '');
   }
 
@@ -134,6 +144,18 @@
     return specs;
   }
 
+  function perpendicularBisectors(clause) {
+    if (/求证|证明|判断|请证|能否|假定|假使|不妨设|当.+时|不是|不作|勿/.test(clause)) return [];
+    const specs = [];
+    for (const [i, rule] of chordBisectors.entries()) {
+      for (const [, a, b, c] of clause.matchAll(rule)) {
+        const [first, second, line] = i === 1 ? [b, c, a] : [a, b, c];
+        if (first !== second) specs.push({op:'perp_bisector', ends:[first, second], line});
+      }
+    }
+    return specs;
+  }
+
   function canonicalLine(name) {
     const ends = name.match(new RegExp(point, 'g'));
     return ends?.length === 2 ? ends.sort().join('') : name;
@@ -179,12 +201,12 @@
       for (const line of normalize(text).split(/[。；;!\n]/).slice(0,120)) {
         const clause = line.replace(/[ \t\r]/g, '');
         if (clause.length > 1200 || negative.test(clause)) continue;
-        for (const spec of [...midpointRelations(clause), ...angleBisectors(clause), ...perpendicularFeet(clause), ...tangentContacts(clause)]) {
-          const key = spec.op === 'tangent' ? 'line:' + spec.line : 'point:' + spec.point;
+        for (const spec of [...midpointRelations(clause), ...angleBisectors(clause), ...perpendicularBisectors(clause), ...perpendicularFeet(clause), ...tangentContacts(clause)]) {
+          const key = (spec.op === 'tangent' || spec.op === 'perp_bisector') ? 'line:' + spec.line : 'point:' + spec.point;
           const signature = spec.op === 'angle_bisector'
             ? JSON.stringify([spec.op, spec.points[1], [spec.points[0], spec.points[2]].sort()])
             : spec.op === 'foot' ? JSON.stringify([spec.op, spec.from, canonicalLine(spec.line)])
-            : spec.op === 'midpoint' ? JSON.stringify([spec.op, [...spec.ends].sort()]) : JSON.stringify(spec);
+            : spec.ends ? JSON.stringify([spec.op, [...spec.ends].sort()]) : JSON.stringify(spec);
           const previous = results.get(key);
           if (previous && previous.signature !== signature) conflicts.add(key);
           if (!previous) results.set(key, {spec, signature});
